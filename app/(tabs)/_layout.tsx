@@ -4,7 +4,6 @@ import {
   Terminal, 
   FileText, 
   Settings, 
-  Zap, 
   Brain,
   Monitor
 } from "lucide-react-native";
@@ -22,6 +21,10 @@ export default function TabLayout() {
           backgroundColor: Colors.Colors.background.secondary,
           borderTopColor: Colors.Colors.border.primary,
           borderTopWidth: 1,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '600',
         },
         headerShown: false,
       }}

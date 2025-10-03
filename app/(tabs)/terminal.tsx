@@ -21,20 +21,8 @@ interface CommandHistoryItem {
 export default function TerminalScreen() {
   const [command, setCommand] = useState<string>('');
   const insets = useSafeAreaInsets();
-  const [history, setHistory] = useState<CommandHistoryItem[]>([
-    {
-      command: 'npm --version',
-      output: '9.8.1',
-      timestamp: new Date(),
-      status: 'success'
-    },
-    {
-      command: 'git status',
-      output: 'On branch main\nYour branch is up to date with \'origin/main\'.\n\nnothing to commit, working tree clean',
-      timestamp: new Date(),
-      status: 'success'
-    }
-  ]);
+  const [history, setHistory] = useState<CommandHistoryItem[]>([]);
+  const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
 
   const [isRunning, setIsRunning] = useState<boolean>(false);
 
@@ -107,7 +95,20 @@ export default function TerminalScreen() {
         
       case 'git':
         if (args[0] === 'status') {
-          return `On branch main\nYour branch is up to date with 'origin/main'.\n\nChanges not staged for commit:\n  (use "git add <file>..." to update what will be committed)\n  (use "git restore <file>..." to discard changes in working directory)\n\tmodified:   src/components/Dashboard.tsx\n\tmodified:   src/contexts/AgentContext.tsx\n\nno changes added to commit (use "git add" or "git commit -a")`;
+          return `On branch main
+Your branch is up to date with 'origin/main'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   src/components/Dashboard.tsx
+	modified:   src/contexts/AgentContext.tsx
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	src/screens/NewFeature.tsx
+
+no changes added to commit (use "git add" or "git commit -a")`;
         } else if (args[0] === 'add') {
           return args[1] === '.' ? 'Added all files to staging area.' : `Added ${args.slice(1).join(' ')} to staging area.`;
         } else if (args[0] === 'commit') {
@@ -217,23 +218,61 @@ export default function TerminalScreen() {
       {/* Terminal Output */}
       <View style={styles.terminalContainer}>
         <ScrollView style={styles.terminalOutput} showsVerticalScrollIndicator={false}>
-          {history.map((item, index) => (
-            <View key={index} style={styles.commandBlock}>
-              <View style={styles.commandHeader}>
-                <Text style={styles.prompt}>$ </Text>
-                <Text style={styles.commandText}>{item.command}</Text>
-                <Text style={styles.timestamp}>
-                  {item.timestamp.toLocaleTimeString()}
+          {history.map((item, index) => {
+            const isExpanded = expandedItems.has(index);
+            const outputLines = item.output.split('\n');
+            const shouldTruncate = outputLines.length > 5;
+            const displayOutput = shouldTruncate && !isExpanded 
+              ? outputLines.slice(0, 5).join('\n') + '\n...' 
+              : item.output;
+
+            return (
+              <View key={index} style={styles.commandBlock}>
+                <TouchableOpacity 
+                  style={styles.commandHeader}
+                  onPress={() => {
+                    const newExpanded = new Set(expandedItems);
+                    if (isExpanded) {
+                      newExpanded.delete(index);
+                    } else {
+                      newExpanded.add(index);
+                    }
+                    setExpandedItems(newExpanded);
+                  }}
+                >
+                  <Text style={styles.prompt}>$ </Text>
+                  <Text style={styles.commandText}>{item.command}</Text>
+                  <Text style={styles.timestamp}>
+                    {item.timestamp.toLocaleTimeString()}
+                  </Text>
+                </TouchableOpacity>
+                <Text style={[
+                  styles.outputText,
+                  item.status === 'error' && styles.errorText
+                ]}>
+                  {displayOutput}
                 </Text>
+                {shouldTruncate && (
+                  <TouchableOpacity 
+                    style={styles.expandButton}
+                    onPress={() => {
+                      const newExpanded = new Set(expandedItems);
+                      if (isExpanded) {
+                        newExpanded.delete(index);
+                      } else {
+                        newExpanded.add(index);
+                      }
+                      setExpandedItems(newExpanded);
+                    }}
+                  >
+                    <Text style={styles.expandButtonText}>
+                      {isExpanded ? '▲ Show Less' : '▼ Show More'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
-              <Text style={[
-                styles.outputText,
-                item.status === 'error' && styles.errorText
-              ]}>
-                {item.output}
-              </Text>
-            </View>
-          ))}
+            );
+          })}
           {isRunning && (
             <View style={styles.loadingIndicator}>
               <Text style={styles.loadingText}>Executing command...</Text>
@@ -386,6 +425,17 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
     fontSize: 12,
     fontStyle: 'italic',
+  },
+  expandButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    marginTop: 4,
+  },
+  expandButtonText: {
+    color: Colors.Colors.cyan.primary,
+    fontSize: 11,
+    fontFamily: 'monospace',
+    fontWeight: '600',
   },
   inputContainer: {
     paddingHorizontal: 20,

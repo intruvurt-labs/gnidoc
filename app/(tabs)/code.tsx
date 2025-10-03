@@ -294,13 +294,23 @@ const styles = StyleSheet.create({
 
   const handleRunCode = async () => {
     const activeTab = openTabs.find(tab => tab.id === activeTabId);
-    if (!activeTab) return;
+    if (!activeTab) {
+      Alert.alert('Error', 'No active file to run');
+      return;
+    }
     
     try {
+      if (Platform.OS !== 'web') {
+        await Haptics.selectionAsync();
+      }
+      
       console.log(`[IDE] Running code from ${activeTab.name}`);
+      console.log(`[IDE] Code content length: ${activeTab.content.length} characters`);
+      console.log(`[IDE] Language: ${activeTab.language}`);
+      
       Alert.alert(
-        'Code Execution',
-        `Executing ${activeTab.name}...\n\nIn a production environment, this would:\n• Transpile TypeScript to JavaScript\n• Bundle dependencies\n• Execute in a sandboxed environment\n• Display output in the terminal\n\nCheck the terminal tab for execution logs.`,
+        '▶ Code Execution',
+        `Executing ${activeTab.name}...\n\nFile: ${activeTab.name}\nLanguage: ${activeTab.language}\nSize: ${activeTab.content.length} chars\n\nIn production, this would:\n• Transpile TypeScript to JavaScript\n• Bundle dependencies\n• Execute in sandboxed environment\n• Display output in terminal\n\nExecution simulated successfully!`,
         [
           { text: 'OK' },
           { text: 'View Terminal', onPress: () => router.push('/(tabs)/terminal' as any) }
