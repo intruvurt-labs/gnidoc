@@ -38,11 +38,11 @@ export default function TerminalScreen() {
 
   const [isRunning, setIsRunning] = useState<boolean>(false);
 
-  const executeCommand = async () => {
-    if (!command.trim()) return;
+  const executeCommand = async (cmdToExecute?: string) => {
+    const cmd = (cmdToExecute || command).trim();
+    if (!cmd) return;
 
     setIsRunning(true);
-    const cmd = command.trim();
     const newCommand: CommandHistoryItem = {
       command: cmd,
       output: 'Executing...',
@@ -205,7 +205,7 @@ export default function TerminalScreen() {
             <TouchableOpacity
               key={index}
               style={styles.quickCommandButton}
-              onPress={() => setCommand(item.cmd)}
+              onPress={() => executeCommand(item.cmd)}
             >
               {item.icon}
               <Text style={styles.quickCommandText}>{item.cmd}</Text>
@@ -252,14 +252,14 @@ export default function TerminalScreen() {
             onChangeText={setCommand}
             placeholder="Enter command..."
             placeholderTextColor={Colors.Colors.text.muted}
-            onSubmitEditing={executeCommand}
+            onSubmitEditing={() => executeCommand()}
             editable={!isRunning}
           />
         </View>
         <View style={styles.inputActions}>
           <TouchableOpacity
             style={[styles.actionButton, styles.runButton]}
-            onPress={executeCommand}
+            onPress={() => executeCommand()}
             disabled={isRunning || !command.trim()}
           >
             {isRunning ? (
