@@ -1,6 +1,9 @@
 import createContextHook from '@nkzw/create-context-hook';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
+import { Platform } from 'react-native';
 
 
 interface Project {
@@ -378,6 +381,167 @@ IMPORTANT: Generate ONLY the code, no explanations or markdown formatting.`;
     }
   }, [projects, currentProject, saveProjects]);
 
+  const uploadFileToProject = useCallback(async (projectId: string) => {
+    console.log(`[AgentContext] Starting file upload for project ${projectId}`);
+    
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['*/*'],
+        copyToCacheDirectory: true,
+        multiple: false,
+      });
+
+      if (result.canceled) {
+        console.log('[AgentContext] File upload cancelled');
+        return null;
+      }
+
+      const asset = result.assets[0];
+      if (!asset) {
+        throw new Error('No file selected');
+      }
+
+      console.log(`[AgentContext] File selected: ${asset.name}, size: ${asset.size} bytes`);
+
+      let content = '';
+      const isTextFile = /\.(txt|js|jsx|ts|tsx|json|md|css|html|xml|yaml|yml|toml|env|gitignore|sh|py|java|c|cpp|h|hpp|cs|go|rs|rb|php|swift|kt|sql)$/i.test(asset.name);
+      
+      if (isTextFile && asset.uri) {
+        try {
+          if (Platform.OS === 'web') {
+            const response = await fetch(asset.uri);
+            content = await response.text();
+          } else {
+            content = await FileSystem.readAsStringAsync(asset.uri, {
+              encoding: FileSystem.EncodingType.UTF8,
+            });
+          }
+          console.log(`[AgentContext] File content read successfully: ${content.length} characters`);
+        } catch (readError) {
+          console.warn('[AgentContext] Could not read file content, treating as binary:', readError);
+          content = `// Binary file: ${asset.name}\n// Size: ${asset.size} bytes\n// Type: ${asset.mimeType || 'unknown'}`;
+        }
+      } else {
+        content = `// Binary file: ${asset.name}\n// Size: ${asset.size} bytes\n// Type: ${asset.mimeType || 'unknown'}`;
+      }
+
+      const language = getLanguageFromFileName(asset.name);
+      const path = `/uploaded/${asset.name}`;
+
+      const newFile = await addFileToProject(projectId, {
+        name: asset.name,
+        path,
+        content,
+        language,
+        size: asset.size || content.length,
+      });
+
+      console.log(`[AgentContext] File uploaded successfully: ${asset.name}`);
+      return newFile;
+    } catch (error) {
+      console.error('[AgentContext] File upload failed:', error);
+      throw new Error(`Failed to upload file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }, [addFileToProject]);
+
+  const uploadMultipleFiles = useCallback(async (projectId: string) => {
+    console.log(`[AgentContext] Starting multiple file upload for project ${projectId}`);
+    
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['*/*'],
+        copyToCacheDirectory: true,
+        multiple: true,
+      });
+
+      if (result.canceled) {
+        console.log('[AgentContext] Multiple file upload cancelled');
+        return [];
+      }
+
+      const uploadedFiles: ProjectFile[] = [];
+
+      for (const asset of result.assets) {
+        try {
+          let content = '';
+          const isTextFile = /\.(txt|js|jsx|ts|tsx|json|md|css|html|xml|yaml|yml|toml|env|gitignore|sh|py|java|c|cpp|h|hpp|cs|go|rs|rb|php|swift|kt|sql)$/i.test(asset.name);
+          
+          if (isTextFile && asset.uri) {
+            try {
+              if (Platform.OS === 'web') {
+                const response = await fetch(asset.uri);
+                content = await response.text();
+              } else {
+                content = await FileSystem.readAsStringAsync(asset.uri, {
+                  encoding: FileSystem.EncodingType.UTF8,
+                });
+              }
+            } catch (readError) {
+              console.warn(`[AgentContext] Could not read ${asset.name}, treating as binary:`, readError);
+              content = `// Binary file: ${asset.name}\n// Size: ${asset.size} bytes\n// Type: ${asset.mimeType || 'unknown'}`;
+            }
+          } else {
+            content = `// Binary file: ${asset.name}\n// Size: ${asset.size} bytes\n// Type: ${asset.mimeType || 'unknown'}`;
+          }
+
+          const language = getLanguageFromFileName(asset.name);
+          const path = `/uploaded/${asset.name}`;
+
+          const newFile = await addFileToProject(projectId, {
+            name: asset.name,
+            path,
+            content,
+            language,
+            size: asset.size || content.length,
+          });
+
+          uploadedFiles.push(newFile);
+          console.log(`[AgentContext] File uploaded: ${asset.name}`);
+        } catch (fileError) {
+          console.error(`[AgentContext] Failed to upload ${asset.name}:`, fileError);
+        }
+      }
+
+      console.log(`[AgentContext] Multiple file upload completed: ${uploadedFiles.length} files`);
+      return uploadedFiles;
+    } catch (error) {
+      console.error('[AgentContext] Multiple file upload failed:', error);
+      throw new Error(`Failed to upload files: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }, [addFileToProject]);
+
+  const deleteFileFromProject = useCallback(async (projectId: string, fileId: string) => {
+    console.log(`[AgentContext] Deleting file ${fileId} from project ${projectId}`);
+    
+    try {
+      const project = projects.find(p => p.id === projectId);
+      if (!project) {
+        throw new Error('Project not found');
+      }
+
+      const updatedProjects = projects.map(p =>
+        p.id === projectId
+          ? {
+              ...p,
+              files: p.files.filter(f => f.id !== fileId),
+              lastModified: new Date()
+            }
+          : p
+      );
+
+      await saveProjects(updatedProjects);
+      
+      if (currentProject?.id === projectId) {
+        setCurrentProject(updatedProjects.find(p => p.id === projectId) || null);
+      }
+
+      console.log(`[AgentContext] File deleted successfully`);
+    } catch (error) {
+      console.error('[AgentContext] Failed to delete file:', error);
+      throw new Error(`Failed to delete file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }, [projects, currentProject, saveProjects]);
+
   return useMemo(() => ({
     // State
     projects,
@@ -394,6 +558,9 @@ IMPORTANT: Generate ONLY the code, no explanations or markdown formatting.`;
     analyzeProject,
     generateCode,
     addFileToProject,
+    uploadFileToProject,
+    uploadMultipleFiles,
+    deleteFileFromProject,
     loadProjects,
   }), [
     projects,
@@ -407,6 +574,9 @@ IMPORTANT: Generate ONLY the code, no explanations or markdown formatting.`;
     analyzeProject,
     generateCode,
     addFileToProject,
+    uploadFileToProject,
+    uploadMultipleFiles,
+    deleteFileFromProject,
     loadProjects,
   ]);
 });
@@ -457,4 +627,41 @@ export function useCodeGeneration() {
     generateAndSave,
     isGenerating,
   };
+}
+
+function getLanguageFromFileName(fileName: string): string {
+  const ext = fileName.split('.').pop()?.toLowerCase();
+  
+  const languageMap: Record<string, string> = {
+    'js': 'javascript',
+    'jsx': 'javascript',
+    'ts': 'typescript',
+    'tsx': 'typescript',
+    'json': 'json',
+    'md': 'markdown',
+    'css': 'css',
+    'scss': 'scss',
+    'html': 'html',
+    'xml': 'xml',
+    'yaml': 'yaml',
+    'yml': 'yaml',
+    'toml': 'toml',
+    'py': 'python',
+    'java': 'java',
+    'c': 'c',
+    'cpp': 'cpp',
+    'h': 'c',
+    'hpp': 'cpp',
+    'cs': 'csharp',
+    'go': 'go',
+    'rs': 'rust',
+    'rb': 'ruby',
+    'php': 'php',
+    'swift': 'swift',
+    'kt': 'kotlin',
+    'sql': 'sql',
+    'sh': 'shell',
+  };
+  
+  return languageMap[ext || ''] || 'text';
 }

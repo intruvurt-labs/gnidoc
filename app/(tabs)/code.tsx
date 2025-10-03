@@ -44,6 +44,7 @@ import {
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAgent } from '@/contexts/AgentContext';
+import * as Haptics from 'expo-haptics';
 
 const { width, height } = Dimensions.get('window');
 const isSmallDevice = width < 768;
@@ -68,7 +69,7 @@ interface FileTreeItem {
 export default function CodeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { generateCode, isGenerating, addFileToProject, currentProject, projects } = useAgent();
+  const { generateCode, isGenerating, addFileToProject, uploadFileToProject, uploadMultipleFiles, deleteFileFromProject, currentProject, projects } = useAgent();
   
   // IDE State
   const [showSidebar, setShowSidebar] = useState<boolean>(!isSmallDevice);
@@ -346,19 +347,138 @@ const styles = StyleSheet.create({
     }
   };
 
+  const handleUploadFile = async () => {
+    if (!currentProject) {
+      Alert.alert('No Project', 'Please create or select a project first.');
+      return;
+    }
+
+    try {
+      if (Platform.OS !== 'web') {
+        await Haptics.selectionAsync();
+      }
+      
+      console.log('[IDE] Starting file upload...');
+      const uploadedFile = await uploadFileToProject(currentProject.id);
+      
+      if (uploadedFile) {
+        const newTab: FileTab = {
+          id: uploadedFile.id,
+          name: uploadedFile.name,
+          content: uploadedFile.content,
+          language: uploadedFile.language,
+          modified: false,
+        };
+        
+        setOpenTabs(prev => [...prev, newTab]);
+        setActiveTabId(uploadedFile.id);
+        
+        Alert.alert('✓ File Uploaded', `${uploadedFile.name} has been added to your project.`);
+        console.log(`[IDE] File uploaded and opened: ${uploadedFile.name}`);
+      }
+    } catch (error) {
+      console.error('[IDE] Upload error:', error);
+      Alert.alert('Upload Error', error instanceof Error ? error.message : 'Failed to upload file');
+    }
+  };
+
+  const handleUploadMultipleFiles = async () => {
+    if (!currentProject) {
+      Alert.alert('No Project', 'Please create or select a project first.');
+      return;
+    }
+
+    try {
+      if (Platform.OS !== 'web') {
+        await Haptics.selectionAsync();
+      }
+      
+      console.log('[IDE] Starting multiple file upload...');
+      const uploadedFiles = await uploadMultipleFiles(currentProject.id);
+      
+      if (uploadedFiles.length > 0) {
+        const newTabs: FileTab[] = uploadedFiles.map(file => ({
+          id: file.id,
+          name: file.name,
+          content: file.content,
+          language: file.language,
+          modified: false,
+        }));
+        
+        setOpenTabs(prev => [...prev, ...newTabs]);
+        setActiveTabId(uploadedFiles[0].id);
+        
+        Alert.alert(
+          '✓ Files Uploaded',
+          `${uploadedFiles.length} file${uploadedFiles.length > 1 ? 's' : ''} uploaded successfully:\n\n${uploadedFiles.map(f => `• ${f.name}`).join('\n')}`
+        );
+        console.log(`[IDE] ${uploadedFiles.length} files uploaded`);
+      }
+    } catch (error) {
+      console.error('[IDE] Multiple upload error:', error);
+      Alert.alert('Upload Error', error instanceof Error ? error.message : 'Failed to upload files');
+    }
+  };
+
+  const handleDeleteFile = async (fileId: string) => {
+    if (!currentProject) return;
+
+    const file = currentProject.files.find(f => f.id === fileId);
+    if (!file) return;
+
+    Alert.alert(
+      'Delete File',
+      `Are you sure you want to delete ${file.name}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteFileFromProject(currentProject.id, fileId);
+              
+              setOpenTabs(prev => prev.filter(tab => tab.id !== fileId));
+              
+              if (activeTabId === fileId && openTabs.length > 1) {
+                const remainingTabs = openTabs.filter(tab => tab.id !== fileId);
+                setActiveTabId(remainingTabs[0]?.id || '');
+              }
+              
+              console.log(`[IDE] File deleted: ${file.name}`);
+            } catch (error) {
+              console.error('[IDE] Delete error:', error);
+              Alert.alert('Delete Error', error instanceof Error ? error.message : 'Failed to delete file');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderFileTreeItem = (item: FileTreeItem, depth: number = 0) => (
     <View key={item.id}>
-      <TouchableOpacity 
-        style={[styles.fileTreeItem, { paddingLeft: 16 + depth * 16 }]}
-        onPress={() => handleFileOpen(item)}
-      >
-        {item.type === 'folder' ? (
-          <FolderOpen color={Colors.Colors.warning} size={16} />
-        ) : (
-          <File color={Colors.Colors.cyan.primary} size={16} />
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <TouchableOpacity 
+          style={[styles.fileTreeItem, { paddingLeft: 16 + depth * 16, flex: 1 }]}
+          onPress={() => handleFileOpen(item)}
+        >
+          {item.type === 'folder' ? (
+            <FolderOpen color={Colors.Colors.warning} size={16} />
+          ) : (
+            <File color={Colors.Colors.cyan.primary} size={16} />
+          )}
+          <Text style={styles.fileTreeText}>{item.name}</Text>
+        </TouchableOpacity>
+        {item.type === 'file' && currentProject?.files.find(f => f.id === item.id) && (
+          <TouchableOpacity
+            style={{ padding: 8 }}
+            onPress={() => handleDeleteFile(item.id)}
+          >
+            <X color={Colors.Colors.red.primary} size={14} />
+          </TouchableOpacity>
         )}
-        <Text style={styles.fileTreeText}>{item.name}</Text>
-      </TouchableOpacity>
+      </View>
       {item.children?.map(child => renderFileTreeItem(child, depth + 1))}
     </View>
   );
@@ -370,7 +490,7 @@ const styles = StyleSheet.create({
       onLongPress={() => setTooltipVisible(label)}
       onPressOut={() => setTooltipVisible(null)}
     >
-      <View>{icon}</View>
+      {icon}
       {tooltipVisible === label && (
         <View style={styles.tooltip}>
           <Text style={styles.tooltipText}>{label}</Text>
@@ -434,9 +554,14 @@ const styles = StyleSheet.create({
                 <View style={styles.explorerPanel}>
                   <View style={styles.panelHeader}>
                     <Text style={styles.panelTitle}>EXPLORER</Text>
-                    <TouchableOpacity>
-                      <Plus color={Colors.Colors.text.muted} size={16} />
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <TouchableOpacity onPress={handleUploadFile}>
+                        <Plus color={Colors.Colors.cyan.primary} size={16} />
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={handleUploadMultipleFiles}>
+                        <FolderOpen color={Colors.Colors.cyan.primary} size={16} />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                   <ScrollView style={styles.fileTree}>
                     <Text style={styles.projectName}>
