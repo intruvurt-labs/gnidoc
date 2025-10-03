@@ -9,6 +9,7 @@ import { AgentProvider } from "@/contexts/AgentContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import { DatabaseProvider } from "@/contexts/DatabaseContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { trpc, trpcClient } from "@/lib/trpc";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -69,18 +70,20 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <SettingsProvider>
-          <DatabaseProvider>
-            <AgentProvider>
-              <GestureHandlerRootView style={{ flex: 1 }}>
-                <StatusBar style="light" backgroundColor={Colors.Colors.background.primary} />
-                <RootLayoutNav />
-              </GestureHandlerRootView>
-            </AgentProvider>
-          </DatabaseProvider>
-        </SettingsProvider>
-      </QueryClientProvider>
+      <trpc.Provider client={trpcClient} queryClient={queryClient}>
+        <QueryClientProvider client={queryClient}>
+          <SettingsProvider>
+            <DatabaseProvider>
+              <AgentProvider>
+                <GestureHandlerRootView style={{ flex: 1 }}>
+                  <StatusBar style="light" backgroundColor={Colors.Colors.background.primary} />
+                  <RootLayoutNav />
+                </GestureHandlerRootView>
+              </AgentProvider>
+            </DatabaseProvider>
+          </SettingsProvider>
+        </QueryClientProvider>
+      </trpc.Provider>
     </ErrorBoundary>
   );
 }
