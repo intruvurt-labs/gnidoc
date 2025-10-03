@@ -5,7 +5,8 @@ import {
   FileText, 
   Settings, 
   Brain,
-  Monitor
+  Monitor,
+  Database
 } from "lucide-react-native";
 import React from "react";
 
@@ -62,6 +63,13 @@ export default function TabLayout() {
         options={{
           title: "Analysis",
           tabBarIcon: ({ color }) => <FileText color={color} size={24} />,
+        }}
+      />
+      <Tabs.Screen
+        name="database"
+        options={{
+          title: "Database",
+          tabBarIcon: ({ color }) => <Database color={color} size={24} />,
         }}
       />
       <Tabs.Screen

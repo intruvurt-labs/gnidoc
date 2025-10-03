@@ -7,6 +7,7 @@ import { StatusBar } from "expo-status-bar";
 import Colors from "@/constants/colors";
 import { AgentProvider } from "@/contexts/AgentContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
+import { DatabaseProvider } from "@/contexts/DatabaseContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -45,6 +46,18 @@ function RootLayoutNav() {
           headerTitle: "FAQ & Help",
         }} 
       />
+      <Stack.Screen 
+        name="connections" 
+        options={{ 
+          headerTitle: "Database Connections",
+        }} 
+      />
+      <Stack.Screen 
+        name="orchestration" 
+        options={{ 
+          headerTitle: "AI Orchestration",
+        }} 
+      />
     </Stack>
   );
 }
@@ -58,12 +71,14 @@ export default function RootLayout() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <SettingsProvider>
-          <AgentProvider>
-            <GestureHandlerRootView style={{ flex: 1 }}>
-              <StatusBar style="light" backgroundColor={Colors.Colors.background.primary} />
-              <RootLayoutNav />
-            </GestureHandlerRootView>
-          </AgentProvider>
+          <DatabaseProvider>
+            <AgentProvider>
+              <GestureHandlerRootView style={{ flex: 1 }}>
+                <StatusBar style="light" backgroundColor={Colors.Colors.background.primary} />
+                <RootLayoutNav />
+              </GestureHandlerRootView>
+            </AgentProvider>
+          </DatabaseProvider>
         </SettingsProvider>
       </QueryClientProvider>
     </ErrorBoundary>
