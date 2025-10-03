@@ -438,19 +438,35 @@ export default function DashboardScreen() {
         <View style={styles.actionsContainer}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.actionsGrid}>
-            <TouchableOpacity style={styles.actionButton} onPress={handleNewProject}>
+            <TouchableOpacity 
+              style={styles.actionButton} 
+              onPress={handleNewProject}
+              activeOpacity={0.7}
+            >
               <Code2 color={Colors.Colors.cyan.primary} size={24} />
               <Text style={styles.actionText}>New Project</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton} onPress={handleGitSync}>
+            <TouchableOpacity 
+              style={styles.actionButton} 
+              onPress={handleGitSync}
+              activeOpacity={0.7}
+            >
               <GitBranch color={Colors.Colors.red.primary} size={24} />
               <Text style={styles.actionText}>Git Sync</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton} onPress={handleDatabase}>
+            <TouchableOpacity 
+              style={styles.actionButton} 
+              onPress={handleDatabase}
+              activeOpacity={0.7}
+            >
               <Database color={Colors.Colors.warning} size={24} />
               <Text style={styles.actionText}>Database</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButton} onPress={handleDeploy}>
+            <TouchableOpacity 
+              style={styles.actionButton} 
+              onPress={handleDeploy}
+              activeOpacity={0.7}
+            >
               <Cpu color={Colors.Colors.success} size={24} />
               <Text style={styles.actionText}>Deploy</Text>
             </TouchableOpacity>
@@ -690,7 +706,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
+    justifyContent: 'center',
     width: (width - 52) / 2,
+    minHeight: 100,
     borderWidth: 1,
     borderColor: Colors.Colors.border.muted,
   },
