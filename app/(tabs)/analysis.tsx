@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
-  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -17,7 +16,6 @@ import {
   CheckCircle,
   XCircle,
   TrendingUp,
-  Clock,
   RefreshCw,
   Play,
 } from 'lucide-react-native';
@@ -35,6 +33,7 @@ interface AnalysisMetric {
 }
 
 interface CodeIssue {
+  id?: string;
   type: 'error' | 'warning' | 'info';
   file: string;
   line: number;
@@ -108,9 +107,9 @@ export default function AnalysisScreen() {
   };
 
   const tabs = [
-    { id: 'overview', title: 'Overview', icon: <BarChart3 size={18} /> },
-    { id: 'issues', title: 'Issues', icon: <AlertTriangle size={18} /> },
-    { id: 'metrics', title: 'Metrics', icon: <TrendingUp size={18} /> },
+    { id: 'overview' as const, title: 'Overview', icon: <BarChart3 size={18} /> },
+    { id: 'issues' as const, title: 'Issues', icon: <AlertTriangle size={18} /> },
+    { id: 'metrics' as const, title: 'Metrics', icon: <TrendingUp size={18} /> },
   ];
 
   return (
@@ -160,7 +159,7 @@ export default function AnalysisScreen() {
             {/* Metrics Grid */}
             <View style={styles.metricsGrid}>
               {metrics.map((metric, index) => (
-                <View key={index} style={[styles.metricCard, { borderColor: getStatusColor(metric.status) }]}>
+                <View key={`metric-${index}-${metric.title}`} style={[styles.metricCard, { borderColor: getStatusColor(metric.status) }]}>
                   <View style={styles.metricHeader}>
                     <Text>{metric.icon}</Text>
                     <Text style={styles.metricTitle}>{metric.title}</Text>
@@ -195,7 +194,7 @@ export default function AnalysisScreen() {
           <View style={styles.issuesContainer}>
             <Text style={styles.sectionTitle}>Code Issues ({issues.length})</Text>
             {issues.map((issue, index) => (
-              <TouchableOpacity key={index} style={styles.issueCard}>
+              <TouchableOpacity key={`issue-${index}-${issue.id || issue.file}-${issue.line}`} style={styles.issueCard}>
                 <View style={styles.issueHeader}>
                   <Text>{getIssueIcon(issue.type)}</Text>
                   <Text style={styles.issueFile}>{issue.file}</Text>

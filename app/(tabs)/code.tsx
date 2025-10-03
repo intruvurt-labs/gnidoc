@@ -189,11 +189,11 @@ const styles = StyleSheet.create({
   const activeTabContent = openTabs.find(tab => tab.id === activeTabId)?.content || '';
   
   const sidebarTabs = [
-    { id: 'explorer', name: 'Explorer', icon: <FolderOpen color={Colors.Colors.text.muted} size={20} /> },
-    { id: 'search', name: 'Search', icon: <Search color={Colors.Colors.text.muted} size={20} /> },
-    { id: 'git', name: 'Git', icon: <GitBranch color={Colors.Colors.text.muted} size={20} /> },
-    { id: 'debug', name: 'Debug', icon: <Bug color={Colors.Colors.text.muted} size={20} /> },
-    { id: 'extensions', name: 'Extensions', icon: <Package color={Colors.Colors.text.muted} size={20} /> },
+    { id: 'explorer' as const, name: 'Explorer', icon: <FolderOpen color={Colors.Colors.text.muted} size={20} /> },
+    { id: 'search' as const, name: 'Search', icon: <Search color={Colors.Colors.text.muted} size={20} /> },
+    { id: 'git' as const, name: 'Git', icon: <GitBranch color={Colors.Colors.text.muted} size={20} /> },
+    { id: 'debug' as const, name: 'Debug', icon: <Bug color={Colors.Colors.text.muted} size={20} /> },
+    { id: 'extensions' as const, name: 'Extensions', icon: <Package color={Colors.Colors.text.muted} size={20} /> },
   ];
 
   const handleGenerate = async () => {
@@ -467,7 +467,7 @@ const styles = StyleSheet.create({
   };
 
   const renderFileTreeItem = (item: FileTreeItem, depth: number = 0) => (
-    <View key={item.id}>
+    <View key={`file-tree-${item.id}-${depth}`}>
       <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <TouchableOpacity 
           style={[styles.fileTreeItem, { paddingLeft: 16 + depth * 16, flex: 1 }]}
@@ -603,9 +603,9 @@ const styles = StyleSheet.create({
           {/* Tab Bar */}
           <View style={styles.tabBar}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {openTabs.map(tab => (
+              {openTabs.map((tab) => (
                 <TouchableOpacity
-                  key={tab.id}
+                  key={`tab-${tab.id}`}
                   style={[
                     styles.tab,
                     activeTabId === tab.id && styles.activeTab

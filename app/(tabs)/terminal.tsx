@@ -172,14 +172,14 @@ no changes added to commit (use "git add" or "git commit -a")`;
   };
 
   const quickCommands = [
-    { cmd: 'npm install', icon: <Package color={Colors.Colors.cyan.primary} size={16} /> },
-    { cmd: 'npm run build', icon: <Package color={Colors.Colors.warning} size={16} /> },
-    { cmd: 'git status', icon: <GitBranch color={Colors.Colors.red.primary} size={16} /> },
-    { cmd: 'git add .', icon: <GitBranch color={Colors.Colors.success} size={16} /> },
-    { cmd: 'npm test', icon: <Package color={Colors.Colors.success} size={16} /> },
-    { cmd: 'expo start', icon: <Play color={Colors.Colors.cyan.primary} size={16} /> },
-    { cmd: 'ls', icon: <Folder color={Colors.Colors.warning} size={16} /> },
-    { cmd: 'help', icon: <TerminalIcon color={Colors.Colors.text.muted} size={16} /> },
+    { id: 'npm-install', cmd: 'npm install', icon: <Package color={Colors.Colors.cyan.primary} size={16} /> },
+    { id: 'npm-build', cmd: 'npm run build', icon: <Package color={Colors.Colors.warning} size={16} /> },
+    { id: 'git-status', cmd: 'git status', icon: <GitBranch color={Colors.Colors.red.primary} size={16} /> },
+    { id: 'git-add', cmd: 'git add .', icon: <GitBranch color={Colors.Colors.success} size={16} /> },
+    { id: 'npm-test', cmd: 'npm test', icon: <Package color={Colors.Colors.success} size={16} /> },
+    { id: 'expo-start', cmd: 'expo start', icon: <Play color={Colors.Colors.cyan.primary} size={16} /> },
+    { id: 'ls', cmd: 'ls', icon: <Folder color={Colors.Colors.warning} size={16} /> },
+    { id: 'help', cmd: 'help', icon: <TerminalIcon color={Colors.Colors.text.muted} size={16} /> },
   ];
 
   return (
@@ -202,9 +202,9 @@ no changes added to commit (use "git add" or "git commit -a")`;
       <View style={styles.quickCommandsContainer}>
         <Text style={styles.sectionTitle}>Quick Commands</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {quickCommands.map((item, index) => (
+          {quickCommands.map((item) => (
             <TouchableOpacity
-              key={index}
+              key={item.id}
               style={styles.quickCommandButton}
               onPress={() => executeCommand(item.cmd)}
             >
@@ -227,7 +227,7 @@ no changes added to commit (use "git add" or "git commit -a")`;
               : item.output;
 
             return (
-              <View key={index} style={styles.commandBlock}>
+              <View key={`cmd-${index}-${item.timestamp.getTime()}`} style={styles.commandBlock}>
                 <TouchableOpacity 
                   style={styles.commandHeader}
                   onPress={() => {

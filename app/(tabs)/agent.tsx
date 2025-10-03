@@ -141,7 +141,7 @@ export default function AgentScreen() {
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {quickActions.map((action, index) => (
             <TouchableOpacity 
-              key={index} 
+              key={`quick-action-${index}-${action.title}`}
               style={styles.quickActionButton}
               onPress={action.action}
             >

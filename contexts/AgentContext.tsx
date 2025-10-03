@@ -308,13 +308,16 @@ Follow these guidelines:
 - Follow accessibility best practices
 - Ensure web compatibility (avoid native-only APIs without Platform checks)
 
-IMPORTANT: Generate ONLY the code, no explanations or markdown formatting.`;
+IMPORTANT: Generate ONLY valid code without any markdown formatting, code blocks, or explanations. Return pure code that can be directly executed.`;
       
-      const generatedCode = await generateText({
+      let generatedCode = await generateText({
         messages: [
           { role: 'user', content: `${systemPrompt}\n\nGenerate ${language} code for: ${prompt}` }
         ]
       });
+      
+      // Clean up any markdown formatting that might have been added
+      generatedCode = generatedCode.replace(/^```[a-z]*\n?/gm, '').replace(/\n?```$/gm, '').trim();
 
       console.log(`[AgentContext] Code generation completed. Generated ${generatedCode.length} characters`);
       return generatedCode;
