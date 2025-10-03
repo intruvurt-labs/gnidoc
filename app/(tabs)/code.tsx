@@ -8,6 +8,7 @@ import {
   TextInput,
   Alert,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -33,12 +34,19 @@ import {
   Terminal,
   GitBranch,
   Bug,
-  Package
+  Package,
+  Menu,
+  Maximize2,
+  Minimize2,
+  Copy,
+  Scissors,
+  ClipboardPaste,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAgent } from '@/contexts/AgentContext';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+const isSmallDevice = width < 768;
 
 interface FileTab {
   id: string;
@@ -63,7 +71,10 @@ export default function CodeScreen() {
   const { generateCode, isGenerating, addFileToProject, currentProject, projects } = useAgent();
   
   // IDE State
-  const [showSidebar, setShowSidebar] = useState<boolean>(true);
+  const [showSidebar, setShowSidebar] = useState<boolean>(!isSmallDevice);
+  const [showFloatingToolbar, setShowFloatingToolbar] = useState<boolean>(true);
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [tooltipVisible, setTooltipVisible] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('explorer');
   const [openTabs, setOpenTabs] = useState<FileTab[]>([
     {
@@ -352,31 +363,55 @@ const styles = StyleSheet.create({
     </View>
   );
 
-  return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* IDE Header */}
-      <View style={styles.ideHeader}>
-        <TouchableOpacity 
-          style={styles.sidebarToggle}
-          onPress={() => setShowSidebar(!showSidebar)}
-        >
-          <MoreHorizontal color={Colors.Colors.text.muted} size={20} />
-        </TouchableOpacity>
-        <Text style={styles.ideTitle}>gnidoC Terces IDE</Text>
-        <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.headerButton}>
-            <Terminal color={Colors.Colors.text.muted} size={18} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerButton}>
-            <Settings color={Colors.Colors.text.muted} size={18} />
-          </TouchableOpacity>
+  const FloatingToolbarButton = ({ icon, label, onPress, color }: { icon: React.ReactNode; label: string; onPress: () => void; color?: string }) => (
+    <TouchableOpacity
+      style={styles.floatingToolbarButton}
+      onPress={onPress}
+      onLongPress={() => setTooltipVisible(label)}
+      onPressOut={() => setTooltipVisible(null)}
+    >
+      <View>{icon}</View>
+      {tooltipVisible === label && (
+        <View style={styles.tooltip}>
+          <Text style={styles.tooltipText}>{label}</Text>
         </View>
-      </View>
+      )}
+    </TouchableOpacity>
+  );
 
-      <View style={styles.ideBody}>
+  return (
+    <View style={[styles.container, { paddingTop: isFullscreen ? 0 : insets.top }]}>
+      {/* IDE Header */}
+      {!isFullscreen && (
+        <View style={styles.ideHeader}>
+          <TouchableOpacity 
+            style={styles.sidebarToggle}
+            onPress={() => setShowSidebar(!showSidebar)}
+          >
+            <Menu color={Colors.Colors.cyan.primary} size={20} />
+          </TouchableOpacity>
+          <Text style={styles.ideTitle}>gnidoC Terces IDE</Text>
+          <View style={styles.headerActions}>
+            <TouchableOpacity 
+              style={styles.headerButton}
+              onPress={() => router.push('/(tabs)/terminal' as any)}
+            >
+              <Terminal color={Colors.Colors.text.muted} size={18} />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.headerButton}
+              onPress={() => setIsFullscreen(!isFullscreen)}
+            >
+              <Maximize2 color={Colors.Colors.text.muted} size={18} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      <View style={[styles.ideBody, isSmallDevice && styles.ideBodyMobile]}>
         {/* Sidebar */}
         {showSidebar && (
-          <View style={styles.sidebar}>
+          <View style={[styles.sidebar, isSmallDevice && styles.sidebarMobile]}>
             {/* Sidebar Tabs */}
             <View style={styles.sidebarTabs}>
               {sidebarTabs.map(tab => (
@@ -429,7 +464,7 @@ const styles = StyleSheet.create({
         )}
 
         {/* Main Editor Area */}
-        <View style={styles.editorArea}>
+        <View style={[styles.editorArea, isSmallDevice && showSidebar && styles.editorAreaWithSidebar]}>
           {/* Tab Bar */}
           <View style={styles.tabBar}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -463,21 +498,23 @@ const styles = StyleSheet.create({
           </View>
 
           {/* Editor */}
-          <View style={styles.editor}>
-            <View style={styles.editorToolbar}>
-              <TouchableOpacity style={styles.toolbarButton} onPress={handleSaveFile}>
-                <Save color={Colors.Colors.cyan.primary} size={16} />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.toolbarButton} onPress={handleRunCode}>
-                <Play color={Colors.Colors.success} size={16} />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.toolbarButton} onPress={handleFormatCode}>
-                <Code color={Colors.Colors.warning} size={16} />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.toolbarButton}>
-                <Download color={Colors.Colors.text.muted} size={16} />
-              </TouchableOpacity>
-            </View>
+          <View style={[styles.editor, isSmallDevice && styles.editorMobile]}>
+            {!isSmallDevice && (
+              <View style={styles.editorToolbar}>
+                <TouchableOpacity style={styles.toolbarButton} onPress={handleSaveFile}>
+                  <Save color={Colors.Colors.cyan.primary} size={16} />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.toolbarButton} onPress={handleRunCode}>
+                  <Play color={Colors.Colors.success} size={16} />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.toolbarButton} onPress={handleFormatCode}>
+                  <Code color={Colors.Colors.warning} size={16} />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.toolbarButton}>
+                  <Download color={Colors.Colors.text.muted} size={16} />
+                </TouchableOpacity>
+              </View>
+            )}
             
             <ScrollView style={styles.codeEditor}>
               <TextInput
@@ -494,8 +531,46 @@ const styles = StyleSheet.create({
         </View>
       </View>
 
+      {/* Floating Toolbar for Mobile */}
+      {isSmallDevice && showFloatingToolbar && (
+        <View style={styles.floatingToolbar}>
+          <FloatingToolbarButton
+            icon={<Save color={Colors.Colors.cyan.primary} size={18} />}
+            label="Save"
+            onPress={handleSaveFile}
+          />
+          <FloatingToolbarButton
+            icon={<Play color={Colors.Colors.success} size={18} />}
+            label="Run"
+            onPress={handleRunCode}
+          />
+          <FloatingToolbarButton
+            icon={<Code color={Colors.Colors.warning} size={18} />}
+            label="Format"
+            onPress={handleFormatCode}
+          />
+          <FloatingToolbarButton
+            icon={<Copy color={Colors.Colors.text.muted} size={18} />}
+            label="Copy"
+            onPress={() => Alert.alert('Copy', 'Code copied to clipboard')}
+          />
+          <FloatingToolbarButton
+            icon={<Terminal color={Colors.Colors.red.primary} size={18} />}
+            label="Terminal"
+            onPress={() => router.push('/(tabs)/terminal' as any)}
+          />
+          {isFullscreen && (
+            <FloatingToolbarButton
+              icon={<Minimize2 color={Colors.Colors.text.muted} size={18} />}
+              label="Exit Fullscreen"
+              onPress={() => setIsFullscreen(false)}
+            />
+          )}
+        </View>
+      )}
+
       {/* AI Assistant Panel */}
-      <View style={styles.aiPanel}>
+      <View style={[styles.aiPanel, isSmallDevice && styles.aiPanelMobile]}>
         <View style={styles.aiHeader}>
           <Zap color={Colors.Colors.cyan.primary} size={16} />
           <Text style={styles.aiTitle}>AI Assistant</Text>
@@ -757,6 +832,78 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
     borderRightColor: Colors.Colors.border.muted,
     flexDirection: 'row',
+  },
+  sidebarMobile: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    zIndex: 100,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  ideBodyMobile: {
+    position: 'relative',
+  },
+  editorAreaWithSidebar: {
+    marginLeft: 0,
+  },
+  editorMobile: {
+    paddingBottom: 80,
+  },
+  floatingToolbar: {
+    position: 'absolute',
+    right: 16,
+    top: '50%',
+    transform: [{ translateY: -150 }],
+    backgroundColor: Colors.Colors.background.card,
+    borderRadius: 12,
+    padding: 8,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: Colors.Colors.border.primary,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+    zIndex: 1000,
+  },
+  floatingToolbarButton: {
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: Colors.Colors.background.secondary,
+    position: 'relative',
+  },
+  tooltip: {
+    position: 'absolute',
+    right: 50,
+    top: '50%',
+    transform: [{ translateY: -12 }],
+    backgroundColor: Colors.Colors.background.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: Colors.Colors.border.primary,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+    minWidth: 80,
+  },
+  tooltipText: {
+    color: Colors.Colors.text.primary,
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  aiPanelMobile: {
+    paddingBottom: 16,
   },
   sidebarTabs: {
     width: 48,
