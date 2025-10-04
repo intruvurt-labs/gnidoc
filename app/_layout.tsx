@@ -120,31 +120,31 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <ErrorBoundary>
-      <SafeAreaProvider>
-        <trpc.Provider client={trpcClient} queryClient={queryClient}>
-          <QueryClientProvider client={queryClient}>
-            <AuthProvider>
-              <SettingsProvider>
-                <Suspense fallback={<LoadingFallback />}>
-                  <DatabaseProvider>
-                    <AgentProvider>
-                      <WorkflowProvider>
-                        <AppBuilderProvider>
-                          <GestureHandlerRootView style={{ flex: 1 }}>
+    <SafeAreaProvider>
+      <ErrorBoundary>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <trpc.Provider client={trpcClient} queryClient={queryClient}>
+            <QueryClientProvider client={queryClient}>
+              <AuthProvider>
+                <SettingsProvider>
+                  <Suspense fallback={<LoadingFallback />}>
+                    <DatabaseProvider>
+                      <AgentProvider>
+                        <WorkflowProvider>
+                          <AppBuilderProvider>
                             <StatusBar style="light" backgroundColor={Colors.Colors.background.primary} />
                             <RootLayoutNav />
-                          </GestureHandlerRootView>
-                        </AppBuilderProvider>
-                      </WorkflowProvider>
-                    </AgentProvider>
-                  </DatabaseProvider>
-                </Suspense>
-              </SettingsProvider>
-            </AuthProvider>
-          </QueryClientProvider>
-        </trpc.Provider>
-      </SafeAreaProvider>
-    </ErrorBoundary>
+                          </AppBuilderProvider>
+                        </WorkflowProvider>
+                      </AgentProvider>
+                    </DatabaseProvider>
+                  </Suspense>
+                </SettingsProvider>
+              </AuthProvider>
+            </QueryClientProvider>
+          </trpc.Provider>
+        </GestureHandlerRootView>
+      </ErrorBoundary>
+    </SafeAreaProvider>
   );
 }
