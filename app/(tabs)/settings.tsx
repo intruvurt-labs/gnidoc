@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -20,12 +20,13 @@ import {
   Mail,
   HelpCircle,
   Info,
-
+  LogOut,
   ChevronRight,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSettings } from '@/contexts/SettingsContext';
 
 interface SettingItem {
   id: string;
@@ -39,60 +40,47 @@ interface SettingItem {
 }
 
 export default function SettingsScreen() {
-  const [notifications, setNotifications] = useState<boolean>(true);
-  const [darkMode, setDarkMode] = useState<boolean>(true);
-  const [autoSave, setAutoSave] = useState<boolean>(true);
-  const [analytics, setAnalytics] = useState<boolean>(false);
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { user, isAuthenticated, logout } = useAuth();
+  const { settings, updateSettings, resetSettings } = useSettings();
 
-  // Load settings from storage on mount
-  React.useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        const storedNotifications = await AsyncStorage.getItem('settings_notifications');
-        const storedDarkMode = await AsyncStorage.getItem('settings_darkMode');
-        const storedAutoSave = await AsyncStorage.getItem('settings_autoSave');
-        const storedAnalytics = await AsyncStorage.getItem('settings_analytics');
-        
-        if (storedNotifications !== null) {
-          setNotifications(JSON.parse(storedNotifications));
-        }
-        if (storedDarkMode !== null) {
-          setDarkMode(JSON.parse(storedDarkMode));
-        }
-        if (storedAutoSave !== null) {
-          setAutoSave(JSON.parse(storedAutoSave));
-        }
-        if (storedAnalytics !== null) {
-          setAnalytics(JSON.parse(storedAnalytics));
-        }
-      } catch (error) {
-        console.error('Failed to load settings:', error);
-      }
-    };
-    
-    loadSettings();
-  }, []);
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.replace('/auth/login' as any);
+    }
+  }, [isAuthenticated, router]);
 
   const handleNotificationToggle = async (value: boolean) => {
-    setNotifications(value);
-    await AsyncStorage.setItem('settings_notifications', JSON.stringify(value));
+    try {
+      await updateSettings({ notifications: value });
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update notification settings');
+    }
   };
 
   const handleDarkModeToggle = async (value: boolean) => {
-    setDarkMode(value);
-    await AsyncStorage.setItem('settings_darkMode', JSON.stringify(value));
+    try {
+      await updateSettings({ darkMode: value });
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update dark mode setting');
+    }
   };
 
   const handleAutoSaveToggle = async (value: boolean) => {
-    setAutoSave(value);
-    await AsyncStorage.setItem('settings_autoSave', JSON.stringify(value));
+    try {
+      await updateSettings({ autoSave: value });
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update auto save setting');
+    }
   };
 
   const handleAnalyticsToggle = async (value: boolean) => {
-    setAnalytics(value);
-    await AsyncStorage.setItem('settings_analytics', JSON.stringify(value));
+    try {
+      await updateSettings({ analytics: value });
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update analytics setting');
+    }
   };
 
   const handleContactSupport = async () => {
@@ -122,16 +110,7 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await AsyncStorage.multiRemove([
-                'settings_notifications',
-                'settings_darkMode',
-                'settings_autoSave',
-                'settings_analytics'
-              ]);
-              setNotifications(true);
-              setDarkMode(true);
-              setAutoSave(true);
-              setAnalytics(false);
+              await resetSettings();
               Alert.alert('Success', 'Settings have been reset to defaults.');
             } catch (error) {
               console.error('Failed to reset settings:', error);
@@ -143,24 +122,27 @@ export default function SettingsScreen() {
     );
   };
 
-  const handleExportSettings = async () => {
-    try {
-      const settings = {
-        notifications,
-        darkMode,
-        autoSave,
-        analytics,
-        exportDate: new Date().toISOString(),
-      };
-      
-      Alert.alert(
-        'Export Settings',
-        `Settings exported:\n\nNotifications: ${notifications}\nDark Mode: ${darkMode}\nAuto Save: ${autoSave}\nAnalytics: ${analytics}\n\nIn a production app, this would save to a file.`
-      );
-    } catch (error) {
-      console.error('Failed to export settings:', error);
-      Alert.alert('Error', 'Failed to export settings.');
-    }
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+              router.replace('/auth/login' as any);
+            } catch (error) {
+              console.error('Failed to logout:', error);
+              Alert.alert('Error', 'Failed to logout.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleAbout = () => {
@@ -177,11 +159,11 @@ export default function SettingsScreen() {
       items: [
         {
           id: 'profile',
-          title: 'Profile Settings',
-          subtitle: 'Manage your developer profile',
+          title: user?.name || 'Profile Settings',
+          subtitle: user?.email || 'Manage your developer profile',
           icon: <User color={Colors.Colors.cyan.primary} size={20} />,
           type: 'navigation' as const,
-          onPress: () => Alert.alert('Profile Settings', 'Manage your developer profile, avatar, and personal information. Coming soon!'),
+          onPress: () => Alert.alert('Profile Settings', `Name: ${user?.name}\nEmail: ${user?.email}\nSubscription: ${user?.subscription}\nCredits: ${user?.credits}`),
         },
       ],
     },
@@ -194,7 +176,7 @@ export default function SettingsScreen() {
           subtitle: 'Get notified about build status and updates',
           icon: <Bell color={Colors.Colors.warning} size={20} />,
           type: 'toggle' as const,
-          value: notifications,
+          value: settings.notifications,
           onToggle: handleNotificationToggle,
         },
         {
@@ -203,7 +185,7 @@ export default function SettingsScreen() {
           subtitle: 'Use dark theme for better coding experience',
           icon: <Palette color={Colors.Colors.red.primary} size={20} />,
           type: 'toggle' as const,
-          value: darkMode,
+          value: settings.darkMode,
           onToggle: handleDarkModeToggle,
         },
         {
@@ -212,7 +194,7 @@ export default function SettingsScreen() {
           subtitle: 'Automatically save your work',
           icon: <Database color={Colors.Colors.success} size={20} />,
           type: 'toggle' as const,
-          value: autoSave,
+          value: settings.autoSave,
           onToggle: handleAutoSaveToggle,
         },
       ],
@@ -226,7 +208,7 @@ export default function SettingsScreen() {
           subtitle: 'Help improve the app by sharing usage data',
           icon: <Shield color={Colors.Colors.red.primary} size={20} />,
           type: 'toggle' as const,
-          value: analytics,
+          value: settings.analytics,
           onToggle: handleAnalyticsToggle,
         },
       ],
@@ -270,6 +252,19 @@ export default function SettingsScreen() {
           icon: <Info color={Colors.Colors.success} size={20} />,
           type: 'navigation' as const,
           onPress: handleAbout,
+        },
+      ],
+    },
+    {
+      title: 'Account Actions',
+      items: [
+        {
+          id: 'logout',
+          title: 'Logout',
+          subtitle: 'Sign out of your account',
+          icon: <LogOut color={Colors.Colors.red.primary} size={20} />,
+          type: 'action' as const,
+          onPress: handleLogout,
         },
       ],
     },

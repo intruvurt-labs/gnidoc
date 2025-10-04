@@ -5,6 +5,7 @@ import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StatusBar } from "expo-status-bar";
 import Colors from "@/constants/colors";
+import { AuthProvider } from "@/contexts/AuthContext";
 import { AgentProvider } from "@/contexts/AgentContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import { DatabaseProvider } from "@/contexts/DatabaseContext";
@@ -68,6 +69,20 @@ function RootLayoutNav() {
           headerShown: false,
         }} 
       />
+      <Stack.Screen 
+        name="auth/login" 
+        options={{ 
+          headerTitle: "Login",
+          headerShown: false,
+        }} 
+      />
+      <Stack.Screen 
+        name="auth/signup" 
+        options={{ 
+          headerTitle: "Sign Up",
+          headerShown: false,
+        }} 
+      />
     </Stack>
   );
 }
@@ -81,20 +96,22 @@ export default function RootLayout() {
     <ErrorBoundary>
       <trpc.Provider client={trpcClient} queryClient={queryClient}>
         <QueryClientProvider client={queryClient}>
-          <SettingsProvider>
-            <DatabaseProvider>
-              <AgentProvider>
-                <WorkflowProvider>
-                  <AppBuilderProvider>
-                    <GestureHandlerRootView style={{ flex: 1 }}>
-                      <StatusBar style="light" backgroundColor={Colors.Colors.background.primary} />
-                      <RootLayoutNav />
-                    </GestureHandlerRootView>
-                  </AppBuilderProvider>
-                </WorkflowProvider>
-              </AgentProvider>
-            </DatabaseProvider>
-          </SettingsProvider>
+          <AuthProvider>
+            <SettingsProvider>
+              <DatabaseProvider>
+                <AgentProvider>
+                  <WorkflowProvider>
+                    <AppBuilderProvider>
+                      <GestureHandlerRootView style={{ flex: 1 }}>
+                        <StatusBar style="light" backgroundColor={Colors.Colors.background.primary} />
+                        <RootLayoutNav />
+                      </GestureHandlerRootView>
+                    </AppBuilderProvider>
+                  </WorkflowProvider>
+                </AgentProvider>
+              </DatabaseProvider>
+            </SettingsProvider>
+          </AuthProvider>
         </QueryClientProvider>
       </trpc.Provider>
     </ErrorBoundary>
