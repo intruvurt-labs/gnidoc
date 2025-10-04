@@ -6,7 +6,8 @@ import {
   Settings, 
   Brain,
   Monitor,
-  Database
+  Database,
+  Workflow
 } from "lucide-react-native";
 import React from "react";
 
@@ -63,6 +64,13 @@ export default function TabLayout() {
         options={{
           title: "Analysis",
           tabBarIcon: ({ color }) => <FileText color={color} size={24} />,
+        }}
+      />
+      <Tabs.Screen
+        name="workflow"
+        options={{
+          title: "Workflow",
+          tabBarIcon: ({ color }) => <Workflow color={color} size={24} />,
         }}
       />
       <Tabs.Screen

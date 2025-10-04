@@ -22,6 +22,7 @@ import {
   Shield,
   Search,
   Settings,
+  Sparkles,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAgent } from '@/contexts/AgentContext';
@@ -330,6 +331,10 @@ export default function DashboardScreen() {
     router.push('/(tabs)/settings');
   };
 
+  const handleAppGenerator = () => {
+    router.push('/app-generator' as any);
+  };
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -469,6 +474,14 @@ export default function DashboardScreen() {
             >
               <Cpu color={Colors.Colors.success} size={24} />
               <Text style={styles.actionText}>Deploy</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.appGeneratorButton]} 
+              onPress={handleAppGenerator}
+              activeOpacity={0.7}
+            >
+              <Sparkles color={Colors.Colors.cyan.primary} size={24} />
+              <Text style={styles.actionText}>AI App Generator</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -739,5 +752,9 @@ const styles = StyleSheet.create({
     color: Colors.Colors.text.inverse,
     fontSize: 16,
     fontWeight: '600',
+  },
+  appGeneratorButton: {
+    borderColor: Colors.Colors.cyan.primary,
+    borderWidth: 2,
   },
 });

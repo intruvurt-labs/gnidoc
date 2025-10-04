@@ -8,6 +8,8 @@ import Colors from "@/constants/colors";
 import { AgentProvider } from "@/contexts/AgentContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import { DatabaseProvider } from "@/contexts/DatabaseContext";
+import { WorkflowProvider } from "@/contexts/WorkflowContext";
+import { AppBuilderProvider } from "@/contexts/AppBuilderContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { trpc, trpcClient } from "@/lib/trpc";
 
@@ -59,6 +61,13 @@ function RootLayoutNav() {
           headerTitle: "AI Orchestration",
         }} 
       />
+      <Stack.Screen 
+        name="app-generator" 
+        options={{ 
+          headerTitle: "App Generator",
+          headerShown: false,
+        }} 
+      />
     </Stack>
   );
 }
@@ -75,10 +84,14 @@ export default function RootLayout() {
           <SettingsProvider>
             <DatabaseProvider>
               <AgentProvider>
-                <GestureHandlerRootView style={{ flex: 1 }}>
-                  <StatusBar style="light" backgroundColor={Colors.Colors.background.primary} />
-                  <RootLayoutNav />
-                </GestureHandlerRootView>
+                <WorkflowProvider>
+                  <AppBuilderProvider>
+                    <GestureHandlerRootView style={{ flex: 1 }}>
+                      <StatusBar style="light" backgroundColor={Colors.Colors.background.primary} />
+                      <RootLayoutNav />
+                    </GestureHandlerRootView>
+                  </AppBuilderProvider>
+                </WorkflowProvider>
               </AgentProvider>
             </DatabaseProvider>
           </SettingsProvider>
