@@ -378,7 +378,7 @@ export default function DashboardScreen() {
         {/* Metrics Grid */}
         <View style={styles.metricsGrid}>
           {metrics.map((metric, index) => (
-            <MetricCard key={index} {...metric} />
+            <MetricCard key={`metric-${metric.title}-${index}`} {...metric} />
           ))}
         </View>
 
@@ -418,8 +418,8 @@ export default function DashboardScreen() {
               )}
             </View>
           ) : (
-            filteredProjects.map((project, index) => (
-              <TouchableOpacity key={project.id} style={styles.projectCard}>
+            filteredProjects.map((project) => (
+              <TouchableOpacity key={`project-${project.id}`} style={styles.projectCard}>
                 <View style={styles.projectInfo}>
                   <Text style={styles.projectName}>{project.name}</Text>
                   <Text style={styles.projectStatus}>{project.status}</Text>

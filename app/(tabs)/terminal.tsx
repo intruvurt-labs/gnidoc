@@ -22,7 +22,7 @@ export default function TerminalScreen() {
   const [command, setCommand] = useState<string>('');
   const insets = useSafeAreaInsets();
   const [history, setHistory] = useState<CommandHistoryItem[]>([]);
-  const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
 
   const [isRunning, setIsRunning] = useState<boolean>(false);
 
@@ -223,7 +223,8 @@ no changes added to commit (use "git add" or "git commit -a")`;
           showsVerticalScrollIndicator={false}
         >
           {history.map((item, index) => {
-            const isExpanded = expandedItems.has(index);
+            const itemKey = `cmd-${index}-${item.timestamp.getTime()}`;
+            const isExpanded = expandedItems[itemKey] || false;
             const outputLines = item.output.split('\n');
             const shouldTruncate = outputLines.length > 5;
             const displayOutput = shouldTruncate && !isExpanded 
@@ -231,17 +232,14 @@ no changes added to commit (use "git add" or "git commit -a")`;
               : item.output;
 
             return (
-              <View key={`cmd-${index}-${item.timestamp.getTime()}`} style={styles.commandBlock}>
+              <View key={itemKey} style={styles.commandBlock}>
                 <TouchableOpacity 
                   style={styles.commandHeader}
                   onPress={() => {
-                    const newExpanded = new Set(expandedItems);
-                    if (isExpanded) {
-                      newExpanded.delete(index);
-                    } else {
-                      newExpanded.add(index);
-                    }
-                    setExpandedItems(newExpanded);
+                    setExpandedItems(prev => ({
+                      ...prev,
+                      [itemKey]: !prev[itemKey]
+                    }));
                   }}
                 >
                   <Text style={styles.prompt}>$ </Text>
@@ -260,13 +258,10 @@ no changes added to commit (use "git add" or "git commit -a")`;
                   <TouchableOpacity 
                     style={styles.expandButton}
                     onPress={() => {
-                      const newExpanded = new Set(expandedItems);
-                      if (isExpanded) {
-                        newExpanded.delete(index);
-                      } else {
-                        newExpanded.add(index);
-                      }
-                      setExpandedItems(newExpanded);
+                      setExpandedItems(prev => ({
+                        ...prev,
+                        [itemKey]: !prev[itemKey]
+                      }));
                     }}
                   >
                     <Text style={styles.expandButtonText}>

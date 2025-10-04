@@ -316,8 +316,35 @@ IMPORTANT: Generate ONLY valid code without any markdown formatting, code blocks
         ]
       });
       
-      // Clean up any markdown formatting that might have been added
-      generatedCode = generatedCode.replace(/^```[a-z]*\n?/gm, '').replace(/\n?```$/gm, '').trim();
+      if (!generatedCode || typeof generatedCode !== 'string') {
+        throw new Error('Invalid response from AI: No code generated');
+      }
+      
+      generatedCode = generatedCode.trim();
+      
+      if (generatedCode.startsWith('```')) {
+        const codeBlockMatch = generatedCode.match(/```(?:[a-z]+)?\n([\s\S]*?)```/);
+        if (codeBlockMatch && codeBlockMatch[1]) {
+          generatedCode = codeBlockMatch[1].trim();
+        } else {
+          generatedCode = generatedCode.replace(/^```[a-z]*\n?/gm, '').replace(/\n?```$/gm, '').trim();
+        }
+      }
+      
+      if (generatedCode.startsWith('{') || generatedCode.startsWith('[')) {
+        try {
+          JSON.parse(generatedCode);
+          console.warn('[AgentContext] AI returned JSON instead of code. Extracting code from JSON...');
+          const jsonData = JSON.parse(generatedCode);
+          if (jsonData.code) {
+            generatedCode = jsonData.code;
+          } else if (jsonData.content) {
+            generatedCode = jsonData.content;
+          }
+        } catch {
+          console.log('[AgentContext] Not valid JSON, treating as code');
+        }
+      }
 
       console.log(`[AgentContext] Code generation completed. Generated ${generatedCode.length} characters`);
       return generatedCode;
