@@ -5,6 +5,7 @@ import React, { useEffect, lazy, Suspense } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StatusBar } from "expo-status-bar";
 import { View, ActivityIndicator } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import Colors from "@/constants/colors";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
@@ -120,28 +121,30 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary>
-      <trpc.Provider client={trpcClient} queryClient={queryClient}>
-        <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <SettingsProvider>
-              <Suspense fallback={<LoadingFallback />}>
-                <DatabaseProvider>
-                  <AgentProvider>
-                    <WorkflowProvider>
-                      <AppBuilderProvider>
-                        <GestureHandlerRootView style={{ flex: 1 }}>
-                          <StatusBar style="light" backgroundColor={Colors.Colors.background.primary} />
-                          <RootLayoutNav />
-                        </GestureHandlerRootView>
-                      </AppBuilderProvider>
-                    </WorkflowProvider>
-                  </AgentProvider>
-                </DatabaseProvider>
-              </Suspense>
-            </SettingsProvider>
-          </AuthProvider>
-        </QueryClientProvider>
-      </trpc.Provider>
+      <SafeAreaProvider>
+        <trpc.Provider client={trpcClient} queryClient={queryClient}>
+          <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+              <SettingsProvider>
+                <Suspense fallback={<LoadingFallback />}>
+                  <DatabaseProvider>
+                    <AgentProvider>
+                      <WorkflowProvider>
+                        <AppBuilderProvider>
+                          <GestureHandlerRootView style={{ flex: 1 }}>
+                            <StatusBar style="light" backgroundColor={Colors.Colors.background.primary} />
+                            <RootLayoutNav />
+                          </GestureHandlerRootView>
+                        </AppBuilderProvider>
+                      </WorkflowProvider>
+                    </AgentProvider>
+                  </DatabaseProvider>
+                </Suspense>
+              </SettingsProvider>
+            </AuthProvider>
+          </QueryClientProvider>
+        </trpc.Provider>
+      </SafeAreaProvider>
     </ErrorBoundary>
   );
 }
