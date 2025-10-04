@@ -151,6 +151,7 @@ export default function DashboardScreen() {
   }, [projects, debouncedSearchQuery]);
 
   const handleNewProject = useCallback(async () => {
+    console.log('handleNewProject called');
     Alert.alert(
       'Create New Project',
       'What type of project would you like to create?',
@@ -164,6 +165,7 @@ export default function DashboardScreen() {
   }, [createProject]);
 
   const handleGitSync = useCallback(() => {
+    console.log('handleGitSync called');
     if (projects.length === 0) {
       Alert.alert('No Projects', 'Create a project first to use Git integration.');
       return;
@@ -221,6 +223,7 @@ export default function DashboardScreen() {
   }, [projects.length, router]);
 
   const handleDatabase = useCallback(() => {
+    console.log('handleDatabase called');
     if (projects.length === 0) {
       Alert.alert('No Projects', 'Create a project first to manage databases.');
       return;
@@ -272,6 +275,7 @@ export default function DashboardScreen() {
   }, [projects.length, router]);
 
   const handleDeploy = useCallback(() => {
+    console.log('handleDeploy called');
     if (projects.length === 0) {
       Alert.alert('No Projects', 'Create a project first to deploy.');
       return;
@@ -352,6 +356,7 @@ export default function DashboardScreen() {
   }, [router]);
 
   const handleAppGenerator = useCallback(() => {
+    console.log('handleAppGenerator called');
     router.push('/app-generator' as any);
   }, [router]);
 
