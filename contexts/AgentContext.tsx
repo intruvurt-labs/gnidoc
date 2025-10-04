@@ -60,7 +60,7 @@ export const [AgentProvider, useAgent] = createContextHook(() => {
           lastModified: new Date(p.lastModified)
         }));
         setProjects(parsedProjects);
-        if (parsedProjects.length > 0) {
+        if (parsedProjects.length > 0 && !currentProject) {
           setCurrentProject(parsedProjects[0]);
         }
       } else {

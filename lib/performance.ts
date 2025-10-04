@@ -114,3 +114,81 @@ export function measureSync<T>(label: string, callback: () => T): T {
     throw error;
   }
 }
+
+export function batchUpdates<T>(updates: (() => T)[]): T[] {
+  console.log(`[Performance] Batching ${updates.length} updates`);
+  const results: T[] = [];
+  
+  for (const update of updates) {
+    results.push(update());
+  }
+  
+  return results;
+}
+
+export class RateLimiter {
+  private queue: (() => void)[] = [];
+  private processing: boolean = false;
+  private readonly limit: number;
+  private readonly interval: number;
+  private count: number = 0;
+  private resetTime: number = Date.now();
+
+  constructor(limit: number = 10, intervalMs: number = 1000) {
+    this.limit = limit;
+    this.interval = intervalMs;
+  }
+
+  async execute<T>(fn: () => Promise<T>): Promise<T> {
+    return new Promise((resolve, reject) => {
+      this.queue.push(async () => {
+        try {
+          const result = await fn();
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        }
+      });
+      
+      this.process();
+    });
+  }
+
+  private async process(): Promise<void> {
+    if (this.processing) return;
+    this.processing = true;
+
+    while (this.queue.length > 0) {
+      const now = Date.now();
+      
+      if (now - this.resetTime >= this.interval) {
+        this.count = 0;
+        this.resetTime = now;
+      }
+
+      if (this.count >= this.limit) {
+        const waitTime = this.interval - (now - this.resetTime);
+        console.log(`[RateLimiter] Rate limit reached, waiting ${waitTime}ms`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        this.count = 0;
+        this.resetTime = Date.now();
+      }
+
+      const task = this.queue.shift();
+      if (task) {
+        this.count++;
+        await task();
+      }
+    }
+
+    this.processing = false;
+  }
+
+  getStatus(): { count: number; limit: number; queueSize: number } {
+    return {
+      count: this.count,
+      limit: this.limit,
+      queueSize: this.queue.length,
+    };
+  }
+}

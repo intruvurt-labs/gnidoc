@@ -76,27 +76,35 @@ export const [SettingsProvider, useSettings] = createContextHook(() => {
 
   const updateSettings = useCallback(async (updates: Partial<AppSettings>) => {
     try {
-      const newSettings = { ...settings, ...updates };
-      setSettings(newSettings);
-      await AsyncStorage.setItem('app-settings', JSON.stringify(newSettings));
+      setSettings(prev => {
+        const newSettings = { ...prev, ...updates };
+        AsyncStorage.setItem('app-settings', JSON.stringify(newSettings)).catch(err => 
+          console.error('[SettingsContext] Failed to persist settings:', err)
+        );
+        return newSettings;
+      });
       console.log('[SettingsContext] Settings updated:', updates);
     } catch (error) {
       console.error('[SettingsContext] Failed to update settings:', error);
       throw error;
     }
-  }, [settings]);
+  }, []);
 
   const updateProfile = useCallback(async (updates: Partial<UserProfile>) => {
     try {
-      const newProfile = { ...profile, ...updates };
-      setProfile(newProfile);
-      await AsyncStorage.setItem('user-profile', JSON.stringify(newProfile));
+      setProfile(prev => {
+        const newProfile = { ...prev, ...updates };
+        AsyncStorage.setItem('user-profile', JSON.stringify(newProfile)).catch(err => 
+          console.error('[SettingsContext] Failed to persist profile:', err)
+        );
+        return newProfile;
+      });
       console.log('[SettingsContext] Profile updated:', updates);
     } catch (error) {
       console.error('[SettingsContext] Failed to update profile:', error);
       throw error;
     }
-  }, [profile]);
+  }, []);
 
   const resetSettings = useCallback(async () => {
     try {

@@ -355,6 +355,26 @@ export default function DashboardScreen() {
     router.push('/app-generator' as any);
   }, [router]);
 
+  const renderProjectCard = useCallback(({ item: project }: { item: typeof projects[0] }) => (
+    <TouchableOpacity style={styles.projectCard}>
+      <View style={styles.projectInfo}>
+        <Text style={styles.projectName}>{project.name}</Text>
+        <Text style={styles.projectStatus}>{project.status}</Text>
+      </View>
+      <View style={styles.progressContainer}>
+        <View style={styles.progressBar}>
+          <View
+            style={[
+              styles.progressFill,
+              { width: `${project.progress}%` },
+            ]}
+          />
+        </View>
+        <Text style={styles.progressText}>{project.progress}%</Text>
+      </View>
+    </TouchableOpacity>
+  ), []);
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -437,31 +457,19 @@ export default function DashboardScreen() {
           ) : (
             <FlatList
               data={filteredProjects}
-              keyExtractor={(item) => `project-${item.id}`}
-              renderItem={({ item: project }) => (
-                <TouchableOpacity style={styles.projectCard}>
-                  <View style={styles.projectInfo}>
-                    <Text style={styles.projectName}>{project.name}</Text>
-                    <Text style={styles.projectStatus}>{project.status}</Text>
-                  </View>
-                  <View style={styles.progressContainer}>
-                    <View style={styles.progressBar}>
-                      <View
-                        style={[
-                          styles.progressFill,
-                          { width: `${project.progress}%` },
-                        ]}
-                      />
-                    </View>
-                    <Text style={styles.progressText}>{project.progress}%</Text>
-                  </View>
-                </TouchableOpacity>
-              )}
+              keyExtractor={(item) => item.id}
+              renderItem={renderProjectCard}
               scrollEnabled={false}
-              initialNumToRender={5}
-              maxToRenderPerBatch={5}
-              windowSize={5}
+              initialNumToRender={3}
+              maxToRenderPerBatch={3}
+              windowSize={3}
               removeClippedSubviews={true}
+              updateCellsBatchingPeriod={50}
+              getItemLayout={(data, index) => ({
+                length: 88,
+                offset: 88 * index,
+                index,
+              })}
             />
           )}
         </View>

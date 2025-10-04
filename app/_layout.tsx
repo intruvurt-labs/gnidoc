@@ -1,18 +1,20 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect } from "react";
+import React, { useEffect, lazy, Suspense } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StatusBar } from "expo-status-bar";
+import { View, ActivityIndicator } from "react-native";
 import Colors from "@/constants/colors";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { AgentProvider } from "@/contexts/AgentContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
-import { DatabaseProvider } from "@/contexts/DatabaseContext";
-import { WorkflowProvider } from "@/contexts/WorkflowContext";
-import { AppBuilderProvider } from "@/contexts/AppBuilderContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { trpc, trpcClient } from "@/lib/trpc";
+
+const AgentProvider = lazy(() => import("@/contexts/AgentContext").then(m => ({ default: m.AgentProvider })));
+const DatabaseProvider = lazy(() => import("@/contexts/DatabaseContext").then(m => ({ default: m.DatabaseProvider })));
+const WorkflowProvider = lazy(() => import("@/contexts/WorkflowContext").then(m => ({ default: m.WorkflowProvider })));
+const AppBuilderProvider = lazy(() => import("@/contexts/AppBuilderContext").then(m => ({ default: m.AppBuilderProvider })));
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -20,14 +22,19 @@ SplashScreen.preventAutoHideAsync();
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5,
-      gcTime: 1000 * 60 * 10,
-      retry: 1,
+      staleTime: 1000 * 60 * 10,
+      gcTime: 1000 * 60 * 30,
+      retry: 2,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
       refetchOnWindowFocus: false,
       refetchOnMount: false,
+      refetchOnReconnect: true,
+      networkMode: 'offlineFirst',
     },
     mutations: {
-      retry: 1,
+      retry: 2,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      networkMode: 'offlineFirst',
     },
   },
 });
@@ -100,6 +107,12 @@ function RootLayoutNav() {
   );
 }
 
+const LoadingFallback = () => (
+  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.Colors.background.primary }}>
+    <ActivityIndicator size="large" color={Colors.Colors.cyan.primary} />
+  </View>
+);
+
 export default function RootLayout() {
   useEffect(() => {
     SplashScreen.hideAsync();
@@ -111,18 +124,20 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <SettingsProvider>
-              <DatabaseProvider>
-                <AgentProvider>
-                  <WorkflowProvider>
-                    <AppBuilderProvider>
-                      <GestureHandlerRootView style={{ flex: 1 }}>
-                        <StatusBar style="light" backgroundColor={Colors.Colors.background.primary} />
-                        <RootLayoutNav />
-                      </GestureHandlerRootView>
-                    </AppBuilderProvider>
-                  </WorkflowProvider>
-                </AgentProvider>
-              </DatabaseProvider>
+              <Suspense fallback={<LoadingFallback />}>
+                <DatabaseProvider>
+                  <AgentProvider>
+                    <WorkflowProvider>
+                      <AppBuilderProvider>
+                        <GestureHandlerRootView style={{ flex: 1 }}>
+                          <StatusBar style="light" backgroundColor={Colors.Colors.background.primary} />
+                          <RootLayoutNav />
+                        </GestureHandlerRootView>
+                      </AppBuilderProvider>
+                    </WorkflowProvider>
+                  </AgentProvider>
+                </DatabaseProvider>
+              </Suspense>
             </SettingsProvider>
           </AuthProvider>
         </QueryClientProvider>
