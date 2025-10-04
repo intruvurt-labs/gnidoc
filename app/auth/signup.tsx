@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -27,51 +27,43 @@ export default function SignupScreen() {
   const router = useRouter();
   const { signup, loginWithOAuth } = useAuth();
 
-  const handleSignup = async () => {
-    if (!name || !email || !password || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
-
-    if (name.length < 2) {
-      Alert.alert('Error', 'Name must be at least 2 characters');
-      return;
-    }
-
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+  const handleSignup = useCallback(async () => {
+    if (!name.trim() || !email.trim() || !password || !confirmPassword) {
+      Alert.alert('Validation Error', 'Please fill in all fields');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      Alert.alert('Validation Error', 'Passwords do not match');
       return;
     }
 
     setIsLoading(true);
     try {
-      await signup(email, password, name);
-      Alert.alert('Success', 'Account created successfully!');
+      await signup(email.trim().toLowerCase(), password, name.trim());
       router.replace('/(tabs)' as any);
     } catch (error) {
-      Alert.alert('Error', error instanceof Error ? error.message : 'Signup failed');
+      const message = error instanceof Error ? error.message : 'Signup failed. Please try again.';
+      Alert.alert('Signup Failed', message);
+      console.error('[SignupScreen] Signup error:', error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [name, email, password, confirmPassword, signup, router]);
 
-  const handleOAuthSignup = async (provider: 'github' | 'google') => {
+  const handleOAuthSignup = useCallback(async (provider: 'github' | 'google') => {
     setIsLoading(true);
     try {
       await loginWithOAuth(provider);
-      Alert.alert('Success', `${provider} signup successful!`);
       router.replace('/(tabs)' as any);
     } catch (error) {
-      Alert.alert('Error', error instanceof Error ? error.message : `${provider} signup failed`);
+      const message = error instanceof Error ? error.message : `${provider} authentication failed`;
+      Alert.alert('OAuth Failed', message);
+      console.error(`[SignupScreen] OAuth error (${provider}):`, error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [loginWithOAuth, router]);
 
   return (
     <KeyboardAvoidingView

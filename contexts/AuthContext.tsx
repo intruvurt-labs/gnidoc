@@ -3,6 +3,9 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
+import { trpcClient } from '@/lib/trpc';
+import { batchSetItems, batchGetItems } from '@/lib/storage';
+import { requestCache } from '@/lib/batch-requests';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -39,13 +42,15 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const loadAuthState = useCallback(async () => {
     try {
-      const [storedUser, storedToken] = await Promise.all([
-        AsyncStorage.getItem(STORAGE_KEYS.USER),
-        AsyncStorage.getItem(STORAGE_KEYS.TOKEN),
-      ]);
+      const data = await requestCache.get('auth-state', async () => {
+        return await batchGetItems([STORAGE_KEYS.USER, STORAGE_KEYS.TOKEN]);
+      }) as Record<string, any>;
+
+      const storedUser = data[STORAGE_KEYS.USER];
+      const storedToken = data[STORAGE_KEYS.TOKEN] as string | null;
 
       if (storedUser && storedToken) {
-        const user = JSON.parse(storedUser);
+        const user = typeof storedUser === 'string' ? JSON.parse(storedUser) : storedUser;
         setAuthState({
           user,
           token: storedToken,
@@ -70,35 +75,40 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     try {
       console.log('[AuthContext] Logging in user:', email);
       
-      const mockUser: User = {
-        id: `user_${Date.now()}`,
-        email,
-        name: email.split('@')[0],
-        provider: 'email',
-        createdAt: new Date().toISOString(),
-        subscription: 'free',
-        credits: 100,
-      };
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        throw new Error('Please enter a valid email address');
+      }
 
-      const mockToken = `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      if (password.length < 6) {
+        throw new Error('Password must be at least 6 characters');
+      }
 
-      await Promise.all([
-        AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(mockUser)),
-        AsyncStorage.setItem(STORAGE_KEYS.TOKEN, mockToken),
-      ]);
+      const response = await trpcClient.auth.login.mutate({ email, password });
+
+      if (!response.success || !response.user || !response.token) {
+        throw new Error('Invalid response from server');
+      }
+
+      await batchSetItems({
+        [STORAGE_KEYS.USER]: JSON.stringify(response.user),
+        [STORAGE_KEYS.TOKEN]: response.token,
+      });
 
       setAuthState({
-        user: mockUser,
-        token: mockToken,
+        user: response.user,
+        token: response.token,
         isAuthenticated: true,
         isLoading: false,
       });
 
+      requestCache.clear();
       console.log('[AuthContext] Login successful');
-      return { success: true, user: mockUser };
+      return { success: true, user: response.user };
     } catch (error) {
       console.error('[AuthContext] Login failed:', error);
-      throw new Error('Login failed. Please try again.');
+      const message = error instanceof Error ? error.message : 'Login failed. Please try again.';
+      throw new Error(message);
     }
   }, []);
 
@@ -106,35 +116,44 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     try {
       console.log('[AuthContext] Signing up user:', email);
       
-      const mockUser: User = {
-        id: `user_${Date.now()}`,
-        email,
-        name,
-        provider: 'email',
-        createdAt: new Date().toISOString(),
-        subscription: 'free',
-        credits: 100,
-      };
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        throw new Error('Please enter a valid email address');
+      }
 
-      const mockToken = `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      if (name.length < 2) {
+        throw new Error('Name must be at least 2 characters');
+      }
 
-      await Promise.all([
-        AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(mockUser)),
-        AsyncStorage.setItem(STORAGE_KEYS.TOKEN, mockToken),
-      ]);
+      if (password.length < 6) {
+        throw new Error('Password must be at least 6 characters');
+      }
+
+      const response = await trpcClient.auth.signup.mutate({ email, password, name });
+
+      if (!response.success || !response.user || !response.token) {
+        throw new Error('Invalid response from server');
+      }
+
+      await batchSetItems({
+        [STORAGE_KEYS.USER]: JSON.stringify(response.user),
+        [STORAGE_KEYS.TOKEN]: response.token,
+      });
 
       setAuthState({
-        user: mockUser,
-        token: mockToken,
+        user: response.user,
+        token: response.token,
         isAuthenticated: true,
         isLoading: false,
       });
 
+      requestCache.clear();
       console.log('[AuthContext] Signup successful');
-      return { success: true, user: mockUser };
+      return { success: true, user: response.user };
     } catch (error) {
       console.error('[AuthContext] Signup failed:', error);
-      throw new Error('Signup failed. Please try again.');
+      const message = error instanceof Error ? error.message : 'Signup failed. Please try again.';
+      throw new Error(message);
     }
   }, []);
 
@@ -199,10 +218,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     try {
       console.log('[AuthContext] Logging out user');
       
-      await Promise.all([
-        AsyncStorage.removeItem(STORAGE_KEYS.USER),
-        AsyncStorage.removeItem(STORAGE_KEYS.TOKEN),
-      ]);
+      await AsyncStorage.multiRemove([STORAGE_KEYS.USER, STORAGE_KEYS.TOKEN]);
 
       setAuthState({
         user: null,
@@ -211,6 +227,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         isLoading: false,
       });
 
+      requestCache.clear();
       console.log('[AuthContext] Logout successful');
     } catch (error) {
       console.error('[AuthContext] Logout failed:', error);
@@ -220,25 +237,35 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const updateProfile = useCallback(async (updates: Partial<User>) => {
     try {
-      if (!authState.user) {
+      if (!authState.user || !authState.token) {
         throw new Error('No user logged in');
       }
 
       const updatedUser = { ...authState.user, ...updates };
-      await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser));
-
+      
       setAuthState(prev => ({
         ...prev,
         user: updatedUser,
       }));
 
+      await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser));
+
+      requestCache.clear();
       console.log('[AuthContext] Profile updated:', updates);
       return { success: true, user: updatedUser };
     } catch (error) {
       console.error('[AuthContext] Profile update failed:', error);
+      
+      if (authState.user) {
+        setAuthState(prev => ({
+          ...prev,
+          user: authState.user,
+        }));
+      }
+      
       throw new Error('Failed to update profile. Please try again.');
     }
-  }, [authState.user]);
+  }, [authState.user, authState.token]);
 
   const updateCredits = useCallback(async (amount: number) => {
     try {
@@ -248,20 +275,28 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
       const updatedUser = {
         ...authState.user,
-        credits: authState.user.credits + amount,
+        credits: Math.max(0, authState.user.credits + amount),
       };
-
-      await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser));
 
       setAuthState(prev => ({
         ...prev,
         user: updatedUser,
       }));
 
+      await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser));
+
       console.log('[AuthContext] Credits updated:', amount);
       return { success: true, credits: updatedUser.credits };
     } catch (error) {
       console.error('[AuthContext] Credits update failed:', error);
+      
+      if (authState.user) {
+        setAuthState(prev => ({
+          ...prev,
+          user: authState.user,
+        }));
+      }
+      
       throw new Error('Failed to update credits. Please try again.');
     }
   }, [authState.user]);
@@ -277,17 +312,25 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         subscription: tier,
       };
 
-      await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser));
-
       setAuthState(prev => ({
         ...prev,
         user: updatedUser,
       }));
 
+      await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser));
+
       console.log('[AuthContext] Subscription upgraded to:', tier);
       return { success: true, subscription: tier };
     } catch (error) {
       console.error('[AuthContext] Subscription upgrade failed:', error);
+      
+      if (authState.user) {
+        setAuthState(prev => ({
+          ...prev,
+          user: authState.user,
+        }));
+      }
+      
       throw new Error('Failed to upgrade subscription. Please try again.');
     }
   }, [authState.user]);

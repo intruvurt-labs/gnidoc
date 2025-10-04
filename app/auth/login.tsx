@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -25,41 +25,38 @@ export default function LoginScreen() {
   const router = useRouter();
   const { login, loginWithOAuth } = useAuth();
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please enter both email and password');
-      return;
-    }
-
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+  const handleLogin = useCallback(async () => {
+    if (!email.trim() || !password) {
+      Alert.alert('Validation Error', 'Please enter both email and password');
       return;
     }
 
     setIsLoading(true);
     try {
-      await login(email, password);
-      Alert.alert('Success', 'Login successful!');
+      await login(email.trim().toLowerCase(), password);
       router.replace('/(tabs)' as any);
     } catch (error) {
-      Alert.alert('Error', error instanceof Error ? error.message : 'Login failed');
+      const message = error instanceof Error ? error.message : 'Login failed. Please try again.';
+      Alert.alert('Login Failed', message);
+      console.error('[LoginScreen] Login error:', error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [email, password, login, router]);
 
-  const handleOAuthLogin = async (provider: 'github' | 'google') => {
+  const handleOAuthLogin = useCallback(async (provider: 'github' | 'google') => {
     setIsLoading(true);
     try {
       await loginWithOAuth(provider);
-      Alert.alert('Success', `${provider} login successful!`);
       router.replace('/(tabs)' as any);
     } catch (error) {
-      Alert.alert('Error', error instanceof Error ? error.message : `${provider} login failed`);
+      const message = error instanceof Error ? error.message : `${provider} authentication failed`;
+      Alert.alert('OAuth Failed', message);
+      console.error(`[LoginScreen] OAuth error (${provider}):`, error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [loginWithOAuth, router]);
 
   return (
     <KeyboardAvoidingView

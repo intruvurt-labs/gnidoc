@@ -1,6 +1,8 @@
 import createContextHook from '@nkzw/create-context-hook';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { debounce } from '@/lib/performance';
+import { batchSetItems, batchGetItems } from '@/lib/storage';
 
 interface UserProfile {
   name: string;
@@ -49,17 +51,19 @@ export const [SettingsProvider, useSettings] = createContextHook(() => {
 
   const loadSettings = useCallback(async () => {
     try {
-      const [storedSettings, storedProfile] = await Promise.all([
-        AsyncStorage.getItem('app-settings'),
-        AsyncStorage.getItem('user-profile'),
-      ]);
+      const data = await batchGetItems(['app-settings', 'user-profile']);
+
+      const storedSettings = data['app-settings'];
+      const storedProfile = data['user-profile'];
 
       if (storedSettings) {
-        setSettings(JSON.parse(storedSettings));
+        const parsed = typeof storedSettings === 'string' ? JSON.parse(storedSettings) : storedSettings;
+        setSettings(parsed);
       }
 
       if (storedProfile) {
-        setProfile(JSON.parse(storedProfile));
+        const parsed = typeof storedProfile === 'string' ? JSON.parse(storedProfile) : storedProfile;
+        setProfile(parsed);
       }
 
       console.log('[SettingsContext] Settings and profile loaded');
@@ -74,13 +78,22 @@ export const [SettingsProvider, useSettings] = createContextHook(() => {
     loadSettings();
   }, [loadSettings]);
 
+  const debouncedSaveSettings = useRef(
+    debounce(async (newSettings: AppSettings) => {
+      try {
+        await AsyncStorage.setItem('app-settings', JSON.stringify(newSettings));
+        console.log('[SettingsContext] Settings persisted');
+      } catch (err) {
+        console.error('[SettingsContext] Failed to persist settings:', err);
+      }
+    }, 500)
+  ).current;
+
   const updateSettings = useCallback(async (updates: Partial<AppSettings>) => {
     try {
       setSettings(prev => {
         const newSettings = { ...prev, ...updates };
-        AsyncStorage.setItem('app-settings', JSON.stringify(newSettings)).catch(err => 
-          console.error('[SettingsContext] Failed to persist settings:', err)
-        );
+        debouncedSaveSettings(newSettings);
         return newSettings;
       });
       console.log('[SettingsContext] Settings updated:', updates);
@@ -88,15 +101,24 @@ export const [SettingsProvider, useSettings] = createContextHook(() => {
       console.error('[SettingsContext] Failed to update settings:', error);
       throw error;
     }
-  }, []);
+  }, [debouncedSaveSettings]);
+
+  const debouncedSaveProfile = useRef(
+    debounce(async (newProfile: UserProfile) => {
+      try {
+        await AsyncStorage.setItem('user-profile', JSON.stringify(newProfile));
+        console.log('[SettingsContext] Profile persisted');
+      } catch (err) {
+        console.error('[SettingsContext] Failed to persist profile:', err);
+      }
+    }, 500)
+  ).current;
 
   const updateProfile = useCallback(async (updates: Partial<UserProfile>) => {
     try {
       setProfile(prev => {
         const newProfile = { ...prev, ...updates };
-        AsyncStorage.setItem('user-profile', JSON.stringify(newProfile)).catch(err => 
-          console.error('[SettingsContext] Failed to persist profile:', err)
-        );
+        debouncedSaveProfile(newProfile);
         return newProfile;
       });
       console.log('[SettingsContext] Profile updated:', updates);
@@ -104,12 +126,14 @@ export const [SettingsProvider, useSettings] = createContextHook(() => {
       console.error('[SettingsContext] Failed to update profile:', error);
       throw error;
     }
-  }, []);
+  }, [debouncedSaveProfile]);
 
   const resetSettings = useCallback(async () => {
     try {
       setSettings(DEFAULT_SETTINGS);
-      await AsyncStorage.setItem('app-settings', JSON.stringify(DEFAULT_SETTINGS));
+      await batchSetItems({
+        'app-settings': JSON.stringify(DEFAULT_SETTINGS),
+      });
       console.log('[SettingsContext] Settings reset to defaults');
     } catch (error) {
       console.error('[SettingsContext] Failed to reset settings:', error);
@@ -120,7 +144,9 @@ export const [SettingsProvider, useSettings] = createContextHook(() => {
   const resetProfile = useCallback(async () => {
     try {
       setProfile(DEFAULT_PROFILE);
-      await AsyncStorage.setItem('user-profile', JSON.stringify(DEFAULT_PROFILE));
+      await batchSetItems({
+        'user-profile': JSON.stringify(DEFAULT_PROFILE),
+      });
       console.log('[SettingsContext] Profile reset to defaults');
     } catch (error) {
       console.error('[SettingsContext] Failed to reset profile:', error);
@@ -139,18 +165,27 @@ export const [SettingsProvider, useSettings] = createContextHook(() => {
 
   const importSettings = useCallback(async (data: any) => {
     try {
+      const updates: Record<string, string> = {};
+      
       if (data.settings) {
-        await updateSettings(data.settings);
+        setSettings(data.settings);
+        updates['app-settings'] = JSON.stringify(data.settings);
       }
       if (data.profile) {
-        await updateProfile(data.profile);
+        setProfile(data.profile);
+        updates['user-profile'] = JSON.stringify(data.profile);
       }
+      
+      if (Object.keys(updates).length > 0) {
+        await batchSetItems(updates);
+      }
+      
       console.log('[SettingsContext] Settings imported successfully');
     } catch (error) {
       console.error('[SettingsContext] Failed to import settings:', error);
       throw error;
     }
-  }, [updateSettings, updateProfile]);
+  }, []);
 
   return useMemo(() => ({
     settings,
