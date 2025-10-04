@@ -183,7 +183,7 @@ no changes added to commit (use "git add" or "git commit -a")`;
   ];
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
         <TerminalIcon color={Colors.Colors.cyan.primary} size={24} />
@@ -217,7 +217,11 @@ no changes added to commit (use "git add" or "git commit -a")`;
 
       {/* Terminal Output */}
       <View style={styles.terminalContainer}>
-        <ScrollView style={styles.terminalOutput} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={styles.terminalOutput} 
+          contentContainerStyle={{ paddingBottom: 20 }}
+          showsVerticalScrollIndicator={false}
+        >
           {history.map((item, index) => {
             const isExpanded = expandedItems.has(index);
             const outputLines = item.output.split('\n');
@@ -282,7 +286,7 @@ no changes added to commit (use "git add" or "git commit -a")`;
       </View>
 
       {/* Command Input */}
-      <View style={styles.inputContainer}>
+      <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
         <View style={styles.inputRow}>
           <Text style={styles.inputPrompt}>$ </Text>
           <TextInput
@@ -411,7 +415,7 @@ const styles = StyleSheet.create({
     color: Colors.Colors.text.secondary,
     fontFamily: 'monospace',
     fontSize: 12,
-    lineHeight: 16,
+    lineHeight: 18,
     paddingLeft: 16,
   },
   errorText: {

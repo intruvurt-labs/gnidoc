@@ -28,6 +28,7 @@ import Colors from '@/constants/colors';
 import { useAgent } from '@/contexts/AgentContext';
 import { useRouter } from 'expo-router';
 import OnboardingTour from '@/components/OnboardingTour';
+import AISupportChat from '@/components/AISupportChat';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
@@ -493,6 +494,9 @@ export default function DashboardScreen() {
         onComplete={handleOnboardingComplete}
         onSkip={handleOnboardingSkip}
       />
+      
+      {/* AI Support Chat */}
+      <AISupportChat userTier="free" />
     </View>
   );
 }
