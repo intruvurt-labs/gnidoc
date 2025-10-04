@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,9 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Image,
   Dimensions,
   Alert,
+  FlatList,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -29,6 +29,7 @@ import { useAgent } from '@/contexts/AgentContext';
 import { useRouter } from 'expo-router';
 import OnboardingTour from '@/components/OnboardingTour';
 import AISupportChat from '@/components/AISupportChat';
+import OptimizedImage from '@/components/OptimizedImage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
@@ -41,7 +42,8 @@ interface MetricCardProps {
   color: string;
 }
 
-const MetricCard: React.FC<MetricCardProps> = ({ title, value, icon, trend, color }) => (
+const MetricCard: React.FC<MetricCardProps> = React.memo(function MetricCard({ title, value, icon, trend, color }) {
+  return (
   <View style={[styles.metricCard, { borderColor: color }]}>
     <View style={styles.metricHeader}>
       <Text>{icon}</Text>
@@ -50,16 +52,33 @@ const MetricCard: React.FC<MetricCardProps> = ({ title, value, icon, trend, colo
     <Text style={[styles.metricValue, { color }]}>{value}</Text>
     {trend && <Text style={styles.metricTrend}>{trend}</Text>}
   </View>
-);
+  );
+});
+
+const useDebounce = <T,>(value: T, delay: number): T => {
+  const [debouncedValue, setDebouncedValue] = React.useState<T>(value);
+
+  React.useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+};
 
 export default function DashboardScreen() {
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [showOnboarding, setShowOnboarding] = useState<boolean>(false);
   const insets = useSafeAreaInsets();
   const { projects, createProject } = useAgent();
   const router = useRouter();
 
-  // Check if user has completed onboarding
   React.useEffect(() => {
     const checkOnboarding = async () => {
       try {
@@ -74,13 +93,13 @@ export default function DashboardScreen() {
     checkOnboarding();
   }, []);
 
-  const handleOnboardingComplete = () => {
+  const handleOnboardingComplete = useCallback(() => {
     setShowOnboarding(false);
-  };
+  }, []);
 
-  const handleOnboardingSkip = () => {
+  const handleOnboardingSkip = useCallback(() => {
     setShowOnboarding(false);
-  };
+  }, []);
 
   const metrics = useMemo(() => {
     const activeProjects = projects.filter(p => p.status === 'active').length;
@@ -122,15 +141,16 @@ export default function DashboardScreen() {
   }, [projects]);
 
   const filteredProjects = useMemo(() => {
-    if (!searchQuery.trim()) return projects;
+    if (!debouncedSearchQuery.trim()) return projects;
+    const query = debouncedSearchQuery.toLowerCase();
     return projects.filter(project => 
-      project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.status.toLowerCase().includes(searchQuery.toLowerCase())
+      project.name.toLowerCase().includes(query) ||
+      project.type.toLowerCase().includes(query) ||
+      project.status.toLowerCase().includes(query)
     );
-  }, [projects, searchQuery]);
+  }, [projects, debouncedSearchQuery]);
 
-  const handleNewProject = async () => {
+  const handleNewProject = useCallback(async () => {
     Alert.alert(
       'Create New Project',
       'What type of project would you like to create?',
@@ -141,9 +161,9 @@ export default function DashboardScreen() {
         { text: 'API Service', onPress: () => createProject('New API Service', 'api') },
       ]
     );
-  };
+  }, [createProject]);
 
-  const handleGitSync = () => {
+  const handleGitSync = useCallback(() => {
     if (projects.length === 0) {
       Alert.alert('No Projects', 'Create a project first to use Git integration.');
       return;
@@ -198,9 +218,9 @@ export default function DashboardScreen() {
         }
       ]
     );
-  };
+  }, [projects.length, router]);
 
-  const handleDatabase = () => {
+  const handleDatabase = useCallback(() => {
     if (projects.length === 0) {
       Alert.alert('No Projects', 'Create a project first to manage databases.');
       return;
@@ -221,7 +241,6 @@ export default function DashboardScreen() {
                 { 
                   text: 'Setup SQLite', 
                   onPress: () => {
-                    // Navigate to terminal with SQLite setup commands
                     router.push('/(tabs)/terminal');
                     Alert.alert('Success', 'SQLite setup commands have been added to your terminal. Run them to complete the setup.');
                   }
@@ -250,9 +269,9 @@ export default function DashboardScreen() {
         }
       ]
     );
-  };
+  }, [projects.length, router]);
 
-  const handleDeploy = () => {
+  const handleDeploy = useCallback(() => {
     if (projects.length === 0) {
       Alert.alert('No Projects', 'Create a project first to deploy.');
       return;
@@ -322,30 +341,32 @@ export default function DashboardScreen() {
         }
       ]
     );
-  };
+  }, [projects.length, router]);
 
-  const handleLaunchIDE = () => {
+  const handleLaunchIDE = useCallback(() => {
     router.push('/(tabs)/code');
-  };
+  }, [router]);
 
-  const handleSettings = () => {
+  const handleSettings = useCallback(() => {
     router.push('/(tabs)/settings');
-  };
+  }, [router]);
 
-  const handleAppGenerator = () => {
+  const handleAppGenerator = useCallback(() => {
     router.push('/app-generator' as any);
-  };
+  }, [router]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Image
+            <OptimizedImage
               source={{ uri: 'https://r2-pub.rork.com/generated-images/d28a4e8c-8bf7-4039-b4cd-9114de432ab2.png' }}
-              style={[styles.logo, { tintColor: Colors.Colors.cyan.primary }]}
+              style={styles.logo}
+              containerStyle={styles.logoImageContainer}
               resizeMode="contain"
+              priority="high"
+              cachePolicy="memory-disk"
             />
             <View>
               <Text style={styles.appTitle}>gnidoC Terces</Text>
@@ -358,7 +379,6 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* Search Bar */}
         <View style={styles.searchContainer}>
           <View style={styles.searchInputContainer}>
             <Search color={Colors.Colors.text.muted} size={20} />
@@ -375,14 +395,12 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* Metrics Grid */}
         <View style={styles.metricsGrid}>
           {metrics.map((metric, index) => (
             <MetricCard key={`metric-${metric.title}-${index}`} {...metric} />
           ))}
         </View>
 
-        {/* Live Preview Canvas */}
         <View style={styles.canvasContainer}>
           <Text style={styles.sectionTitle}>Live Preview Canvas</Text>
           <View style={styles.canvas}>
@@ -401,7 +419,6 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* Recent Projects */}
         <View style={styles.projectsContainer}>
           <Text style={styles.sectionTitle}>
             {searchQuery ? `Search Results (${filteredProjects.length})` : 'Recent Projects'}
@@ -418,29 +435,37 @@ export default function DashboardScreen() {
               )}
             </View>
           ) : (
-            filteredProjects.map((project) => (
-              <TouchableOpacity key={`project-${project.id}`} style={styles.projectCard}>
-                <View style={styles.projectInfo}>
-                  <Text style={styles.projectName}>{project.name}</Text>
-                  <Text style={styles.projectStatus}>{project.status}</Text>
-                </View>
-                <View style={styles.progressContainer}>
-                  <View style={styles.progressBar}>
-                    <View
-                      style={[
-                        styles.progressFill,
-                        { width: `${project.progress}%` },
-                      ]}
-                    />
+            <FlatList
+              data={filteredProjects}
+              keyExtractor={(item) => `project-${item.id}`}
+              renderItem={({ item: project }) => (
+                <TouchableOpacity style={styles.projectCard}>
+                  <View style={styles.projectInfo}>
+                    <Text style={styles.projectName}>{project.name}</Text>
+                    <Text style={styles.projectStatus}>{project.status}</Text>
                   </View>
-                  <Text style={styles.progressText}>{project.progress}%</Text>
-                </View>
-              </TouchableOpacity>
-            ))
+                  <View style={styles.progressContainer}>
+                    <View style={styles.progressBar}>
+                      <View
+                        style={[
+                          styles.progressFill,
+                          { width: `${project.progress}%` },
+                        ]}
+                      />
+                    </View>
+                    <Text style={styles.progressText}>{project.progress}%</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+              scrollEnabled={false}
+              initialNumToRender={5}
+              maxToRenderPerBatch={5}
+              windowSize={5}
+              removeClippedSubviews={true}
+            />
           )}
         </View>
 
-        {/* Quick Actions */}
         <View style={styles.actionsContainer}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <View style={styles.actionsGrid}>
@@ -488,14 +513,12 @@ export default function DashboardScreen() {
         </View>
       </ScrollView>
       
-      {/* Onboarding Tour */}
       <OnboardingTour
         visible={showOnboarding}
         onComplete={handleOnboardingComplete}
         onSkip={handleOnboardingSkip}
       />
       
-      {/* AI Support Chat */}
       <AISupportChat userTier="free" />
     </View>
   );
@@ -517,6 +540,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  logoImageContainer: {
+    width: 40,
+    height: 40,
   },
   logo: {
     width: 40,
