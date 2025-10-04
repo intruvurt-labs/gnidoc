@@ -183,7 +183,7 @@ no changes added to commit (use "git add" or "git commit -a")`;
   ];
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       {/* Header */}
       <View style={styles.header}>
         <TerminalIcon color={Colors.Colors.cyan.primary} size={24} />
@@ -439,7 +439,8 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 16,
+    paddingBottom: 16,
     backgroundColor: Colors.Colors.background.secondary,
     borderTopWidth: 1,
     borderTopColor: Colors.Colors.border.muted,

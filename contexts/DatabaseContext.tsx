@@ -68,6 +68,25 @@ export const [DatabaseProvider, useDatabase] = createContextHook(() => {
         setConnections(parsed);
         const active = parsed.find((c: DatabaseConnection) => c.isActive);
         if (active) setActiveConnection(active);
+      } else {
+        console.log('[DatabaseContext] No saved connections, initializing default Digital Ocean connection');
+        const defaultConnection: DatabaseConnection = {
+          id: 'default-do-connection',
+          name: 'Digital Ocean PostgreSQL',
+          host: 'bix-keep-369-do-user-24932038-0.f.db.ondigitalocean.com',
+          port: 25060,
+          database: 'defaultdb',
+          username: 'doadmin',
+          password: 'AVNS_mycQ8NrTGpzV1HrvKCG',
+          ssl: true,
+          isActive: true,
+        };
+
+        const newConnections = [defaultConnection];
+        await AsyncStorage.setItem(STORAGE_KEY_CONNECTIONS, JSON.stringify(newConnections));
+        setConnections(newConnections);
+        setActiveConnection(defaultConnection);
+        console.log('[DatabaseContext] Default connection initialized');
       }
 
       if (historyData) {

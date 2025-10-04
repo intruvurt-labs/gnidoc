@@ -96,31 +96,37 @@ export default function AgentScreen() {
 
   const quickActions = [
     { 
+      id: 'full-analysis',
       title: 'Full Analysis', 
       icon: <Search color={Colors.Colors.cyan.primary} size={20} />, 
       action: () => sendMessage('Perform a comprehensive full analysis of my current project including code quality, security, performance, and deployment readiness')
     },
     { 
+      id: 'security-audit',
       title: 'Security Audit', 
       icon: <Shield color={Colors.Colors.red.primary} size={20} />, 
       action: () => sendMessage('Run a thorough security audit on my codebase and identify potential vulnerabilities')
     },
     { 
+      id: 'generate-code',
       title: 'Generate Code', 
       icon: <Code color={Colors.Colors.success} size={20} />, 
       action: () => sendMessage('Generate a React Native component with TypeScript, proper error handling, and unit tests')
     },
     { 
+      id: 'deploy-guide',
       title: 'Deploy Guide', 
       icon: <Terminal color={Colors.Colors.warning} size={20} />, 
       action: () => sendMessage('Check my project deployment readiness for iOS, Android, and web platforms')
     },
     { 
+      id: 'code-review',
       title: 'Code Review', 
       icon: <FileText color={Colors.Colors.cyan.primary} size={20} />, 
       action: () => sendMessage('Review my code for best practices, maintainability, and performance optimizations')
     },
     { 
+      id: 'database-design',
       title: 'Database Design', 
       icon: <Database color={Colors.Colors.red.primary} size={20} />, 
       action: () => sendMessage('Help me design a scalable database schema with proper indexing and relationships')
@@ -139,9 +145,9 @@ export default function AgentScreen() {
       {/* Quick Actions */}
       <View style={styles.quickActionsContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {quickActions.map((action, index) => (
+          {quickActions.map((action) => (
             <TouchableOpacity 
-              key={`quick-action-${index}-${action.title}`}
+              key={action.id}
               style={styles.quickActionButton}
               onPress={action.action}
             >
