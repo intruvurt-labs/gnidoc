@@ -8,7 +8,8 @@ import {
   Monitor,
   Database,
   Workflow,
-  Plug
+  Plug,
+  Search
 } from "lucide-react-native";
 import React from "react";
 import Colors from "@/constants/colors";
@@ -92,6 +93,13 @@ export default function TabLayout() {
         options={{
           title: "Integrations",
           tabBarIcon: ({ color }) => <Plug color={color} size={24} />,
+        }}
+      />
+      <Tabs.Screen
+        name="research"
+        options={{
+          title: "Research",
+          tabBarIcon: ({ color }) => <Search color={color} size={24} />,
         }}
       />
       <Tabs.Screen

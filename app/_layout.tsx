@@ -19,6 +19,7 @@ const AppBuilderProvider = lazy(() => import("@/contexts/AppBuilderContext").the
 const TriModelProvider = lazy(() => import("@/contexts/TriModelContext").then(m => ({ default: m.TriModelProvider })));
 const NoCodeBuilderProvider = lazy(() => import("@/contexts/NoCodeBuilderContext").then(m => ({ default: m.NoCodeBuilderProvider })));
 const IntegrationsProvider = lazy(() => import("@/contexts/IntegrationsContext").then(m => ({ default: m.IntegrationsProvider })));
+const ResearchProvider = lazy(() => import("@/contexts/ResearchContext").then(m => ({ default: m.ResearchProvider })));
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -173,8 +174,10 @@ export default function RootLayout() {
                             <TriModelProvider>
                               <NoCodeBuilderProvider>
                                 <IntegrationsProvider>
-                                  <StatusBar style="light" backgroundColor={Colors.Colors.background.primary} />
-                                  <RootLayoutNav />
+                                  <ResearchProvider>
+                                    <StatusBar style="light" backgroundColor={Colors.Colors.background.primary} />
+                                    <RootLayoutNav />
+                                  </ResearchProvider>
                                 </IntegrationsProvider>
                               </NoCodeBuilderProvider>
                             </TriModelProvider>
