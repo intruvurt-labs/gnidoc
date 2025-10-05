@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 20,
     fontWeight: 'bold',
-    color: Colors.Colors.text.primary,
+    color: Colors.Colors.cyanRed.primary,
   },
   refreshButton: {
     padding: 8,
@@ -369,7 +369,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   sectionTitle: {
-    color: Colors.Colors.text.primary,
+    color: Colors.Colors.cyanRed.primary,
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 12,
@@ -430,7 +430,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.Colors.border.muted,
   },
   metricSectionTitle: {
-    color: Colors.Colors.text.primary,
+    color: Colors.Colors.cyanRed.primary,
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 16,

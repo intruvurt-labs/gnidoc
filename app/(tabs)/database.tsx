@@ -453,7 +453,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '700' as const,
-    color: Colors.Colors.text.primary,
+    color: Colors.Colors.cyanRed.primary,
   },
   headerSubtitle: {
     fontSize: 12,
@@ -502,7 +502,7 @@ const styles = StyleSheet.create({
   editorTitle: {
     fontSize: 16,
     fontWeight: '600' as const,
-    color: Colors.Colors.text.primary,
+    color: Colors.Colors.cyanRed.primary,
   },
   editorActions: {
     flexDirection: 'row' as const,
@@ -562,7 +562,7 @@ const styles = StyleSheet.create({
   resultTitle: {
     fontSize: 16,
     fontWeight: '600' as const,
-    color: Colors.Colors.text.primary,
+    color: Colors.Colors.cyanRed.primary,
   },
   resultMeta: {
     fontSize: 12,
@@ -613,7 +613,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700' as const,
-    color: Colors.Colors.text.primary,
+    color: Colors.Colors.cyanRed.primary,
     marginBottom: 16,
   },
   emptyState: {
@@ -730,7 +730,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '700' as const,
-    color: Colors.Colors.text.primary,
+    color: Colors.Colors.cyanRed.primary,
   },
   modalBody: {
     padding: 16,

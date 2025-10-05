@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 20,
     fontWeight: 'bold',
-    color: Colors.Colors.text.primary,
+    color: Colors.Colors.cyanRed.primary,
   },
   headerActions: {
     flexDirection: 'row',
@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    color: Colors.Colors.text.primary,
+    color: Colors.Colors.cyanRed.primary,
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 8,

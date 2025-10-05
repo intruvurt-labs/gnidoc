@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 20,
     fontWeight: 'bold',
-    color: Colors.Colors.text.primary,
+    color: Colors.Colors.cyanRed.primary,
   },
   statusDot: {
     width: 8,

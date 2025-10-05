@@ -352,7 +352,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: Colors.Colors.text.primary,
+    color: Colors.Colors.cyanRed.primary,
   },
   content: {
     flex: 1,
@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.Colors.text.muted,
+    color: Colors.Colors.cyanRed.primary,
     paddingHorizontal: 20,
     marginBottom: 8,
     textTransform: 'uppercase',

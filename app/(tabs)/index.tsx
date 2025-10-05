@@ -640,7 +640,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   sectionTitle: {
-    color: Colors.Colors.cyanOrange.primary,
+    color: Colors.Colors.cyanRed.primary,
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 12,
