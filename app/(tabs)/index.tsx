@@ -565,7 +565,7 @@ const styles = StyleSheet.create({
   appTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: Colors.Colors.text.primary,
+    color: Colors.Colors.cyanRed.primary,
   },
   appSubtitle: {
     fontSize: 12,
@@ -640,7 +640,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   sectionTitle: {
-    color: Colors.Colors.text.primary,
+    color: Colors.Colors.cyanOrange.primary,
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 12,

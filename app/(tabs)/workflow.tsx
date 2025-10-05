@@ -665,7 +665,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 20,
     fontWeight: 'bold',
-    color: Colors.Colors.text.primary,
+    color: Colors.Colors.cyanOrange.primary,
   },
   headerButton: {
     padding: 8,
@@ -683,7 +683,7 @@ const styles = StyleSheet.create({
   workflowName: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.Colors.text.primary,
+    color: Colors.Colors.cyanRed.primary,
   },
   workflowMeta: {
     fontSize: 12,
@@ -829,7 +829,7 @@ const styles = StyleSheet.create({
   emptyStateTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: Colors.Colors.text.primary,
+    color: Colors.Colors.cyanRed.primary,
     marginTop: 16,
   },
   emptyStateText: {
@@ -877,7 +877,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: Colors.Colors.text.primary,
+    color: Colors.Colors.cyanOrange.primary,
   },
   nodePalette: {
     padding: 20,

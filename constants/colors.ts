@@ -15,6 +15,27 @@ const Colors = {
     dark: '#990026',
     glow: '#FF004080',
   },
+  orange: {
+    primary: '#FF6B35',
+    secondary: '#FF8C66',
+    tertiary: '#FFB84D',
+    dark: '#CC5529',
+    glow: '#FF6B3580',
+  },
+  cyanRed: {
+    primary: '#FF0080',
+    secondary: '#E60073',
+    tertiary: '#CC0066',
+    dark: '#990050',
+    glow: '#FF008080',
+  },
+  cyanOrange: {
+    primary: '#FF9933',
+    secondary: '#FFB366',
+    tertiary: '#FFCC99',
+    dark: '#CC7A29',
+    glow: '#FF993380',
+  },
   black: {
     primary: '#000000',
     secondary: '#0A0A0A',

@@ -23,10 +23,17 @@ export default function TabLayout() {
           backgroundColor: Colors.Colors.background.secondary,
           borderTopColor: Colors.Colors.cyan.primary,
           borderTopWidth: 2,
+          height: 70,
+          paddingBottom: 10,
+          paddingTop: 10,
         },
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600' as const,
+          marginBottom: 4,
+        },
+        tabBarIconStyle: {
+          marginTop: 4,
         },
       }}
     >
