@@ -16,6 +16,8 @@ const AgentProvider = lazy(() => import("@/contexts/AgentContext").then(m => ({ 
 const DatabaseProvider = lazy(() => import("@/contexts/DatabaseContext").then(m => ({ default: m.DatabaseProvider })));
 const WorkflowProvider = lazy(() => import("@/contexts/WorkflowContext").then(m => ({ default: m.WorkflowProvider })));
 const AppBuilderProvider = lazy(() => import("@/contexts/AppBuilderContext").then(m => ({ default: m.AppBuilderProvider })));
+const TriModelProvider = lazy(() => import("@/contexts/TriModelContext").then(m => ({ default: m.TriModelProvider })));
+const NoCodeBuilderProvider = lazy(() => import("@/contexts/NoCodeBuilderContext").then(m => ({ default: m.NoCodeBuilderProvider })));
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -91,6 +93,41 @@ function RootLayoutNav() {
         }} 
       />
       <Stack.Screen 
+        name="builder/design" 
+        options={{ 
+          headerTitle: "Design Studio",
+          headerShown: false,
+        }} 
+      />
+      <Stack.Screen 
+        name="builder/logic" 
+        options={{ 
+          headerTitle: "Logic Builder",
+          headerShown: false,
+        }} 
+      />
+      <Stack.Screen 
+        name="builder/preview" 
+        options={{ 
+          headerTitle: "Preview & Test",
+          headerShown: false,
+        }} 
+      />
+      <Stack.Screen 
+        name="builder/deploy" 
+        options={{ 
+          headerTitle: "Deploy",
+          headerShown: false,
+        }} 
+      />
+      <Stack.Screen 
+        name="builder/export" 
+        options={{ 
+          headerTitle: "Export Code",
+          headerShown: false,
+        }} 
+      />
+      <Stack.Screen 
         name="auth/login" 
         options={{ 
           headerTitle: "Login",
@@ -132,8 +169,12 @@ export default function RootLayout() {
                       <AgentProvider>
                         <WorkflowProvider>
                           <AppBuilderProvider>
-                            <StatusBar style="light" backgroundColor={Colors.Colors.background.primary} />
-                            <RootLayoutNav />
+                            <TriModelProvider>
+                              <NoCodeBuilderProvider>
+                                <StatusBar style="light" backgroundColor={Colors.Colors.background.primary} />
+                                <RootLayoutNav />
+                              </NoCodeBuilderProvider>
+                            </TriModelProvider>
                           </AppBuilderProvider>
                         </WorkflowProvider>
                       </AgentProvider>
