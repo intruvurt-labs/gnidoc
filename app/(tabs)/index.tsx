@@ -24,6 +24,7 @@ import {
   Search,
   Settings,
   Sparkles,
+  Monitor,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAgent } from '@/contexts/AgentContext';
@@ -32,6 +33,8 @@ import OnboardingTour from '@/components/OnboardingTour';
 import AISupportChat from '@/components/AISupportChat';
 import OptimizedImage from '@/components/OptimizedImage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import LogoMenu from '@/components/LogoMenu';
+import { Brain, FileText } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
 
@@ -463,6 +466,7 @@ export default function DashboardScreen() {
       >
         <View style={styles.header}>
           <View style={styles.logoContainer}>
+            <LogoMenu />
             <OptimizedImage
               source={{ uri: 'https://r2-pub.rork.com/generated-images/d28a4e8c-8bf7-4039-b4cd-9114de432ab2.png' }}
               style={styles.logo}
@@ -480,6 +484,33 @@ export default function DashboardScreen() {
             <Activity color={Colors.Colors.success} size={16} />
             <Text style={styles.statusText}>Online</Text>
           </View>
+        </View>
+
+        <View style={styles.topActionsBar}>
+          <TouchableOpacity 
+            style={styles.topActionButton}
+            onPress={() => router.push('/(tabs)/research' as any)}
+            activeOpacity={0.7}
+          >
+            <Brain color={Colors.Colors.cyanRed.primary} size={20} />
+            <Text style={styles.topActionText}>Research</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.topActionButton}
+            onPress={() => router.push('/(tabs)/analysis' as any)}
+            activeOpacity={0.7}
+          >
+            <FileText color={Colors.Colors.cyan.primary} size={20} />
+            <Text style={styles.topActionText}>Analysis</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.topActionButton}
+            onPress={() => router.push('/(tabs)/index' as any)}
+            activeOpacity={0.7}
+          >
+            <Monitor color={Colors.Colors.cyanOrange.primary} size={20} />
+            <Text style={styles.topActionText}>Dashboard</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.searchContainer}>
@@ -625,7 +656,35 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 12,
+  },
+  topActionsBar: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.Colors.border.muted,
+  },
+  topActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.Colors.background.card,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: Colors.Colors.border.muted,
+    minWidth: 110,
+  },
+  topActionText: {
+    color: Colors.Colors.text.secondary,
+    fontSize: 13,
+    fontWeight: '600' as const,
   },
   logoContainer: {
     flexDirection: 'row',

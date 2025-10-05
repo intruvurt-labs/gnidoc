@@ -40,6 +40,13 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen
+        name="code"
+        options={{
+          title: "Code Gen",
+          tabBarIcon: ({ color }) => <Code color={color} size={24} />,
+        }}
+      />
+      <Tabs.Screen
         name="index"
         options={{
           title: "Dashboard",
@@ -51,13 +58,6 @@ export default function TabLayout() {
         options={{
           title: "AI Agent",
           tabBarIcon: ({ color }) => <Brain color={color} size={24} />,
-        }}
-      />
-      <Tabs.Screen
-        name="code"
-        options={{
-          title: "IDE",
-          tabBarIcon: ({ color }) => <Code color={color} size={24} />,
         }}
       />
       <Tabs.Screen
