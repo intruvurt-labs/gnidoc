@@ -53,7 +53,7 @@ export interface AppGenerationConfig {
   styleFramework: 'stylesheet' | 'styled-components' | 'tailwind';
   stateManagement: 'context' | 'redux' | 'zustand' | 'none';
   routing: 'expo-router' | 'react-navigation' | 'none';
-  aiModel: 'gpt-4' | 'claude' | 'gemini' | 'orchestrated';
+  aiModel: 'gpt-4' | 'claude' | 'gemini' | 'google-vision' | 'runway-ml' | 'deepseek' |'orchestrated';
 }
 
 const STORAGE_KEY = 'gnidoc-generated-apps';
