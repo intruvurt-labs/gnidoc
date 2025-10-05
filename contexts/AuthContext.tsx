@@ -162,26 +162,50 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
       console.log(`[AuthContext] Initiating OAuth login with ${provider}`);
 
       if (Platform.OS === 'web') {
-        const authUrl = provider === 'github' 
-          ? 'https://github.com/login/oauth/authorize?client_id=YOUR_GITHUB_CLIENT_ID&scope=user:email'
-          : 'https://accounts.google.com/o/oauth2/v2/auth?client_id=YOUR_GOOGLE_CLIENT_ID&redirect_uri=YOUR_REDIRECT_URI&response_type=code&scope=email%20profile';
-        
-        window.location.href = authUrl;
-      } else {
-        const authUrl = provider === 'github'
-          ? 'https://github.com/login/oauth/authorize?client_id=YOUR_GITHUB_CLIENT_ID&scope=user:email'
-          : 'https://accounts.google.com/o/oauth2/v2/auth?client_id=YOUR_GOOGLE_CLIENT_ID&redirect_uri=YOUR_REDIRECT_URI&response_type=code&scope=email%20profile';
+        const mockUser: User = {
+          id: `user_${Date.now()}`,
+          email: `demo@${provider}.com`,
+          name: `${provider.charAt(0).toUpperCase() + provider.slice(1)} Demo User`,
+          avatar: provider === 'github' 
+            ? 'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png'
+            : 'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png',
+          provider,
+          createdAt: new Date().toISOString(),
+          subscription: 'free',
+          credits: 100,
+        };
 
+        const mockToken = `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+        await batchSetItems({
+          [STORAGE_KEYS.USER]: JSON.stringify(mockUser),
+          [STORAGE_KEYS.TOKEN]: mockToken,
+        });
+
+        setAuthState({
+          user: mockUser,
+          token: mockToken,
+          isAuthenticated: true,
+          isLoading: false,
+        });
+
+        requestCache.clear();
+        console.log(`[AuthContext] OAuth login successful with ${provider}`);
+        return { success: true, user: mockUser };
+      } else {
         const result = await WebBrowser.openAuthSessionAsync(
-          authUrl,
+          'https://demo-oauth.example.com',
           'exp://localhost:8081'
         );
 
         if (result.type === 'success') {
           const mockUser: User = {
             id: `user_${Date.now()}`,
-            email: `user@${provider}.com`,
-            name: `${provider} User`,
+            email: `demo@${provider}.com`,
+            name: `${provider.charAt(0).toUpperCase() + provider.slice(1)} Demo User`,
+            avatar: provider === 'github' 
+              ? 'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png'
+              : 'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png',
             provider,
             createdAt: new Date().toISOString(),
             subscription: 'free',
@@ -190,10 +214,10 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
           const mockToken = `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-          await Promise.all([
-            AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(mockUser)),
-            AsyncStorage.setItem(STORAGE_KEYS.TOKEN, mockToken),
-          ]);
+          await batchSetItems({
+            [STORAGE_KEYS.USER]: JSON.stringify(mockUser),
+            [STORAGE_KEYS.TOKEN]: mockToken,
+          });
 
           setAuthState({
             user: mockUser,
@@ -202,13 +226,24 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
             isLoading: false,
           });
 
+          requestCache.clear();
           console.log(`[AuthContext] OAuth login successful with ${provider}`);
           return { success: true, user: mockUser };
+        } else if (result.type === 'cancel') {
+          console.log(`[AuthContext] User cancelled ${provider} OAuth`);
+          throw new Error('CANCELLED');
+        } else if (result.type === 'dismiss') {
+          console.log(`[AuthContext] User dismissed ${provider} OAuth`);
+          throw new Error('CANCELLED');
         }
       }
 
-      throw new Error('OAuth authentication was cancelled');
+      throw new Error('CANCELLED');
     } catch (error) {
+      if (error instanceof Error && error.message === 'CANCELLED') {
+        console.log(`[AuthContext] OAuth cancelled by user with ${provider}`);
+        throw new Error('CANCELLED');
+      }
       console.error(`[AuthContext] OAuth login failed with ${provider}:`, error);
       throw new Error(`${provider} authentication failed. Please try again.`);
     }
