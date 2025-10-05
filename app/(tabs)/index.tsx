@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Dimensions,
   Alert,
   FlatList,
+  Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -43,15 +44,70 @@ interface MetricCardProps {
 }
 
 const MetricCard: React.FC<MetricCardProps> = React.memo(function MetricCard({ title, value, icon, trend, color }) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const glowAnim = useRef(new Animated.Value(0)).current;
+
+  const handlePressIn = () => {
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: 0.95,
+        useNativeDriver: true,
+      }),
+      Animated.timing(glowAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: false,
+      }),
+    ]).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 3,
+        useNativeDriver: true,
+      }),
+      Animated.timing(glowAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: false,
+      }),
+    ]).start();
+  };
+
+  const shadowOpacity = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 0.6],
+  });
+
   return (
-  <View style={[styles.metricCard, { borderColor: color }]}>
-    <View style={styles.metricHeader}>
-      <Text>{icon}</Text>
-      <Text style={styles.metricTitle}>{title}</Text>
-    </View>
-    <Text style={[styles.metricValue, { color }]}>{value}</Text>
-    {trend && <Text style={styles.metricTrend}>{trend}</Text>}
-  </View>
+    <TouchableOpacity
+      activeOpacity={1}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+    >
+      <Animated.View
+        style={[
+          styles.metricCard,
+          {
+            borderColor: color,
+            transform: [{ scale: scaleAnim }],
+            shadowColor: color,
+            shadowOpacity,
+            shadowRadius: 12,
+            shadowOffset: { width: 0, height: 4 },
+          },
+        ]}
+      >
+        <View style={styles.metricHeader}>
+          <Text>{icon}</Text>
+          <Text style={styles.metricTitle}>{title}</Text>
+        </View>
+        <Text style={[styles.metricValue, { color }]}>{value}</Text>
+        {trend && <Text style={styles.metricTrend}>{trend}</Text>}
+      </Animated.View>
+    </TouchableOpacity>
   );
 });
 
@@ -78,6 +134,8 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const { projects, createProject } = useAgent();
   const router = useRouter();
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
 
   React.useEffect(() => {
     const checkOnboarding = async () => {
@@ -91,7 +149,21 @@ export default function DashboardScreen() {
       }
     };
     checkOnboarding();
-  }, []);
+
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [fadeAnim, slideAnim]);
 
   const handleOnboardingComplete = useCallback(() => {
     setShowOnboarding(false);
@@ -382,7 +454,13 @@ export default function DashboardScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <Animated.ScrollView
+        showsVerticalScrollIndicator={false}
+        style={{
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }],
+        }}
+      >
         <View style={styles.header}>
           <View style={styles.logoContainer}>
             <OptimizedImage
@@ -524,7 +602,7 @@ export default function DashboardScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
       
       <OnboardingTour
         visible={showOnboarding}

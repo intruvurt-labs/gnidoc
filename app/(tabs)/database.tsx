@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Modal,
   Alert,
+  Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -49,6 +50,23 @@ export default function DatabaseScreen() {
   const [saveQueryName, setSaveQueryName] = useState('');
   const [saveQueryDesc, setSaveQueryDesc] = useState('');
   const [showConnectionModal, setShowConnectionModal] = useState(false);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [fadeAnim, slideAnim]);
 
   const handleExecuteQuery = async () => {
     if (!sqlQuery.trim()) {
@@ -342,7 +360,15 @@ export default function DatabaseScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <Animated.View
+      style={[
+        styles.container,
+        {
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }],
+        },
+      ]}
+    >
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <View style={styles.headerLeft}>
           <Database color={Colors.Colors.cyan.primary} size={28} />
@@ -424,7 +450,7 @@ export default function DatabaseScreen() {
 
       {renderConnectionModal()}
       {renderSaveQueryModal()}
-    </View>
+    </Animated.View>
   );
 }
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  Animated,
 } from 'react-native';
 import { Brain, Send, Mic, Image as ImageIcon, FileText, Zap, Code, Shield, Search, Terminal, Database } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,6 +21,34 @@ export default function AgentScreen() {
   const [input, setInput] = useState<string>('');
   const { currentProject, analyzeProject, generateCode, isAnalyzing, isGenerating } = useAgent();
   const insets = useSafeAreaInsets();
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulse.start();
+
+    return () => pulse.stop();
+  }, [pulseAnim, fadeAnim]);
   
   const { messages, error, sendMessage } = useRorkAgent({
     tools: {
@@ -134,12 +163,12 @@ export default function AgentScreen() {
   ];
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <Animated.View style={[styles.container, { paddingTop: insets.top, opacity: fadeAnim }]}>
       {/* Header */}
       <View style={styles.header}>
         <Brain color={Colors.Colors.cyan.primary} size={24} />
         <Text style={styles.headerTitle}>AI Coding Agent</Text>
-        <View style={styles.statusDot} />
+        <Animated.View style={[styles.statusDot, { transform: [{ scale: pulseAnim }] }]} />
       </View>
 
       {/* Quick Actions */}
@@ -256,7 +285,7 @@ export default function AgentScreen() {
           </TouchableOpacity>
         </View>
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
