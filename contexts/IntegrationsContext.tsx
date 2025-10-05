@@ -302,6 +302,28 @@ const DEFAULT_INTEGRATIONS: Integration[] = [
     features: ['Scheduling', 'Calendar Sync', 'Reminders', 'Integrations'],
     pricing: 'freemium',
   },
+  {
+    id: 'openweathermap',
+    name: 'OpenWeatherMap',
+    description: 'Real-time weather data and forecasts',
+    category: 'productivity',
+    icon: '🌤️',
+    status: 'disconnected',
+    config: {},
+    features: ['Current Weather', 'Forecasts', 'Historical Data', 'Weather Alerts'],
+    pricing: 'freemium',
+  },
+  {
+    id: 'weatherapi',
+    name: 'WeatherAPI',
+    description: 'Global weather data and forecasting service',
+    category: 'productivity',
+    icon: '⛅',
+    status: 'disconnected',
+    config: {},
+    features: ['Real-time Weather', 'Astronomy', 'Air Quality', 'Marine Data'],
+    pricing: 'freemium',
+  },
 ];
 
 export const [IntegrationsProvider, useIntegrations] = createContextHook(() => {

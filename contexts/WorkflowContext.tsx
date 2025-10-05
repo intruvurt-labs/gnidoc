@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export interface WorkflowNode {
   id: string;
-  type: 'trigger' | 'action' | 'condition' | 'ai-agent' | 'code' | 'api' | 'database' | 'transform';
+  type: 'trigger' | 'action' | 'condition' | 'ai-agent' | 'code' | 'api' | 'database' | 'transform' | 'weather';
   label: string;
   position: { x: number; y: number };
   data: Record<string, any>;
@@ -453,6 +453,38 @@ async function executeNode(node: WorkflowNode, context: Record<string, any>): Pr
         executed: true,
         timestamp: new Date().toISOString(),
       };
+
+    case 'weather':
+      try {
+        const { fetchWeatherByCoordinates, fetchWeatherByCity } = await import('@/lib/weather');
+        const apiKey = node.data.apiKey || context.weatherApiKey;
+        
+        if (!apiKey) {
+          return { error: 'Weather API key not configured' };
+        }
+
+        if (node.data.lat && node.data.lon) {
+          const weather = await fetchWeatherByCoordinates(
+            node.data.lat,
+            node.data.lon,
+            apiKey,
+            node.data.units || 'metric'
+          );
+          return { weather, source: 'coordinates' };
+        } else if (node.data.city) {
+          const weather = await fetchWeatherByCity(
+            node.data.city,
+            apiKey,
+            node.data.units || 'metric'
+          );
+          return { weather, source: 'city' };
+        } else {
+          return { error: 'No location specified (lat/lon or city required)' };
+        }
+      } catch (error) {
+        console.error('[WorkflowContext] Weather node execution failed:', error);
+        return { error: error instanceof Error ? error.message : 'Weather fetch failed' };
+      }
 
     default:
       return { type: node.type, executed: true };
