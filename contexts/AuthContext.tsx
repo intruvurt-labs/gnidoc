@@ -1,13 +1,9 @@
 import createContextHook from '@nkzw/create-context-hook';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as WebBrowser from 'expo-web-browser';
-import { Platform } from 'react-native';
 import { trpcClient } from '@/lib/trpc';
 import { batchSetItems, batchGetItems } from '@/lib/storage';
 import { requestCache } from '@/lib/batch-requests';
-
-WebBrowser.maybeCompleteAuthSession();
 
 export interface User {
   id: string;
@@ -161,89 +157,37 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     try {
       console.log(`[AuthContext] Initiating OAuth login with ${provider}`);
 
-      if (Platform.OS === 'web') {
-        const mockUser: User = {
-          id: `user_${Date.now()}`,
-          email: `demo@${provider}.com`,
-          name: `${provider.charAt(0).toUpperCase() + provider.slice(1)} Demo User`,
-          avatar: provider === 'github' 
-            ? 'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png'
-            : 'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png',
-          provider,
-          createdAt: new Date().toISOString(),
-          subscription: 'free',
-          credits: 100,
-        };
+      const mockUser: User = {
+        id: `user_${Date.now()}`,
+        email: `demo@${provider}.com`,
+        name: `${provider.charAt(0).toUpperCase() + provider.slice(1)} Demo User`,
+        avatar: provider === 'github' 
+          ? 'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png'
+          : 'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png',
+        provider,
+        createdAt: new Date().toISOString(),
+        subscription: 'free',
+        credits: 100,
+      };
 
-        const mockToken = `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const mockToken = `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-        await batchSetItems({
-          [STORAGE_KEYS.USER]: JSON.stringify(mockUser),
-          [STORAGE_KEYS.TOKEN]: mockToken,
-        });
+      await batchSetItems({
+        [STORAGE_KEYS.USER]: JSON.stringify(mockUser),
+        [STORAGE_KEYS.TOKEN]: mockToken,
+      });
 
-        setAuthState({
-          user: mockUser,
-          token: mockToken,
-          isAuthenticated: true,
-          isLoading: false,
-        });
+      setAuthState({
+        user: mockUser,
+        token: mockToken,
+        isAuthenticated: true,
+        isLoading: false,
+      });
 
-        requestCache.clear();
-        console.log(`[AuthContext] OAuth login successful with ${provider}`);
-        return { success: true, user: mockUser };
-      } else {
-        const result = await WebBrowser.openAuthSessionAsync(
-          'https://demo-oauth.example.com',
-          'exp://localhost:8081'
-        );
-
-        if (result.type === 'success') {
-          const mockUser: User = {
-            id: `user_${Date.now()}`,
-            email: `demo@${provider}.com`,
-            name: `${provider.charAt(0).toUpperCase() + provider.slice(1)} Demo User`,
-            avatar: provider === 'github' 
-              ? 'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png'
-              : 'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png',
-            provider,
-            createdAt: new Date().toISOString(),
-            subscription: 'free',
-            credits: 100,
-          };
-
-          const mockToken = `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-          await batchSetItems({
-            [STORAGE_KEYS.USER]: JSON.stringify(mockUser),
-            [STORAGE_KEYS.TOKEN]: mockToken,
-          });
-
-          setAuthState({
-            user: mockUser,
-            token: mockToken,
-            isAuthenticated: true,
-            isLoading: false,
-          });
-
-          requestCache.clear();
-          console.log(`[AuthContext] OAuth login successful with ${provider}`);
-          return { success: true, user: mockUser };
-        } else if (result.type === 'cancel') {
-          console.log(`[AuthContext] User cancelled ${provider} OAuth`);
-          throw new Error('CANCELLED');
-        } else if (result.type === 'dismiss') {
-          console.log(`[AuthContext] User dismissed ${provider} OAuth`);
-          throw new Error('CANCELLED');
-        }
-      }
-
-      throw new Error('CANCELLED');
+      requestCache.clear();
+      console.log(`[AuthContext] OAuth login successful with ${provider}`);
+      return { success: true, user: mockUser };
     } catch (error) {
-      if (error instanceof Error && error.message === 'CANCELLED') {
-        console.log(`[AuthContext] OAuth cancelled by user with ${provider}`);
-        throw new Error('CANCELLED');
-      }
       console.error(`[AuthContext] OAuth login failed with ${provider}:`, error);
       throw new Error(`${provider} authentication failed. Please try again.`);
     }

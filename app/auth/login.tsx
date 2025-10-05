@@ -50,20 +50,12 @@ export default function LoginScreen() {
       await loginWithOAuth(provider);
       router.replace('/(tabs)' as any);
     } catch (error) {
-      if (error instanceof Error && error.message === 'CANCELLED') {
-        console.log(`[LoginScreen] User cancelled ${provider} OAuth`);
-      } else {
-        const message = error instanceof Error ? error.message : `${provider} authentication failed`;
-        Alert.alert(
-          'Authentication Failed',
-          `Unable to sign in with ${provider.charAt(0).toUpperCase() + provider.slice(1)}. ${message}`,
-          [
-            { text: 'Try Again', onPress: () => handleOAuthLogin(provider) },
-            { text: 'Cancel', style: 'cancel' }
-          ]
-        );
-        console.error(`[LoginScreen] OAuth error (${provider}):`, error);
-      }
+      const message = error instanceof Error ? error.message : `${provider} authentication failed`;
+      Alert.alert(
+        'Authentication Failed',
+        `Unable to sign in with ${provider.charAt(0).toUpperCase() + provider.slice(1)}. ${message}`
+      );
+      console.error(`[LoginScreen] OAuth error (${provider}):`, error);
     } finally {
       setIsLoading(false);
     }
