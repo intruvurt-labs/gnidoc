@@ -18,6 +18,7 @@ const WorkflowProvider = lazy(() => import("@/contexts/WorkflowContext").then(m 
 const AppBuilderProvider = lazy(() => import("@/contexts/AppBuilderContext").then(m => ({ default: m.AppBuilderProvider })));
 const TriModelProvider = lazy(() => import("@/contexts/TriModelContext").then(m => ({ default: m.TriModelProvider })));
 const NoCodeBuilderProvider = lazy(() => import("@/contexts/NoCodeBuilderContext").then(m => ({ default: m.NoCodeBuilderProvider })));
+const IntegrationsProvider = lazy(() => import("@/contexts/IntegrationsContext").then(m => ({ default: m.IntegrationsProvider })));
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -171,8 +172,10 @@ export default function RootLayout() {
                           <AppBuilderProvider>
                             <TriModelProvider>
                               <NoCodeBuilderProvider>
-                                <StatusBar style="light" backgroundColor={Colors.Colors.background.primary} />
-                                <RootLayoutNav />
+                                <IntegrationsProvider>
+                                  <StatusBar style="light" backgroundColor={Colors.Colors.background.primary} />
+                                  <RootLayoutNav />
+                                </IntegrationsProvider>
                               </NoCodeBuilderProvider>
                             </TriModelProvider>
                           </AppBuilderProvider>
