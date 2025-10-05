@@ -47,6 +47,17 @@ const Colors = {
   warning: '#FFAA00',
   error: '#FF0040',
   info: '#00FFFF',
+  // IDE Specific Colors
+  ide: {
+    keyword: '#FF6B35',      // Orange for keywords
+    string: '#00FFFF',       // Cyan for strings
+    comment: '#808080',      // Gray for comments
+    function: '#FF0040',     // Red for functions
+    variable: '#FFB84D',     // Light orange for variables
+    number: '#00E6E6',       // Cyan secondary for numbers
+    operator: '#FF8C66',     // Coral for operators
+    type: '#FF4757',         // Red-pink for types
+  },
 };
 
 export default {

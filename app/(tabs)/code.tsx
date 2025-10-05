@@ -111,17 +111,17 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#00d4ff',
+    color: '#FF6B35',
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 18,
-    color: '#ff4757',
+    color: '#00FFFF',
     marginBottom: 20,
   },
   description: {
     fontSize: 16,
-    color: '#ffffff',
+    color: '#FFB84D',
     textAlign: 'center',
     lineHeight: 24,
   },
@@ -474,9 +474,9 @@ const styles = StyleSheet.create({
           onPress={() => handleFileOpen(item)}
         >
           {item.type === 'folder' ? (
-            <FolderOpen color={Colors.Colors.warning} size={16} />
+            <FolderOpen color="#FFB84D" size={16} />
           ) : (
-            <File color={Colors.Colors.cyan.primary} size={16} />
+            <File color="#FF6B35" size={16} />
           )}
           <Text style={styles.fileTreeText}>{item.name}</Text>
         </TouchableOpacity>
@@ -518,7 +518,7 @@ const styles = StyleSheet.create({
             style={styles.sidebarToggle}
             onPress={() => setShowSidebar(!showSidebar)}
           >
-            <Menu color={Colors.Colors.cyan.primary} size={20} />
+            <Menu color="#FF6B35" size={20} />
           </TouchableOpacity>
           <Text style={styles.ideTitle}>gnidoC Terces IDE</Text>
           <View style={styles.headerActions}>
@@ -566,10 +566,10 @@ const styles = StyleSheet.create({
                     <Text style={styles.panelTitle}>EXPLORER</Text>
                     <View style={{ flexDirection: 'row', gap: 8 }}>
                       <TouchableOpacity onPress={handleUploadFile}>
-                        <Plus color={Colors.Colors.cyan.primary} size={16} />
+                        <Plus color="#00FFFF" size={16} />
                       </TouchableOpacity>
                       <TouchableOpacity onPress={handleUploadMultipleFiles}>
-                        <FolderOpen color={Colors.Colors.cyan.primary} size={16} />
+                        <FolderOpen color="#FFB84D" size={16} />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -637,13 +637,13 @@ const styles = StyleSheet.create({
             {!isSmallDevice && (
               <View style={styles.editorToolbar}>
                 <TouchableOpacity style={styles.toolbarButton} onPress={handleSaveFile}>
-                  <Save color={Colors.Colors.cyan.primary} size={16} />
+                  <Save color="#00FFFF" size={16} />
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.toolbarButton} onPress={handleRunCode}>
-                  <Play color={Colors.Colors.success} size={16} />
+                  <Play color="#00FF88" size={16} />
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.toolbarButton} onPress={handleFormatCode}>
-                  <Code color={Colors.Colors.warning} size={16} />
+                  <Code color="#FF6B35" size={16} />
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.toolbarButton}>
                   <Download color={Colors.Colors.text.muted} size={16} />
@@ -670,17 +670,17 @@ const styles = StyleSheet.create({
       {isSmallDevice && showFloatingToolbar && (
         <View style={styles.floatingToolbar}>
           <FloatingToolbarButton
-            icon={<Save color={Colors.Colors.cyan.primary} size={18} />}
+            icon={<Save color="#00FFFF" size={18} />}
             label="Save"
             onPress={handleSaveFile}
           />
           <FloatingToolbarButton
-            icon={<Play color={Colors.Colors.success} size={18} />}
+            icon={<Play color="#00FF88" size={18} />}
             label="Run"
             onPress={handleRunCode}
           />
           <FloatingToolbarButton
-            icon={<Code color={Colors.Colors.warning} size={18} />}
+            icon={<Code color="#FF6B35" size={18} />}
             label="Format"
             onPress={handleFormatCode}
           />
@@ -690,7 +690,7 @@ const styles = StyleSheet.create({
             onPress={() => Alert.alert('Copy', 'Code copied to clipboard')}
           />
           <FloatingToolbarButton
-            icon={<Terminal color={Colors.Colors.red.primary} size={18} />}
+            icon={<Terminal color="#FF0040" size={18} />}
             label="Terminal"
             onPress={() => router.push('/(tabs)/terminal' as any)}
           />
@@ -707,7 +707,7 @@ const styles = StyleSheet.create({
       {/* AI Assistant Panel */}
       <View style={[styles.aiPanel, isSmallDevice && styles.aiPanelMobile]}>
         <View style={styles.aiHeader}>
-          <Zap color={Colors.Colors.cyan.primary} size={16} />
+          <Zap color="#FF6B35" size={16} />
           <Text style={styles.aiTitle}>AI Assistant</Text>
         </View>
         <View style={styles.aiInputContainer}>
@@ -853,7 +853,7 @@ const styles = StyleSheet.create({
   },
   codeInput: {
     flex: 1,
-    color: Colors.Colors.text.primary,
+    color: '#FF6B35',
     fontSize: 14,
     fontFamily: 'monospace',
     padding: 16,
@@ -948,7 +948,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.Colors.text.primary,
+    color: '#FF6B35',
   },
   headerActions: {
     flexDirection: 'row',
@@ -1083,7 +1083,7 @@ const styles = StyleSheet.create({
   projectName: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.Colors.text.primary,
+    color: '#00FFFF',
     marginBottom: 8,
   },
   fileTreeItem: {
@@ -1094,7 +1094,7 @@ const styles = StyleSheet.create({
   },
   fileTreeText: {
     fontSize: 13,
-    color: Colors.Colors.text.secondary,
+    color: '#FFB84D',
   },
   searchInput: {
     backgroundColor: Colors.Colors.background.card,
@@ -1130,10 +1130,10 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 13,
-    color: Colors.Colors.text.secondary,
+    color: '#808080',
   },
   activeTabText: {
-    color: Colors.Colors.text.primary,
+    color: '#FF6B35',
   },
   modifiedTabText: {
     fontWeight: '600',
@@ -1177,7 +1177,7 @@ const styles = StyleSheet.create({
   aiTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.Colors.text.primary,
+    color: '#FF6B35',
   },
   aiInputContainer: {
     flexDirection: 'row',
@@ -1192,12 +1192,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    color: Colors.Colors.text.primary,
+    color: '#FFB84D',
     fontSize: 13,
     maxHeight: 80,
   },
   aiButton: {
-    backgroundColor: Colors.Colors.cyan.primary,
+    backgroundColor: '#FF6B35',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
