@@ -4,42 +4,61 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as DocumentPicker from 'expo-document-picker';
 import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
+import { SUPPORTED_LANGUAGES, formatCode } from '@/lib/languages';
 
 
-interface Project {
+export interface Project {
   id: string;
   name: string;
-  type: 'react-native' | 'web' | 'api' | 'mobile';
+  type: 'react-native' | 'web' | 'api' | 'mobile' | 'fullstack' | 'backend' | 'cli' | 'library';
   status: 'active' | 'completed' | 'paused';
   progress: number;
   lastModified: Date;
   files: ProjectFile[];
+  primaryLanguage?: string;
+  frameworks?: string[];
+  dependencies?: Record<string, string>;
 }
 
-interface ProjectFile {
+export interface ProjectFile {
   id: string;
   name: string;
   path: string;
   content: string;
   language: string;
   size: number;
+  lastModified?: Date;
+  isReadOnly?: boolean;
 }
 
-interface CodeAnalysis {
+export interface CodeAnalysis {
   quality: number;
   coverage: number;
   performance: number;
   security: number;
+  maintainability: number;
+  complexity: number;
   issues: CodeIssue[];
+  suggestions: string[];
+  metrics: {
+    linesOfCode: number;
+    filesCount: number;
+    functionsCount: number;
+    classesCount: number;
+  };
 }
 
-interface CodeIssue {
+export interface CodeIssue {
   id: string;
-  type: 'error' | 'warning' | 'info';
+  type: 'error' | 'warning' | 'info' | 'suggestion';
   file: string;
   line: number;
+  column?: number;
   message: string;
-  severity: 'high' | 'medium' | 'low';
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  category: 'syntax' | 'logic' | 'performance' | 'security' | 'style' | 'best-practice';
+  fixable: boolean;
+  suggestedFix?: string;
 }
 
 
@@ -119,7 +138,7 @@ const styles = StyleSheet.create({
     } catch (error) {
       console.error('Failed to load projects:', error);
     }
-  }, []);
+  }, [currentProject]);
 
   // Load projects from storage
   useEffect(() => {
@@ -208,7 +227,10 @@ const styles = StyleSheet.create({
               file: file.name,
               line: index + 1,
               message: 'Remove console.log statements in production code',
-              severity: 'low'
+              severity: 'low',
+              category: 'best-practice',
+              fixable: true,
+              suggestedFix: 'Remove or replace with proper logging'
             });
             qualityIssues++;
           }
@@ -220,7 +242,9 @@ const styles = StyleSheet.create({
               file: file.name,
               line: index + 1,
               message: 'Avoid using "any" type, use specific types instead',
-              severity: 'medium'
+              severity: 'medium',
+              category: 'style',
+              fixable: false
             });
             qualityIssues++;
           }
@@ -232,19 +256,23 @@ const styles = StyleSheet.create({
               file: file.name,
               line: index + 1,
               message: 'Security risk: Avoid using eval() or dangerouslySetInnerHTML',
-              severity: 'high'
+              severity: 'critical',
+              category: 'security',
+              fixable: false
             });
             securityIssues++;
           }
           
-          if (line.includes('setState') && line.includes('for') || line.includes('while')) {
+          if (line.includes('setState') && (line.includes('for') || line.includes('while'))) {
             issues.push({
               id: `${file.id}-${index}-perf`,
               type: 'warning',
               file: file.name,
               line: index + 1,
               message: 'Performance: Avoid calling setState in loops',
-              severity: 'medium'
+              severity: 'medium',
+              category: 'performance',
+              fixable: false
             });
             performanceIssues++;
           }
@@ -252,11 +280,14 @@ const styles = StyleSheet.create({
           if (line.includes('require(') && !line.includes('//')) {
             issues.push({
               id: `${file.id}-${index}-import`,
-              type: 'info',
+              type: 'suggestion',
               file: file.name,
               line: index + 1,
               message: 'Consider using ES6 import instead of require()',
-              severity: 'low'
+              severity: 'low',
+              category: 'style',
+              fixable: true,
+              suggestedFix: 'Convert to ES6 import statement'
             });
           }
         });
@@ -266,13 +297,37 @@ const styles = StyleSheet.create({
       const coverageScore = hasTests ? Math.min(95, 60 + (totalFiles * 5)) : Math.min(50, totalFiles * 3);
       const performanceScore = Math.max(60, 100 - (performanceIssues * 5) - (totalLines > 2000 ? 10 : 0));
       const securityScore = Math.max(70, 100 - (securityIssues * 15));
+      const maintainabilityScore = Math.max(60, 100 - (totalLines / 100) - (totalFiles > 50 ? 10 : 0));
+      const complexityScore = Math.max(50, 100 - (totalLines / 50));
+      
+      const functionsCount = project.files.reduce((acc, file) => 
+        acc + (file.content.match(/function\s+\w+|const\s+\w+\s*=\s*\(/g) || []).length, 0
+      );
+      const classesCount = project.files.reduce((acc, file) => 
+        acc + (file.content.match(/class\s+\w+/g) || []).length, 0
+      );
       
       const analysis: CodeAnalysis = {
         quality: Math.round(qualityScore),
         coverage: Math.round(coverageScore),
         performance: Math.round(performanceScore),
         security: Math.round(securityScore),
-        issues: issues.slice(0, 50)
+        maintainability: Math.round(maintainabilityScore),
+        complexity: Math.round(complexityScore),
+        issues: issues.slice(0, 50),
+        suggestions: [
+          !hasTests && 'Add unit tests to improve code coverage',
+          !hasTypeScript && 'Consider migrating to TypeScript for better type safety',
+          !hasErrorHandling && 'Implement comprehensive error handling',
+          totalLines > 2000 && 'Consider breaking down large files into smaller modules',
+          qualityIssues > 10 && 'Address code quality issues to improve maintainability'
+        ].filter(Boolean) as string[],
+        metrics: {
+          linesOfCode: totalLines,
+          filesCount: totalFiles,
+          functionsCount,
+          classesCount
+        }
       };
       
       console.log(`[AgentContext] Analysis completed. Found ${issues.length} issues. Quality: ${analysis.quality}%, Coverage: ${analysis.coverage}%, Performance: ${analysis.performance}%, Security: ${analysis.security}%`);
@@ -285,34 +340,110 @@ const styles = StyleSheet.create({
     }
   }, [projects]);
 
-  const generateCode = useCallback(async (prompt: string, language: string = 'typescript') => {
+  const generateCode = useCallback(async (prompt: string, language: string = 'typescript', context?: string) => {
     setIsGenerating(true);
-    console.log(`[AgentContext] Starting code generation for: ${prompt.substring(0, 50)}...`);
+    console.log(`[AgentContext] Starting ${language} code generation for: ${prompt.substring(0, 50)}...`);
     
     try {
       const { generateText } = await import('@rork/toolkit-sdk');
+      const langConfig = SUPPORTED_LANGUAGES[language] || SUPPORTED_LANGUAGES.typescript;
       
-      const systemPrompt = `You are a professional React Native developer with 25+ years of experience. Generate clean, production-ready code based on the user's request.
+      const languageSpecificGuidelines: Record<string, string> = {
+        typescript: `- Use TypeScript with strict typing and interfaces
+- Follow React Native/React best practices
+- Use modern ES6+ features
+- Include proper error handling with try-catch
+- Use async/await for asynchronous operations
+- Add JSDoc comments for complex functions`,
+        javascript: `- Use modern ES6+ syntax
+- Follow JavaScript best practices
+- Include proper error handling
+- Use const/let instead of var
+- Implement proper async/await patterns`,
+        python: `- Follow PEP 8 style guide
+- Use type hints where appropriate
+- Include docstrings for functions and classes
+- Use list comprehensions and generators
+- Implement proper exception handling
+- Follow Pythonic idioms`,
+        java: `- Follow Java naming conventions
+- Use proper access modifiers
+- Implement interfaces where appropriate
+- Include JavaDoc comments
+- Use try-with-resources for resource management
+- Follow SOLID principles`,
+        go: `- Follow Go conventions and idioms
+- Use proper error handling (return error)
+- Keep functions small and focused
+- Use goroutines and channels appropriately
+- Include package documentation
+- Follow effective Go guidelines`,
+        rust: `- Follow Rust ownership and borrowing rules
+- Use Result and Option types properly
+- Include comprehensive error handling
+- Write idiomatic Rust code
+- Use pattern matching effectively
+- Follow Rust API guidelines`,
+        cpp: `- Follow modern C++ (C++17/20) standards
+- Use RAII principles
+- Prefer smart pointers over raw pointers
+- Include proper const correctness
+- Use STL containers and algorithms
+- Follow C++ Core Guidelines`,
+        swift: `- Follow Swift API design guidelines
+- Use optionals properly
+- Implement protocol-oriented programming
+- Use value types where appropriate
+- Include proper error handling with Result
+- Follow Swift naming conventions`,
+        kotlin: `- Follow Kotlin coding conventions
+- Use null safety features
+- Leverage extension functions
+- Use data classes appropriately
+- Implement coroutines for async operations
+- Follow idiomatic Kotlin patterns`,
+        ruby: `- Follow Ruby style guide
+- Use blocks and iterators effectively
+- Implement proper metaprogramming
+- Use symbols and hashes appropriately
+- Follow Ruby idioms and conventions`,
+        php: `- Follow PSR standards (PSR-1, PSR-12)
+- Use type declarations
+- Implement proper namespacing
+- Use composer for dependencies
+- Follow modern PHP (8.x) practices`,
+        sql: `- Use proper SQL formatting
+- Implement parameterized queries
+- Use appropriate indexes
+- Follow database normalization
+- Include proper constraints
+- Write efficient queries`,
+      };
+      
+      const systemPrompt = `You are a world-class ${langConfig.displayName} developer with 25+ years of experience. Generate clean, production-ready, idiomatic ${langConfig.displayName} code based on the user's request.
 
-Follow these guidelines:
-- Use TypeScript with proper typing and interfaces
-- Follow React Native best practices and performance optimization
-- Use StyleSheet for styling (never inline styles)
-- Include proper imports from correct packages
-- Add meaningful JSDoc comments for complex logic
-- Use the cyan/red/black color scheme: #00FFFF (cyan), #FF0040 (red), #000000 (black)
-- Make components reusable, well-structured, and maintainable
-- Include proper error handling and loading states
-- Use React hooks correctly (useState, useEffect, useCallback, useMemo)
-- Add console.log statements for debugging
-- Follow accessibility best practices
-- Ensure web compatibility (avoid native-only APIs without Platform checks)
+Language: ${langConfig.displayName}
 
-IMPORTANT: Generate ONLY valid code without any markdown formatting, code blocks, or explanations. Return pure code that can be directly executed.`;
+Follow these ${langConfig.displayName}-specific guidelines:
+${languageSpecificGuidelines[language] || '- Follow language best practices\n- Write clean, maintainable code\n- Include proper error handling'}
+
+General guidelines:
+- Write production-quality code
+- Include comprehensive error handling
+- Add meaningful comments for complex logic
+- Make code modular and reusable
+- Follow industry best practices
+- Optimize for performance and readability
+- Include proper logging/debugging statements
+- Consider edge cases and validation
+
+${context ? `\nAdditional Context:\n${context}` : ''}
+
+IMPORTANT: Generate ONLY valid ${langConfig.displayName} code without any markdown formatting, code blocks, or explanations. Return pure code that can be directly executed.`;
       
       let generatedCode = await generateText({
         messages: [
-          { role: 'user', content: `${systemPrompt}\n\nGenerate ${language} code for: ${prompt}` }
+          { role: 'user', content: `${systemPrompt}\n\nTask: ${prompt}` }
         ]
       });
       
@@ -346,8 +477,10 @@ IMPORTANT: Generate ONLY valid code without any markdown formatting, code blocks
         }
       }
 
-      console.log(`[AgentContext] Code generation completed. Generated ${generatedCode.length} characters`);
-      return generatedCode;
+      const formattedCode = formatCode(generatedCode, language);
+      
+      console.log(`[AgentContext] ${language} code generation completed. Generated ${formattedCode.length} characters`);
+      return formattedCode;
     } catch (error) {
       console.error('[AgentContext] Code generation failed:', error);
       throw new Error(`Failed to generate code: ${error instanceof Error ? error.message : 'Unknown error'}`);
