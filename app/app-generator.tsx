@@ -59,7 +59,7 @@ export default function AppGeneratorScreen() {
     styleFramework: 'stylesheet',
     stateManagement: 'context',
     routing: 'expo-router',
-    aiModel: 'orchestrated',
+    aiModel: 'dual-claude-gemini',
   });
 
   const handleGenerate = async () => {
@@ -193,7 +193,10 @@ export default function AppGeneratorScreen() {
             <View style={styles.configBadge}>
               <Layers color={Colors.Colors.cyan.primary} size={14} />
               <Text style={styles.configBadgeText}>
-                {config.aiModel === 'orchestrated' ? '4-Model Orchestration' : config.aiModel}
+                {config.aiModel === 'dual-claude-gemini' ? 'Dual Model (Claude+Gemini)' :
+                 config.aiModel === 'tri-model' ? 'Tri-Model' :
+                 config.aiModel === 'quad-model' ? 'Quad-Model' :
+                 '4-Model Orchestration'}
               </Text>
             </View>
             <View style={styles.configBadge}>
@@ -358,8 +361,8 @@ export default function AppGeneratorScreen() {
               )}
 
               {renderSelectOption(
-                'AI Model',
-                ['orchestrated', 'gpt-4', 'claude', 'gemini'],
+                'AI Model Orchestration',
+                ['dual-claude-gemini', 'tri-model', 'quad-model', 'orchestrated'],
                 config.aiModel,
                 value =>
                   setConfig({ ...config, aiModel: value as AppGenerationConfig['aiModel'] })

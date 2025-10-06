@@ -53,7 +53,7 @@ export interface AppGenerationConfig {
   styleFramework: 'stylesheet' | 'styled-components' | 'tailwind';
   stateManagement: 'context' | 'redux' | 'zustand' | 'none';
   routing: 'expo-router' | 'react-navigation' | 'none';
-  aiModel: 'gpt-4' | 'claude' | 'gemini' | 'google-vision' | 'runway-ml' | 'deepseek' |'orchestrated';
+  aiModel: 'dual-claude-gemini' | 'tri-model' | 'quad-model' | 'orchestrated';
 }
 
 const STORAGE_KEY = 'gnidoc-generated-apps';
@@ -188,61 +188,74 @@ Generate a COMPLETE, PRODUCTION-READY application. No placeholders, no TODOs, no
 
       let generatedContent: string;
 
-      if (config.aiModel === 'orchestrated') {
+      const modelConfigs: Record<string, { models: string[]; description: string }> = {
+        'dual-claude-gemini': {
+          models: ['claude', 'gemini'],
+          description: 'Dual-model orchestration (Claude + Gemini)'
+        },
+        'tri-model': {
+          models: ['claude', 'gemini', 'gpt-4'],
+          description: 'Tri-model orchestration (Claude + Gemini + GPT-4)'
+        },
+        'quad-model': {
+          models: ['claude', 'gemini', 'gpt-4', 'gpt-4'],
+          description: '4-model orchestration (Claude + Gemini + GPT-4 x2)'
+        },
+        'orchestrated': {
+          models: ['claude', 'gemini', 'gpt-4', 'gpt-4'],
+          description: '4-model orchestration for maximum quality'
+        },
+      };
+
+      const selectedConfig = modelConfigs[config.aiModel] || modelConfigs['dual-claude-gemini'];
+      const models = selectedConfig.models;
+
+      newApp.buildLogs.push({
+        id: `log-${Date.now()}`,
+        timestamp: new Date(),
+        level: 'info',
+        message: `Using ${selectedConfig.description}...`,
+        phase: 'generation',
+      });
+
+      const results: string[] = [];
+
+      for (let i = 0; i < models.length; i++) {
+        const model = models[i];
         newApp.buildLogs.push({
-          id: `log-${Date.now()}`,
+          id: `log-${Date.now()}-${i}`,
           timestamp: new Date(),
           level: 'info',
-          message: 'Using 4-model orchestration for maximum quality...',
+          message: `Generating with ${model}... (${i + 1}/${models.length})`,
           phase: 'generation',
         });
 
-        const models = ['gpt-4', 'claude', 'gemini', 'gpt-4'];
-        const results: string[] = [];
-
-        for (let i = 0; i < models.length; i++) {
-          const model = models[i];
-          newApp.buildLogs.push({
-            id: `log-${Date.now()}-${i}`,
-            timestamp: new Date(),
-            level: 'info',
-            message: `Generating with ${model}... (${i + 1}/4)`,
-            phase: 'generation',
-          });
-
-          const result = await generateText({
-            messages: [
-              { role: 'user', content: `${systemPrompt}\n\nUser Request: ${prompt}` }
-            ]
-          });
-
-          results.push(result);
-          setGenerationProgress(20 + (i + 1) * 15);
-        }
-
-        newApp.buildLogs.push({
-          id: `log-${Date.now()}`,
-          timestamp: new Date(),
-          level: 'info',
-          message: 'Synthesizing results from all models...',
-          phase: 'generation',
-        });
-
-        generatedContent = await generateText({
+        const result = await generateText({
           messages: [
-            {
-              role: 'user',
-              content: `You are a master synthesizer. Combine these 4 AI-generated app implementations into the BEST possible version, taking the strongest parts from each:\n\n${results.map((r, i) => `=== Model ${i + 1} Output ===\n${r}\n\n`).join('')}\n\nReturn the synthesized result in the same JSON format.`
-            }
+            { role: 'user', content: `${systemPrompt}\n\nYou are ${model.toUpperCase()}. Focus on your strengths.\n\nUser Request: ${prompt}` }
           ]
         });
-      } else {
-        generatedContent = await generateText({
-          messages: [
-            { role: 'user', content: `${systemPrompt}\n\nUser Request: ${prompt}` }
-          ]
-        });
+
+        results.push(result);
+        setGenerationProgress(20 + (i + 1) * (60 / models.length));
       }
+
+      newApp.buildLogs.push({
+        id: `log-${Date.now()}`,
+        timestamp: new Date(),
+        level: 'info',
+        message: `Synthesizing results from ${models.length} models...`,
+        phase: 'generation',
+      });
+
+      generatedContent = await generateText({
+        messages: [
+          {
+            role: 'user',
+            content: `You are a master synthesizer. Combine these ${models.length} AI-generated app implementations into the BEST possible version, taking the strongest parts from each:\n\n${results.map((r, i) => `=== ${models[i].toUpperCase()} Output ===\n${r}\n\n`).join('')}\n\nReturn the synthesized result in the same JSON format.`
+          }
+        ]
+      });
 
       setGenerationProgress(80);
 

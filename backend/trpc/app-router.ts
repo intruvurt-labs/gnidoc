@@ -8,6 +8,10 @@ import conductResearchRoute from "./routes/research/conduct/route";
 import researchHistoryRoute from "./routes/research/history/route";
 import deleteResearchRoute from "./routes/research/delete/route";
 import exportResearchRoute from "./routes/research/export/route";
+import createDeploymentRoute from "./routes/deploy/create/route";
+import listDeploymentsRoute from "./routes/deploy/list/route";
+import deleteDeploymentRoute from "./routes/deploy/delete/route";
+import generateSEORoute from "./routes/deploy/seo/route";
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -24,6 +28,12 @@ export const appRouter = createTRPCRouter({
     history: researchHistoryRoute,
     delete: deleteResearchRoute,
     export: exportResearchRoute,
+  }),
+  deploy: createTRPCRouter({
+    create: createDeploymentRoute,
+    list: listDeploymentsRoute,
+    delete: deleteDeploymentRoute,
+    generateSEO: generateSEORoute,
   }),
 });
 

@@ -18,6 +18,7 @@ const AgentProvider = lazy(() => import("@/contexts/AgentContext").then(m => ({ 
 const DatabaseProvider = lazy(() => import("@/contexts/DatabaseContext").then(m => ({ default: m.DatabaseProvider })));
 const WorkflowProvider = lazy(() => import("@/contexts/WorkflowContext").then(m => ({ default: m.WorkflowProvider })));
 const AppBuilderProvider = lazy(() => import("@/contexts/AppBuilderContext").then(m => ({ default: m.AppBuilderProvider })));
+const DeploymentProvider = lazy(() => import("@/contexts/DeploymentContext").then(m => ({ default: m.DeploymentProvider })));
 const TriModelProvider = lazy(() => import("@/contexts/TriModelContext").then(m => ({ default: m.TriModelProvider })));
 const NoCodeBuilderProvider = lazy(() => import("@/contexts/NoCodeBuilderContext").then(m => ({ default: m.NoCodeBuilderProvider })));
 const IntegrationsProvider = lazy(() => import("@/contexts/IntegrationsContext").then(m => ({ default: m.IntegrationsProvider })));
@@ -145,6 +146,20 @@ function RootLayoutNav() {
           headerShown: false,
         }} 
       />
+      <Stack.Screen 
+        name="deploy" 
+        options={{ 
+          headerTitle: "Deploy Project",
+          headerShown: false,
+        }} 
+      />
+      <Stack.Screen 
+        name="pricing" 
+        options={{ 
+          headerTitle: "Pricing",
+          headerShown: false,
+        }} 
+      />
     </Stack>
   );
 }
@@ -182,8 +197,9 @@ export default function RootLayout() {
                     <DatabaseProvider>
                       <AgentProvider>
                         <WorkflowProvider>
-                          <AppBuilderProvider>
-                            <TriModelProvider>
+                          <DeploymentProvider>
+                            <AppBuilderProvider>
+                              <TriModelProvider>
                               <NoCodeBuilderProvider>
                                 <IntegrationsProvider>
                                   <ResearchProvider>
@@ -192,8 +208,9 @@ export default function RootLayout() {
                                   </ResearchProvider>
                                 </IntegrationsProvider>
                               </NoCodeBuilderProvider>
-                            </TriModelProvider>
-                          </AppBuilderProvider>
+                              </TriModelProvider>
+                            </AppBuilderProvider>
+                          </DeploymentProvider>
                         </WorkflowProvider>
                       </AgentProvider>
                     </DatabaseProvider>
