@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
   Animated,
+  Image,
 } from 'react-native';
 import { Brain, Send, Mic, Image as ImageIcon, FileText, Zap, Code, Shield, Search, Terminal, Database } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,6 +17,23 @@ import { z } from 'zod';
 import { useAgent } from '@/contexts/AgentContext';
 
 
+
+const AGENT_AVATARS = {
+  coder: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/477pjj06parzpy9owakgh',
+  security: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/8wdcpx054zjo2vxs2uyyi',
+  architect: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/7az3n0jkmn1dst2mrwzh4',
+  analyst: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/fev00m4srfxxp6jrjhwh8',
+};
+
+type AgentRole = keyof typeof AGENT_AVATARS;
+
+function getAgentRole(toolName?: string): AgentRole {
+  if (!toolName) return 'coder';
+  if (toolName.includes('security') || toolName.includes('audit')) return 'security';
+  if (toolName.includes('deploy') || toolName.includes('review')) return 'architect';
+  if (toolName.includes('analyze') || toolName.includes('analysis')) return 'analyst';
+  return 'coder';
+}
 
 export default function AgentScreen() {
   const [input, setInput] = useState<string>('');
@@ -189,62 +207,87 @@ export default function AgentScreen() {
 
       {/* Messages */}
       <ScrollView style={styles.messagesContainer} showsVerticalScrollIndicator={false}>
-        {messages.map((m) => (
-          <View key={m.id} style={styles.messageWrapper}>
-            <View style={[
-              styles.messageContainer,
-              m.role === 'user' ? styles.userMessage : styles.assistantMessage
-            ]}>
-              <Text style={[
-                styles.messageText,
-                m.role === 'user' ? styles.userMessageText : styles.assistantMessageText
+        {messages.map((m) => {
+          const toolName = m.parts.find(p => p.type === 'tool')?.type === 'tool' 
+            ? (m.parts.find(p => p.type === 'tool') as any)?.toolName 
+            : undefined;
+          const agentRole = getAgentRole(toolName);
+          const avatarUrl = AGENT_AVATARS[agentRole];
+          
+          return (
+            <View key={m.id} style={styles.messageWrapper}>
+              <View style={[
+                styles.messageRow,
+                m.role === 'user' ? styles.userMessageRow : styles.assistantMessageRow
               ]}>
-                {m.role === 'user' ? 'You' : 'AI Agent'}
-              </Text>
-              {m.parts.map((part, i) => {
-                switch (part.type) {
-                  case 'text':
-                    return (
-                      <Text key={`${m.id}-${i}`} style={[
-                        styles.messageContent,
-                        m.role === 'user' ? styles.userMessageText : styles.assistantMessageText
-                      ]}>
-                        {part.text}
-                      </Text>
-                    );
-                  case 'tool':
-                    const toolName = part.toolName;
-                    switch (part.state) {
-                      case 'input-streaming':
-                      case 'input-available':
+                {m.role === 'assistant' && (
+                  <Image 
+                    source={{ uri: avatarUrl }} 
+                    style={styles.avatar}
+                    resizeMode="cover"
+                  />
+                )}
+                <View style={[
+                  styles.messageContainer,
+                  m.role === 'user' ? styles.userMessage : styles.assistantMessage
+                ]}>
+                  <Text style={[
+                    styles.messageText,
+                    m.role === 'user' ? styles.userMessageText : styles.assistantMessageText
+                  ]}>
+                    {m.role === 'user' ? 'You' : 'AI Agent'}
+                  </Text>
+                  {m.parts.map((part, i) => {
+                    switch (part.type) {
+                      case 'text':
                         return (
-                          <View key={`${m.id}-${i}`} style={styles.toolContainer}>
-                            <Zap color={Colors.Colors.cyan.primary} size={16} />
-                            <Text style={styles.toolText}>Executing {toolName}...</Text>
-                          </View>
+                          <Text key={`${m.id}-${i}`} style={[
+                            styles.messageContent,
+                            m.role === 'user' ? styles.userMessageText : styles.assistantMessageText
+                          ]}>
+                            {part.text}
+                          </Text>
                         );
-                      case 'output-available':
-                        return (
-                          <View key={`${m.id}-${i}`} style={styles.toolResultContainer}>
-                            <Text style={styles.toolResultText}>
-                              ✅ {toolName} completed successfully
-                            </Text>
-                          </View>
-                        );
-                      case 'output-error':
-                        return (
-                          <View key={`${m.id}-${i}`} style={styles.toolErrorContainer}>
-                            <Text style={styles.toolErrorText}>
-                              ❌ Error in {toolName}: {part.errorText}
-                            </Text>
-                          </View>
-                        );
+                      case 'tool':
+                        const toolName = part.toolName;
+                        switch (part.state) {
+                          case 'input-streaming':
+                          case 'input-available':
+                            return (
+                              <View key={`${m.id}-${i}`} style={styles.toolContainer}>
+                                <Zap color={Colors.Colors.cyan.primary} size={16} />
+                                <Text style={styles.toolText}>Executing {toolName}...</Text>
+                              </View>
+                            );
+                          case 'output-available':
+                            return (
+                              <View key={`${m.id}-${i}`} style={styles.toolResultContainer}>
+                                <Text style={styles.toolResultText}>
+                                  ✅ {toolName} completed successfully
+                                </Text>
+                              </View>
+                            );
+                          case 'output-error':
+                            return (
+                              <View key={`${m.id}-${i}`} style={styles.toolErrorContainer}>
+                                <Text style={styles.toolErrorText}>
+                                  ❌ Error in {toolName}: {part.errorText}
+                                </Text>
+                              </View>
+                            );
+                        }
                     }
-                }
-              })}
+                  })}
+                </View>
+                {m.role === 'user' && (
+                  <View style={styles.userAvatarPlaceholder}>
+                    <Text style={styles.userAvatarText}>U</Text>
+                  </View>
+                )}
+              </View>
             </View>
-          </View>
-        ))}
+          );
+        })}
         {error && (
           <View style={styles.errorContainer}>
             <Text style={styles.errorText}>Error: {error.message}</Text>
@@ -338,9 +381,43 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
   },
-  messageContainer: {
+  messageWrapper: {
     marginBottom: 16,
-    maxWidth: '80%',
+  },
+  messageRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  userMessageRow: {
+    justifyContent: 'flex-end',
+  },
+  assistantMessageRow: {
+    justifyContent: 'flex-start',
+  },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: Colors.Colors.cyan.primary,
+    backgroundColor: Colors.Colors.background.card,
+  },
+  userAvatarPlaceholder: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.Colors.cyan.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  userAvatarText: {
+    color: Colors.Colors.text.inverse,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  messageContainer: {
+    maxWidth: '75%',
   },
   userMessage: {
     alignSelf: 'flex-end',
@@ -433,9 +510,6 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     opacity: 0.6,
-  },
-  messageWrapper: {
-    marginBottom: 16,
   },
   messageContent: {
     fontSize: 14,
