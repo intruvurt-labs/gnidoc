@@ -85,6 +85,12 @@ const DraggableNode: React.FC<DraggableNodeProps> = ({
 }) => {
   const pan = useRef(new Animated.ValueXY({ x: node.position.x, y: node.position.y })).current;
   const [isDragging, setIsDragging] = useState<boolean>(false);
+  const currentPosition = useRef({ x: node.position.x, y: node.position.y });
+
+  React.useEffect(() => {
+    currentPosition.current = { x: node.position.x, y: node.position.y };
+    pan.setValue({ x: node.position.x, y: node.position.y });
+  }, [node.position.x, node.position.y, pan]);
 
   const panResponder = useRef(
     PanResponder.create({
@@ -93,8 +99,8 @@ const DraggableNode: React.FC<DraggableNodeProps> = ({
       onPanResponderGrant: () => {
         setIsDragging(true);
         pan.setOffset({
-          x: pan.x._value,
-          y: pan.y._value,
+          x: currentPosition.current.x,
+          y: currentPosition.current.y,
         });
         pan.setValue({ x: 0, y: 0 });
       },
@@ -105,12 +111,13 @@ const DraggableNode: React.FC<DraggableNodeProps> = ({
         pan.flattenOffset();
         setIsDragging(false);
 
-        const newX = pan.x._value;
-        const newY = pan.y._value;
+        const newX = currentPosition.current.x + gesture.dx;
+        const newY = currentPosition.current.y + gesture.dy;
 
         const boundedX = Math.max(0, Math.min(CANVAS_WIDTH - 120, newX));
         const boundedY = Math.max(0, Math.min(CANVAS_HEIGHT - 100, newY));
 
+        currentPosition.current = { x: boundedX, y: boundedY };
         pan.setValue({ x: boundedX, y: boundedY });
         onPositionChange(boundedX, boundedY);
 
