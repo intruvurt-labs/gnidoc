@@ -63,12 +63,78 @@ export interface CodeIssue {
 
 
 
+interface ConversationMemory {
+  projectId: string;
+  context: string;
+  lastPrompts: string[];
+  generatedFiles: string[];
+  timestamp: Date;
+}
+
 export const [AgentProvider, useAgent] = createContextHook(() => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const [analysis, setAnalysis] = useState<CodeAnalysis | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [conversationMemory, setConversationMemory] = useState<Map<string, ConversationMemory>>(new Map());
+
+  const loadConversationMemory = useCallback(async () => {
+    try {
+      const stored = await AsyncStorage.getItem('agent-conversation-memory');
+      if (stored) {
+        const memoryArray = JSON.parse(stored);
+        const memoryMap = new Map<string, ConversationMemory>(
+          memoryArray.map((item: any) => [
+            item.projectId,
+            { ...item, timestamp: new Date(item.timestamp) }
+          ])
+        );
+        setConversationMemory(memoryMap);
+        console.log('[AgentContext] Loaded conversation memory for', memoryMap.size, 'projects');
+      }
+    } catch (error) {
+      console.error('[AgentContext] Failed to load conversation memory:', error);
+    }
+  }, []);
+
+  const saveConversationMemory = useCallback(async (memory: Map<string, ConversationMemory>) => {
+    try {
+      const memoryArray = Array.from(memory.entries()).map(([id, data]) => ({
+        projectId: id,
+        context: data.context,
+        lastPrompts: data.lastPrompts,
+        generatedFiles: data.generatedFiles,
+        timestamp: data.timestamp
+      }));
+      await AsyncStorage.setItem('agent-conversation-memory', JSON.stringify(memoryArray));
+      console.log('[AgentContext] Saved conversation memory for', memory.size, 'projects');
+    } catch (error) {
+      console.error('[AgentContext] Failed to save conversation memory:', error);
+    }
+  }, []);
+
+  const updateConversationMemory = useCallback((projectId: string, updates: Partial<ConversationMemory>) => {
+    setConversationMemory(prev => {
+      const newMemory = new Map(prev);
+      const existing = newMemory.get(projectId) || {
+        projectId,
+        context: '',
+        lastPrompts: [],
+        generatedFiles: [],
+        timestamp: new Date()
+      };
+      
+      newMemory.set(projectId, {
+        ...existing,
+        ...updates,
+        timestamp: new Date()
+      });
+      
+      saveConversationMemory(newMemory);
+      return newMemory;
+    });
+  }, [saveConversationMemory]);
 
   const loadProjects = useCallback(async () => {
     try {
@@ -140,10 +206,10 @@ const styles = StyleSheet.create({
     }
   }, [currentProject]);
 
-  // Load projects from storage
   useEffect(() => {
     loadProjects();
-  }, [loadProjects]);
+    loadConversationMemory();
+  }, [loadProjects, loadConversationMemory]);
 
 
 
@@ -479,6 +545,14 @@ IMPORTANT: Generate ONLY valid ${langConfig.displayName} code without any markdo
 
       const formattedCode = formatCode(generatedCode, language);
       
+      if (currentProject) {
+        const projectMemory = conversationMemory.get(currentProject.id);
+        updateConversationMemory(currentProject.id, {
+          context: `Generated ${language} code for: ${prompt}`,
+          lastPrompts: [...(projectMemory?.lastPrompts || []), prompt].slice(-10),
+        });
+      }
+      
       console.log(`[AgentContext] ${language} code generation completed. Generated ${formattedCode.length} characters`);
       return formattedCode;
     } catch (error) {
@@ -487,7 +561,7 @@ IMPORTANT: Generate ONLY valid ${langConfig.displayName} code without any markdo
     } finally {
       setIsGenerating(false);
     }
-  }, []);
+  }, [currentProject, conversationMemory, updateConversationMemory]);
 
   const addFileToProject = useCallback(async (projectId: string, file: Omit<ProjectFile, 'id'>) => {
     console.log(`[AgentContext] Adding file ${file.name} to project ${projectId}`);
@@ -536,13 +610,20 @@ IMPORTANT: Generate ONLY valid ${langConfig.displayName} code without any markdo
         setCurrentProject(updatedProjects.find(p => p.id === projectId) || null);
       }
 
+      if (currentProject) {
+        const projectMemory = conversationMemory.get(projectId);
+        updateConversationMemory(projectId, {
+          generatedFiles: [...(projectMemory?.generatedFiles || []), file.name].slice(-20),
+        });
+      }
+
       console.log(`[AgentContext] File ${file.name} added successfully`);
       return newFile;
     } catch (error) {
       console.error('[AgentContext] Failed to add file:', error);
       throw new Error(`Failed to add file: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  }, [projects, currentProject, saveProjects]);
+  }, [projects, currentProject, saveProjects, conversationMemory, updateConversationMemory]);
 
   const uploadFileToProject = useCallback(async (projectId: string) => {
     console.log(`[AgentContext] Starting file upload for project ${projectId}`);
@@ -706,14 +787,12 @@ IMPORTANT: Generate ONLY valid ${langConfig.displayName} code without any markdo
   }, [projects, currentProject, saveProjects]);
 
   return useMemo(() => ({
-    // State
     projects,
     currentProject,
     analysis,
     isAnalyzing,
     isGenerating,
-    
-    // Actions
+    conversationMemory,
     createProject,
     updateProject,
     deleteProject,
@@ -725,12 +804,14 @@ IMPORTANT: Generate ONLY valid ${langConfig.displayName} code without any markdo
     uploadMultipleFiles,
     deleteFileFromProject,
     loadProjects,
+    updateConversationMemory,
   }), [
     projects,
     currentProject,
     analysis,
     isAnalyzing,
     isGenerating,
+    conversationMemory,
     createProject,
     updateProject,
     deleteProject,
@@ -741,6 +822,7 @@ IMPORTANT: Generate ONLY valid ${langConfig.displayName} code without any markdo
     uploadMultipleFiles,
     deleteFileFromProject,
     loadProjects,
+    updateConversationMemory,
   ]);
 });
 

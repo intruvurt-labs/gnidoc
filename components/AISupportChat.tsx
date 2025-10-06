@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,9 +11,10 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { MessageCircle, X, Send, Bot, User as UserIcon } from 'lucide-react-native';
+import { MessageCircle, X, Send, Bot, User as UserIcon, Trash2 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useRorkAgent } from '@rork/toolkit-sdk';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { height } = Dimensions.get('window');
 
@@ -36,9 +37,46 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const scrollViewRef = useRef<ScrollView>(null);
 
-  const { messages, sendMessage, error } = useRorkAgent({
+  const { messages, sendMessage, error, setMessages } = useRorkAgent({
     tools: {},
   });
+
+  const loadConversationHistory = useCallback(async () => {
+    try {
+      const stored = await AsyncStorage.getItem('ai-support-chat-history');
+      if (stored) {
+        const history = JSON.parse(stored);
+        setMessages(history);
+        console.log('[AISupportChat] Loaded conversation history:', history.length, 'messages');
+      }
+    } catch (err) {
+      console.error('[AISupportChat] Failed to load conversation history:', err);
+    }
+  }, [setMessages]);
+
+  useEffect(() => {
+    loadConversationHistory();
+  }, [loadConversationHistory]);
+
+  const saveConversationHistory = async (msgs: any[]) => {
+    try {
+      await AsyncStorage.setItem('ai-support-chat-history', JSON.stringify(msgs));
+      console.log('[AISupportChat] Saved conversation history:', msgs.length, 'messages');
+    } catch (error) {
+      console.error('[AISupportChat] Failed to save conversation history:', error);
+    }
+  };
+
+  const clearConversationHistory = async () => {
+    try {
+      await AsyncStorage.removeItem('ai-support-chat-history');
+      setMessages([]);
+      setLocalMessages([]);
+      console.log('[AISupportChat] Cleared conversation history');
+    } catch (error) {
+      console.error('[AISupportChat] Failed to clear conversation history:', error);
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
@@ -82,6 +120,7 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
         timestamp: new Date(),
       }));
       setLocalMessages(convertedMessages);
+      saveConversationHistory(messages);
       
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -240,12 +279,20 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
                   </Text>
                 </View>
               </View>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setIsOpen(false)}
-              >
-                <X color={Colors.Colors.text.primary} size={24} />
-              </TouchableOpacity>
+              <View style={styles.headerActions}>
+                <TouchableOpacity
+                  style={styles.iconButton}
+                  onPress={clearConversationHistory}
+                >
+                  <Trash2 color={Colors.Colors.text.muted} size={20} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setIsOpen(false)}
+                >
+                  <X color={Colors.Colors.text.primary} size={24} />
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Messages */}
@@ -420,6 +467,14 @@ const styles = StyleSheet.create({
   chatSubtitle: {
     fontSize: 12,
     color: Colors.Colors.text.muted,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  iconButton: {
+    padding: 8,
   },
   closeButton: {
     padding: 8,
