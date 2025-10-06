@@ -157,39 +157,71 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     try {
       console.log(`[AuthContext] Initiating OAuth login with ${provider}`);
 
-      const mockUser: User = {
-        id: `user_${Date.now()}`,
-        email: `demo@${provider}.com`,
-        name: `${provider.charAt(0).toUpperCase() + provider.slice(1)} Demo User`,
-        avatar: provider === 'github' 
-          ? 'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png'
-          : 'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png',
-        provider,
-        createdAt: new Date().toISOString(),
-        subscription: 'free',
-        credits: 100,
-      };
+      if (provider === 'github') {
+        const { authenticateWithGitHub } = await import('@/lib/github-oauth');
+        const result = await authenticateWithGitHub();
 
-      const mockToken = `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const user: User = {
+          id: result.user.id.toString(),
+          email: result.user.email,
+          name: result.user.name || result.user.login,
+          avatar: result.user.avatar_url,
+          provider: 'github',
+          createdAt: new Date().toISOString(),
+          subscription: 'free',
+          credits: 100,
+        };
 
-      await batchSetItems({
-        [STORAGE_KEYS.USER]: JSON.stringify(mockUser),
-        [STORAGE_KEYS.TOKEN]: mockToken,
-      });
+        await batchSetItems({
+          [STORAGE_KEYS.USER]: JSON.stringify(user),
+          [STORAGE_KEYS.TOKEN]: result.accessToken,
+          'github-access-token': result.accessToken,
+        });
 
-      setAuthState({
-        user: mockUser,
-        token: mockToken,
-        isAuthenticated: true,
-        isLoading: false,
-      });
+        setAuthState({
+          user,
+          token: result.accessToken,
+          isAuthenticated: true,
+          isLoading: false,
+        });
 
-      requestCache.clear();
-      console.log(`[AuthContext] OAuth login successful with ${provider}`);
-      return { success: true, user: mockUser };
+        requestCache.clear();
+        console.log(`[AuthContext] GitHub OAuth successful:`, user.name);
+        return { success: true, user };
+      } else {
+        const mockUser: User = {
+          id: `user_${Date.now()}`,
+          email: `demo@${provider}.com`,
+          name: `${provider.charAt(0).toUpperCase() + provider.slice(1)} Demo User`,
+          avatar: 'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png',
+          provider,
+          createdAt: new Date().toISOString(),
+          subscription: 'free',
+          credits: 100,
+        };
+
+        const mockToken = `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+        await batchSetItems({
+          [STORAGE_KEYS.USER]: JSON.stringify(mockUser),
+          [STORAGE_KEYS.TOKEN]: mockToken,
+        });
+
+        setAuthState({
+          user: mockUser,
+          token: mockToken,
+          isAuthenticated: true,
+          isLoading: false,
+        });
+
+        requestCache.clear();
+        console.log(`[AuthContext] OAuth login successful with ${provider}`);
+        return { success: true, user: mockUser };
+      }
     } catch (error) {
       console.error(`[AuthContext] OAuth login failed with ${provider}:`, error);
-      throw new Error(`${provider} authentication failed. Please try again.`);
+      const message = error instanceof Error ? error.message : `${provider} authentication failed. Please try again.`;
+      throw new Error(message);
     }
   }, []);
 

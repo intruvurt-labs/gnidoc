@@ -134,11 +134,11 @@ export default function ConnectionsScreen() {
   const loadDigitalOceanConnection = () => {
     setFormData({
       name: 'Digital Ocean PostgreSQL',
-      host: 'bix-keep-369-do-user-24932038-0.f.db.ondigitalocean.com',
-      port: '25060',
-      database: 'defaultdb',
-      username: 'doadmin',
-      password: 'AVNS_mycQ8NrTGpzV1HrvKCG',
+      host: process.env.EXPO_PUBLIC_DB_HOST || '',
+      port: process.env.EXPO_PUBLIC_DB_PORT || '25060',
+      database: process.env.EXPO_PUBLIC_DB_NAME || 'defaultdb',
+      username: process.env.EXPO_PUBLIC_DB_USER || '',
+      password: process.env.EXPO_PUBLIC_DB_PASSWORD || '',
       ssl: true,
     });
     setShowAddModal(true);
