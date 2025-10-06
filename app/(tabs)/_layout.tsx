@@ -1,15 +1,10 @@
 import { Tabs } from "expo-router";
 import { 
   Code, 
-  Terminal, 
-  FileText, 
-  Settings, 
   Brain,
   Monitor,
-  Database,
   Workflow,
-  Plug,
-  Search
+  Settings
 } from "lucide-react-native";
 import React from "react";
 import Colors from "@/constants/colors";
@@ -25,88 +20,95 @@ export default function TabLayout() {
           backgroundColor: Colors.Colors.background.secondary,
           borderTopColor: Colors.Colors.cyan.primary,
           borderTopWidth: 2,
-          height: 80,
-          paddingBottom: 15,
-          paddingTop: 10,
+          height: 70,
+          paddingBottom: 10,
+          paddingTop: 8,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: '600' as const,
-          marginBottom: 4,
+          marginBottom: 2,
         },
         tabBarIconStyle: {
-          marginTop: 4,
+          marginTop: 2,
         },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "App Gen",
-          tabBarIcon: ({ color }) => <Code color={color} size={24} />,
-        }}
-      />
-      <Tabs.Screen
-        name="code"
-        options={{
-          title: "Dashboard",
-          tabBarIcon: ({ color }) => <Monitor color={color} size={24} />,
+          title: "Generator",
+          tabBarIcon: ({ color }) => <Code color={color} size={26} />,
         }}
       />
       <Tabs.Screen
         name="agent"
         options={{
           title: "AI Agent",
-          tabBarIcon: ({ color }) => <Brain color={color} size={24} />,
+          tabBarIcon: ({ color }) => <Brain color={color} size={26} />,
         }}
       />
       <Tabs.Screen
-        name="terminal"
+        name="code"
         options={{
-          title: "Terminal",
-          tabBarIcon: ({ color }) => <Terminal color={color} size={24} />,
-        }}
-      />
-      <Tabs.Screen
-        name="analysis"
-        options={{
-          title: "Analysis",
-          tabBarIcon: ({ color }) => <FileText color={color} size={24} />,
+          title: "Dashboard",
+          tabBarIcon: ({ color }) => <Monitor color={color} size={26} />,
         }}
       />
       <Tabs.Screen
         name="workflow"
         options={{
           title: "Workflow",
-          tabBarIcon: ({ color }) => <Workflow color={color} size={24} />,
-        }}
-      />
-      <Tabs.Screen
-        name="database"
-        options={{
-          title: "Database",
-          tabBarIcon: ({ color }) => <Database color={color} size={24} />,
-        }}
-      />
-      <Tabs.Screen
-        name="integrations"
-        options={{
-          title: "Integrations",
-          tabBarIcon: ({ color }) => <Plug color={color} size={24} />,
-        }}
-      />
-      <Tabs.Screen
-        name="research"
-        options={{
-          title: "Research",
-          tabBarIcon: ({ color }) => <Search color={color} size={24} />,
+          tabBarIcon: ({ color }) => <Workflow color={color} size={26} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: "Settings",
-          tabBarIcon: ({ color }) => <Settings color={color} size={24} />,
+          tabBarIcon: ({ color }) => <Settings color={color} size={26} />,
+        }}
+      />
+      <Tabs.Screen
+        name="terminal"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="analysis"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="database"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="integrations"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="research"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="workflow-enhanced"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="api-keys"
+        options={{
+          href: null,
         }}
       />
     </Tabs>

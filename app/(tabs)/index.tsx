@@ -28,6 +28,7 @@ import {
   Package,
   Zap,
   Layers,
+  Menu,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAppBuilder, AppGenerationConfig } from '@/contexts/AppBuilderContext';
@@ -51,6 +52,7 @@ export default function AppGeneratorScreen() {
   const [showConfig, setShowConfig] = useState<boolean>(false);
   const [showPreview, setShowPreview] = useState<boolean>(false);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [showQuickMenu, setShowQuickMenu] = useState<boolean>(false);
 
   const [config, setConfig] = useState<AppGenerationConfig>({
     useTypeScript: true,
@@ -94,6 +96,15 @@ export default function AppGeneratorScreen() {
       console.error('[AppGenerator] Generation error:', error);
     }
   };
+
+  const quickMenuActions = [
+    { id: 'terminal', title: 'Terminal', icon: '💻', route: '/terminal' },
+    { id: 'analysis', title: 'Analysis', icon: '📊', route: '/analysis' },
+    { id: 'database', title: 'Database', icon: '🗄️', route: '/database' },
+    { id: 'integrations', title: 'Integrations', icon: '🔌', route: '/integrations' },
+    { id: 'research', title: 'Research', icon: '🔍', route: '/research' },
+    { id: 'deploy', title: 'Deploy', icon: '🚀', route: '/deploy' },
+  ];
 
   const renderConfigOption = (
     label: string,
@@ -149,6 +160,12 @@ export default function AppGeneratorScreen() {
       />
 
       <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.menuButton}
+          onPress={() => setShowQuickMenu(true)}
+        >
+          <Menu color={Colors.Colors.cyan.primary} size={24} />
+        </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>AI App Generator</Text>
           <Text style={styles.headerSubtitle}>Production-Ready Apps in Seconds</Text>
@@ -168,7 +185,7 @@ export default function AppGeneratorScreen() {
           </View>
           <Text style={styles.heroTitle}>Build Complete Apps with AI</Text>
           <Text style={styles.heroDescription}>
-            Describe your app idea and watch as our 4-model AI orchestration
+            Describe your app idea and watch as our dual-model AI (Claude + Gemini)
             generates production-ready code with full compilation and live preview
           </Text>
         </View>
@@ -301,9 +318,9 @@ export default function AppGeneratorScreen() {
           <View style={styles.featureGrid}>
             <View style={styles.featureCard}>
               <Zap color={Colors.Colors.cyan.primary} size={32} />
-              <Text style={styles.featureTitle}>4-Model Orchestration</Text>
+              <Text style={styles.featureTitle}>Dual-Model AI</Text>
               <Text style={styles.featureDescription}>
-                Uses 4 AI models simultaneously for unmatched quality
+                Claude + Gemini working together for superior code quality
               </Text>
             </View>
             <View style={styles.featureCard}>
@@ -330,6 +347,34 @@ export default function AppGeneratorScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <Modal visible={showQuickMenu} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.quickMenuContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Quick Access</Text>
+              <TouchableOpacity onPress={() => setShowQuickMenu(false)}>
+                <X color={Colors.Colors.text.muted} size={24} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.quickMenuGrid}>
+              {quickMenuActions.map(action => (
+                <TouchableOpacity
+                  key={action.id}
+                  style={styles.quickMenuItem}
+                  onPress={() => {
+                    setShowQuickMenu(false);
+                    router.push(action.route as any);
+                  }}
+                >
+                  <Text style={styles.quickMenuIcon}>{action.icon}</Text>
+                  <Text style={styles.quickMenuText}>{action.title}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Modal visible={showConfig} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
@@ -521,9 +566,12 @@ const styles = StyleSheet.create({
     borderBottomColor: Colors.Colors.border.muted,
     gap: 12,
   },
+  menuButton: {
+    padding: 8,
+  },
   headerTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: 'bold' as const,
     color: Colors.Colors.cyanRed.primary,
   },
   headerSubtitle: {
@@ -553,7 +601,7 @@ const styles = StyleSheet.create({
   },
   heroTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: 'bold' as const,
     color: Colors.Colors.cyan.primary,
     textAlign: 'center',
     marginBottom: 12,
@@ -570,7 +618,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: 'bold' as const,
     color: Colors.Colors.cyanRed.primary,
     marginBottom: 16,
   },
@@ -604,7 +652,7 @@ const styles = StyleSheet.create({
   },
   configBadgeText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '600' as const,
     color: Colors.Colors.cyanOrange.primary,
   },
   generateButton: {
@@ -621,7 +669,7 @@ const styles = StyleSheet.create({
   },
   generateButtonText: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: 'bold' as const,
     color: Colors.Colors.text.inverse,
   },
   progressSection: {
@@ -664,7 +712,7 @@ const styles = StyleSheet.create({
   },
   appCardTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: 'bold' as const,
     color: Colors.Colors.cyan.primary,
     marginBottom: 4,
   },
@@ -679,9 +727,9 @@ const styles = StyleSheet.create({
   },
   appStatusText: {
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: '600' as const,
     color: Colors.Colors.text.inverse,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
   },
   appCardStats: {
     flexDirection: 'row',
@@ -715,7 +763,7 @@ const styles = StyleSheet.create({
   },
   featureTitle: {
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: 'bold' as const,
     color: Colors.Colors.cyanRed.primary,
     marginTop: 12,
     marginBottom: 4,
@@ -729,6 +777,37 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
+  },
+  quickMenuContent: {
+    backgroundColor: Colors.Colors.background.card,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '50%',
+  },
+  quickMenuGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: 20,
+    gap: 12,
+  },
+  quickMenuItem: {
+    width: (width - 64) / 3,
+    backgroundColor: Colors.Colors.background.secondary,
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.Colors.border.muted,
+  },
+  quickMenuIcon: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  quickMenuText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: Colors.Colors.text.primary,
+    textAlign: 'center',
   },
   modalContent: {
     backgroundColor: Colors.Colors.background.card,
@@ -747,7 +826,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: 'bold' as const,
     color: Colors.Colors.cyan.primary,
   },
   configList: {
@@ -764,7 +843,7 @@ const styles = StyleSheet.create({
   configLabel: {
     fontSize: 16,
     color: Colors.Colors.cyanOrange.primary,
-    fontWeight: '500',
+    fontWeight: '500' as const,
   },
   configToggle: {
     width: 48,
@@ -798,7 +877,7 @@ const styles = StyleSheet.create({
   selectButtonText: {
     fontSize: 14,
     color: Colors.Colors.cyanOrange.primary,
-    fontWeight: '500',
+    fontWeight: '500' as const,
   },
   selectButtonTextActive: {
     color: Colors.Colors.text.inverse,
@@ -818,7 +897,7 @@ const styles = StyleSheet.create({
   },
   previewTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: 'bold' as const,
     color: Colors.Colors.cyan.primary,
   },
   previewToolbar: {
@@ -841,7 +920,7 @@ const styles = StyleSheet.create({
   },
   previewButtonText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '600' as const,
     color: Colors.Colors.cyanOrange.primary,
   },
   fileList: {
@@ -889,7 +968,7 @@ const styles = StyleSheet.create({
   },
   errorsTitle: {
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: 'bold' as const,
     color: Colors.Colors.red.primary,
     marginBottom: 12,
   },

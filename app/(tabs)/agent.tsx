@@ -23,6 +23,65 @@ const AGENT_AVATARS = {
   security: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/8wdcpx054zjo2vxs2uyyi',
   architect: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/7az3n0jkmn1dst2mrwzh4',
   analyst: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/fev00m4srfxxp6jrjhwh8',
+  devops: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/477pjj06parzpy9owakgh',
+  database: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/8wdcpx054zjo2vxs2uyyi',
+  frontend: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/7az3n0jkmn1dst2mrwzh4',
+  backend: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/fev00m4srfxxp6jrjhwh8',
+  tester: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/477pjj06parzpy9owakgh',
+  designer: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/8wdcpx054zjo2vxs2uyyi',
+};
+
+const AGENT_SPECIALIZATIONS = {
+  coder: {
+    name: 'Master Coder',
+    expertise: 'Full-stack development, algorithms, clean code',
+    color: Colors.Colors.cyan.primary,
+  },
+  security: {
+    name: 'Security Expert',
+    expertise: 'Penetration testing, vulnerability assessment, secure coding',
+    color: Colors.Colors.red.primary,
+  },
+  architect: {
+    name: 'System Architect',
+    expertise: 'System design, scalability, microservices, cloud architecture',
+    color: Colors.Colors.orange.primary,
+  },
+  analyst: {
+    name: 'Code Analyst',
+    expertise: 'Performance optimization, code quality, refactoring',
+    color: Colors.Colors.success,
+  },
+  devops: {
+    name: 'DevOps Engineer',
+    expertise: 'CI/CD, containerization, infrastructure as code, monitoring',
+    color: Colors.Colors.warning,
+  },
+  database: {
+    name: 'Database Specialist',
+    expertise: 'SQL/NoSQL, query optimization, data modeling, migrations',
+    color: Colors.Colors.cyanRed.primary,
+  },
+  frontend: {
+    name: 'Frontend Master',
+    expertise: 'React, React Native, UI/UX, responsive design, animations',
+    color: Colors.Colors.cyanOrange.primary,
+  },
+  backend: {
+    name: 'Backend Expert',
+    expertise: 'APIs, microservices, authentication, server optimization',
+    color: Colors.Colors.cyan.secondary,
+  },
+  tester: {
+    name: 'QA Engineer',
+    expertise: 'Unit testing, integration testing, E2E testing, test automation',
+    color: Colors.Colors.info,
+  },
+  designer: {
+    name: 'UI/UX Designer',
+    expertise: 'User experience, interface design, accessibility, prototyping',
+    color: Colors.Colors.red.secondary,
+  },
 };
 
 type AgentRole = keyof typeof AGENT_AVATARS;
@@ -32,6 +91,12 @@ function getAgentRole(toolName?: string): AgentRole {
   if (toolName.includes('security') || toolName.includes('audit')) return 'security';
   if (toolName.includes('deploy') || toolName.includes('review')) return 'architect';
   if (toolName.includes('analyze') || toolName.includes('analysis')) return 'analyst';
+  if (toolName.includes('devops') || toolName.includes('ci') || toolName.includes('cd')) return 'devops';
+  if (toolName.includes('database') || toolName.includes('sql') || toolName.includes('query')) return 'database';
+  if (toolName.includes('frontend') || toolName.includes('ui') || toolName.includes('component')) return 'frontend';
+  if (toolName.includes('backend') || toolName.includes('api') || toolName.includes('server')) return 'backend';
+  if (toolName.includes('test') || toolName.includes('qa')) return 'tester';
+  if (toolName.includes('design') || toolName.includes('ux')) return 'designer';
   return 'coder';
 }
 
@@ -178,6 +243,18 @@ export default function AgentScreen() {
       icon: <Database color={Colors.Colors.red.primary} size={20} />, 
       action: () => sendMessage('Help me design a scalable database schema with proper indexing and relationships')
     },
+    { 
+      id: 'devops-setup',
+      title: 'DevOps Setup', 
+      icon: <Terminal color={Colors.Colors.warning} size={20} />, 
+      action: () => sendMessage('Set up CI/CD pipeline with automated testing and deployment')
+    },
+    { 
+      id: 'ui-design',
+      title: 'UI Design', 
+      icon: <FileText color={Colors.Colors.cyanOrange.primary} size={20} />, 
+      action: () => sendMessage('Design a modern, accessible UI with best UX practices')
+    },
   ];
 
   return (
@@ -185,7 +262,10 @@ export default function AgentScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Brain color={Colors.Colors.cyan.primary} size={24} />
-        <Text style={styles.headerTitle}>AI Coding Agent</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>AI Coding Agent</Text>
+          <Text style={styles.headerSubtitle}>10 Specialized Agents • 25+ Years Experience</Text>
+        </View>
         <Animated.View style={[styles.statusDot, { transform: [{ scale: pulseAnim }] }]} />
       </View>
 
@@ -231,12 +311,19 @@ export default function AgentScreen() {
                   styles.messageContainer,
                   m.role === 'user' ? styles.userMessage : styles.assistantMessage
                 ]}>
-                  <Text style={[
-                    styles.messageText,
-                    m.role === 'user' ? styles.userMessageText : styles.assistantMessageText
-                  ]}>
-                    {m.role === 'user' ? 'You' : 'AI Agent'}
-                  </Text>
+                  <View style={styles.messageHeader}>
+                    <Text style={[
+                      styles.messageText,
+                      m.role === 'user' ? styles.userMessageText : styles.assistantMessageText
+                    ]}>
+                      {m.role === 'user' ? 'You' : AGENT_SPECIALIZATIONS[agentRole].name}
+                    </Text>
+                    {m.role === 'assistant' && (
+                      <Text style={[styles.agentExpertise, { color: AGENT_SPECIALIZATIONS[agentRole].color }]}>
+                        {AGENT_SPECIALIZATIONS[agentRole].expertise.split(',')[0]}
+                      </Text>
+                    )}
+                  </View>
                   {m.parts.map((part, i) => {
                     switch (part.type) {
                       case 'text':
@@ -345,10 +432,14 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   headerTitle: {
-    flex: 1,
     fontSize: 20,
     fontWeight: 'bold',
     color: Colors.Colors.cyanRed.primary,
+  },
+  headerSubtitle: {
+    fontSize: 11,
+    color: Colors.Colors.cyanOrange.primary,
+    marginTop: 2,
   },
   statusDot: {
     width: 8,
@@ -435,9 +526,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.Colors.border.muted,
   },
+  messageHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
   messageText: {
     fontSize: 14,
-    lineHeight: 20,
+    fontWeight: '600',
+  },
+  agentExpertise: {
+    fontSize: 10,
+    fontStyle: 'italic',
+    opacity: 0.8,
   },
   userMessageText: {
     color: Colors.Colors.text.inverse,
