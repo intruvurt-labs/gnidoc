@@ -40,14 +40,14 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen
-        name="code"
+        name="index"
         options={{
-          title: "Code Gen",
+          title: "App Gen",
           tabBarIcon: ({ color }) => <Code color={color} size={24} />,
         }}
       />
       <Tabs.Screen
-        name="index"
+        name="code"
         options={{
           title: "Dashboard",
           tabBarIcon: ({ color }) => <Monitor color={color} size={24} />,
