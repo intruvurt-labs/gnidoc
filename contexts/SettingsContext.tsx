@@ -41,7 +41,7 @@ const DEFAULT_SETTINGS: AppSettings = {
 
 const DEFAULT_PROFILE: UserProfile = {
   name: 'Developer',
-  email: 'dev@intruvurt.space',
+  email: 'support@intruvurt.space',
 };
 
 export const [SettingsProvider, useSettings] = createContextHook(() => {
