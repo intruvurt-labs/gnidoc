@@ -9,10 +9,13 @@ export const githubOAuthRoute = publicProcedure
     code: z.string(),
   }))
   .mutation(async ({ input }) => {
-    console.log('[GitHub OAuth] Exchanging code for token');
+    console.log('[GitHub OAuth Route] Exchanging code for token');
+    console.log('[GitHub OAuth Route] Client ID configured:', !!GITHUB_CLIENT_ID);
+    console.log('[GitHub OAuth Route] Client Secret configured:', !!GITHUB_CLIENT_SECRET);
 
     if (!GITHUB_CLIENT_ID || !GITHUB_CLIENT_SECRET) {
-      throw new Error('GitHub OAuth credentials not configured on server');
+      console.error('[GitHub OAuth Route] GitHub OAuth credentials not configured');
+      throw new Error('GitHub OAuth credentials not configured on server. Please set EXPO_PUBLIC_GITHUB_CLIENT_ID and EXPO_PUBLIC_GITHUB_CLIENT_SECRET environment variables.');
     }
 
     const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {

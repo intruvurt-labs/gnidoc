@@ -130,9 +130,15 @@ export async function authenticateWithGitHub(): Promise<GitHubAuthResult> {
   let authUrl: string;
   
   if (Platform.OS === 'web') {
-    const { trpcClient } = await import('@/lib/trpc');
-    const urlResponse = await trpcClient.auth.githubUrl.query({ redirectUri });
-    authUrl = urlResponse.authUrl;
+    try {
+      const { trpcClient } = await import('@/lib/trpc');
+      const urlResponse = await trpcClient.auth.githubUrl.query({ redirectUri });
+      authUrl = urlResponse.authUrl;
+      console.log('[GitHub OAuth] Got auth URL from backend:', authUrl);
+    } catch (error) {
+      console.error('[GitHub OAuth] Failed to get auth URL from backend:', error);
+      throw new Error('Failed to initialize GitHub OAuth. Please ensure the backend is running and GitHub credentials are configured.');
+    }
   } else {
     if (!GITHUB_CLIENT_ID) {
       throw new Error('GitHub Client ID not configured. Please set EXPO_PUBLIC_GITHUB_CLIENT_ID in your .env file.');
@@ -159,10 +165,16 @@ export async function authenticateWithGitHub(): Promise<GitHubAuthResult> {
   let user: GitHubUser;
   
   if (Platform.OS === 'web') {
-    const { trpcClient } = await import('@/lib/trpc');
-    const oauthResponse = await trpcClient.auth.githubOAuth.mutate({ code });
-    accessToken = oauthResponse.accessToken;
-    user = oauthResponse.user;
+    try {
+      const { trpcClient } = await import('@/lib/trpc');
+      const oauthResponse = await trpcClient.auth.githubOAuth.mutate({ code });
+      accessToken = oauthResponse.accessToken;
+      user = oauthResponse.user;
+      console.log('[GitHub OAuth] Successfully exchanged code for token via backend');
+    } catch (error) {
+      console.error('[GitHub OAuth] Failed to exchange code for token:', error);
+      throw new Error('Failed to complete GitHub authentication. Please try again.');
+    }
   } else {
     accessToken = await exchangeCodeForToken(code);
     user = await fetchGitHubUser(accessToken);
