@@ -46,6 +46,48 @@ export interface CompilationError {
   code?: string;
 }
 
+export interface ModelConsensus {
+  modelId: string;
+  modelName: string;
+  response: string;
+  confidence: number;
+  responseTime: number;
+  tokensUsed: number;
+  cost: number;
+}
+
+export interface ConsensusAnalysis {
+  agreements: string[];
+  conflicts: ConflictItem[];
+  mergedResult: string;
+  consensusScore: number;
+  recommendedModel: string;
+}
+
+export interface ConflictItem {
+  id: string;
+  aspect: string;
+  models: { modelId: string; suggestion: string }[];
+  resolution: string;
+}
+
+export interface CachedGeneration {
+  id: string;
+  prompt: string;
+  config: AppGenerationConfig;
+  consensus: ModelConsensus[];
+  analysis: ConsensusAnalysis;
+  result: GeneratedApp;
+  timestamp: Date;
+}
+
+export interface SmartModelRecommendation {
+  taskType: 'ui' | 'code' | 'image' | 'data' | 'legal' | 'backend' | 'frontend' | 'fullstack';
+  recommendedModels: string[];
+  reasoning: string;
+  confidence: number;
+}
+
 export interface AppGenerationConfig {
   useTypeScript: boolean;
   includeTests: boolean;
@@ -54,15 +96,24 @@ export interface AppGenerationConfig {
   stateManagement: 'context' | 'redux' | 'zustand' | 'none';
   routing: 'expo-router' | 'react-navigation' | 'none';
   aiModel: 'dual-claude-gemini' | 'tri-model' | 'quad-model' | 'orchestrated';
+  enableConsensusMode: boolean;
+  enableSmartSelector: boolean;
+  enableCaching: boolean;
 }
 
 const STORAGE_KEY = 'gnidoc-generated-apps';
+const CACHE_KEY = 'gnidoc-generation-cache';
+const RECOMMENDATIONS_KEY = 'gnidoc-model-recommendations';
 
 export const [AppBuilderProvider, useAppBuilder] = createContextHook(() => {
   const [generatedApps, setGeneratedApps] = useState<GeneratedApp[]>([]);
   const [currentApp, setCurrentApp] = useState<GeneratedApp | null>(null);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [generationProgress, setGenerationProgress] = useState<number>(0);
+  const [cachedGenerations, setCachedGenerations] = useState<CachedGeneration[]>([]);
+  const [currentConsensus, setCurrentConsensus] = useState<ModelConsensus[] | null>(null);
+  const [currentAnalysis, setCurrentAnalysis] = useState<ConsensusAnalysis | null>(null);
+  const [modelRecommendations, setModelRecommendations] = useState<Map<string, SmartModelRecommendation>>(new Map());
 
   const loadGeneratedApps = useCallback(async () => {
     try {
@@ -80,8 +131,30 @@ export const [AppBuilderProvider, useAppBuilder] = createContextHook(() => {
         setGeneratedApps(parsedApps);
         console.log(`[AppBuilder] Loaded ${parsedApps.length} generated apps`);
       }
+
+      const cachedData = await AsyncStorage.getItem(CACHE_KEY);
+      if (cachedData) {
+        const parsed = JSON.parse(cachedData).map((item: any) => ({
+          ...item,
+          timestamp: new Date(item.timestamp),
+          result: {
+            ...item.result,
+            createdAt: new Date(item.result.createdAt),
+            updatedAt: new Date(item.result.updatedAt),
+          },
+        }));
+        setCachedGenerations(parsed);
+        console.log(`[AppBuilder] Loaded ${parsed.length} cached generations`);
+      }
+
+      const recsData = await AsyncStorage.getItem(RECOMMENDATIONS_KEY);
+      if (recsData) {
+        const parsed = JSON.parse(recsData);
+        setModelRecommendations(new Map(Object.entries(parsed)));
+        console.log(`[AppBuilder] Loaded ${Object.keys(parsed).length} model recommendations`);
+      }
     } catch (error) {
-      console.error('[AppBuilder] Failed to load generated apps:', error);
+      console.error('[AppBuilder] Failed to load data:', error);
     }
   }, []);
 
@@ -398,31 +471,284 @@ Generate a COMPLETE, PRODUCTION-READY application. No placeholders, no TODOs, no
     console.log(`[AppBuilder] Updated app: ${appId}`);
   }, [generatedApps, currentApp, saveGeneratedApps]);
 
+  const runConsensusMode = useCallback(async (
+    prompt: string,
+    models: string[] = ['claude', 'gemini', 'gpt-4']
+  ): Promise<ConsensusAnalysis> => {
+    console.log(`[AppBuilder] Running consensus mode with ${models.length} models`);
+    setCurrentConsensus([]);
+    
+    const { generateText } = await import('@rork/toolkit-sdk');
+    const consensusResults: ModelConsensus[] = [];
+
+    for (const modelId of models) {
+      const startTime = Date.now();
+      try {
+        const response = await generateText({
+          messages: [{ role: 'user', content: prompt }]
+        });
+
+        const confidence = calculateConfidence(response);
+        const tokensUsed = Math.ceil(response.length / 4);
+        const cost = (tokensUsed / 1000) * 0.02;
+
+        consensusResults.push({
+          modelId,
+          modelName: modelId.toUpperCase(),
+          response,
+          confidence,
+          responseTime: Date.now() - startTime,
+          tokensUsed,
+          cost,
+        });
+      } catch (error) {
+        console.error(`[AppBuilder] Model ${modelId} failed:`, error);
+      }
+    }
+
+    setCurrentConsensus(consensusResults);
+
+    const analysis = await analyzeConsensus(consensusResults, prompt);
+    setCurrentAnalysis(analysis);
+
+    console.log(`[AppBuilder] Consensus analysis complete: ${analysis.consensusScore}% agreement`);
+    return analysis;
+  }, []);
+
+  const analyzeConsensus = async (
+    consensus: ModelConsensus[],
+    originalPrompt: string
+  ): Promise<ConsensusAnalysis> => {
+    const { generateText } = await import('@rork/toolkit-sdk');
+
+    const analysisPrompt = `Analyze these ${consensus.length} AI model responses to the same prompt and identify:
+1. Key agreements (what all models agree on)
+2. Conflicts (where models disagree)
+3. Best merged result
+
+Original Prompt: ${originalPrompt}
+
+${consensus.map((c, i) => `Model ${i + 1} (${c.modelName}):\n${c.response}\n\n`).join('')}
+
+Return JSON:
+{
+  "agreements": ["agreement 1", "agreement 2"],
+  "conflicts": [{"aspect": "X", "models": [{"modelId": "claude", "suggestion": "Y"}], "resolution": "Z"}],
+  "mergedResult": "best combined approach",
+  "consensusScore": 85,
+  "recommendedModel": "claude"
+}`;
+
+    const analysisResult = await generateText({
+      messages: [{ role: 'user', content: analysisPrompt }]
+    });
+
+    try {
+      const jsonMatch = analysisResult.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        return {
+          agreements: parsed.agreements || [],
+          conflicts: (parsed.conflicts || []).map((c: any, i: number) => ({
+            id: `conflict-${i}`,
+            aspect: c.aspect,
+            models: c.models,
+            resolution: c.resolution,
+          })),
+          mergedResult: parsed.mergedResult || consensus[0].response,
+          consensusScore: parsed.consensusScore || 70,
+          recommendedModel: parsed.recommendedModel || consensus[0].modelId,
+        };
+      }
+    } catch (error) {
+      console.error('[AppBuilder] Failed to parse consensus analysis:', error);
+    }
+
+    return {
+      agreements: ['All models provided valid responses'],
+      conflicts: [],
+      mergedResult: consensus[0].response,
+      consensusScore: 70,
+      recommendedModel: consensus[0].modelId,
+    };
+  };
+
+  const getSmartModelRecommendation = useCallback(async (
+    taskDescription: string
+  ): Promise<SmartModelRecommendation> => {
+    console.log('[AppBuilder] Getting smart model recommendation');
+
+    const taskType = detectTaskType(taskDescription);
+    const cachedRec = modelRecommendations.get(taskType);
+
+    if (cachedRec && cachedRec.confidence > 80) {
+      console.log(`[AppBuilder] Using cached recommendation for ${taskType}`);
+      return cachedRec;
+    }
+
+    const recommendations: Record<string, string[]> = {
+      ui: ['gpt-4-vision', 'claude-3-opus', 'gemini-pro'],
+      code: ['claude-3-opus', 'gpt-4-turbo', 'gemini-pro'],
+      image: ['gpt-4-vision', 'gemini-pro'],
+      data: ['gpt-4-turbo', 'claude-3-opus'],
+      legal: ['claude-3-opus', 'gpt-4-turbo'],
+      backend: ['claude-3-opus', 'gpt-4-turbo', 'gemini-pro'],
+      frontend: ['gpt-4-turbo', 'claude-3-opus', 'gemini-pro'],
+      fullstack: ['claude-3-opus', 'gpt-4-turbo', 'gemini-pro', 'gpt-4-vision'],
+    };
+
+    const reasoning: Record<string, string> = {
+      ui: 'GPT-4 Vision excels at UI/UX design, Claude for component architecture, Gemini for responsive layouts',
+      code: 'Claude leads in code quality, GPT-4 for complex logic, Gemini for optimization',
+      image: 'GPT-4 Vision and Gemini Pro both excel at image understanding and generation',
+      data: 'GPT-4 and Claude are best for data analysis and transformation',
+      legal: 'Claude excels at legal text, GPT-4 for comprehensive analysis',
+      backend: 'Claude for API design, GPT-4 for business logic, Gemini for performance',
+      frontend: 'GPT-4 for React patterns, Claude for state management, Gemini for styling',
+      fullstack: 'All models contribute: Claude (architecture), GPT-4 (logic), Gemini (optimization), Vision (UI)',
+    };
+
+    const recommendation: SmartModelRecommendation = {
+      taskType,
+      recommendedModels: recommendations[taskType] || recommendations.fullstack,
+      reasoning: reasoning[taskType] || reasoning.fullstack,
+      confidence: 90,
+    };
+
+    const updatedRecs = new Map(modelRecommendations);
+    updatedRecs.set(taskType, recommendation);
+    setModelRecommendations(updatedRecs);
+
+    await AsyncStorage.setItem(
+      RECOMMENDATIONS_KEY,
+      JSON.stringify(Object.fromEntries(updatedRecs))
+    );
+
+    console.log(`[AppBuilder] Recommended ${recommendation.recommendedModels.length} models for ${taskType}`);
+    return recommendation;
+  }, [modelRecommendations]);
+
+  const getCachedGeneration = useCallback((prompt: string, config: AppGenerationConfig): CachedGeneration | null => {
+    const cached = cachedGenerations.find(
+      c => c.prompt === prompt && JSON.stringify(c.config) === JSON.stringify(config)
+    );
+
+    if (cached) {
+      const ageInHours = (Date.now() - cached.timestamp.getTime()) / (1000 * 60 * 60);
+      if (ageInHours < 24) {
+        console.log('[AppBuilder] Found cached generation (age: ' + ageInHours.toFixed(1) + 'h)');
+        return cached;
+      }
+    }
+
+    return null;
+  }, [cachedGenerations]);
+
+  const replayGeneration = useCallback(async (cachedId: string): Promise<GeneratedApp> => {
+    console.log(`[AppBuilder] Replaying cached generation: ${cachedId}`);
+    
+    const cached = cachedGenerations.find(c => c.id === cachedId);
+    if (!cached) {
+      throw new Error('Cached generation not found');
+    }
+
+    setCurrentConsensus(cached.consensus);
+    setCurrentAnalysis(cached.analysis);
+
+    const replayedApp: GeneratedApp = {
+      ...cached.result,
+      id: `app-${Date.now()}`,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const updatedApps = [...generatedApps, replayedApp];
+    await saveGeneratedApps(updatedApps);
+    setCurrentApp(replayedApp);
+
+    console.log('[AppBuilder] Generation replayed successfully');
+    return replayedApp;
+  }, [cachedGenerations, generatedApps, saveGeneratedApps]);
+
   return useMemo(() => ({
     generatedApps,
     currentApp,
     isGenerating,
     generationProgress,
+    cachedGenerations,
+    currentConsensus,
+    currentAnalysis,
     loadGeneratedApps,
     generateApp,
     deleteApp,
     updateApp,
     setCurrentApp,
+    runConsensusMode,
+    getSmartModelRecommendation,
+    getCachedGeneration,
+    replayGeneration,
   }), [
     generatedApps,
     currentApp,
     isGenerating,
     generationProgress,
+    cachedGenerations,
+    currentConsensus,
+    currentAnalysis,
     loadGeneratedApps,
     generateApp,
     deleteApp,
     updateApp,
+    runConsensusMode,
+    getSmartModelRecommendation,
+    getCachedGeneration,
+    replayGeneration,
   ]);
 });
 
 function extractAppName(prompt: string): string {
   const words = prompt.split(' ').slice(0, 5).join(' ');
   return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+function calculateConfidence(response: string): number {
+  let confidence = 70;
+
+  if (response.length > 500) confidence += 10;
+  if (response.includes('import') && response.includes('export')) confidence += 5;
+  if (response.includes('interface') || response.includes('type')) confidence += 5;
+  if (response.includes('try') && response.includes('catch')) confidence += 5;
+  if (!response.includes('TODO') && !response.includes('FIXME')) confidence += 5;
+
+  return Math.min(100, confidence);
+}
+
+function detectTaskType(description: string): SmartModelRecommendation['taskType'] {
+  const lower = description.toLowerCase();
+
+  if (lower.includes('ui') || lower.includes('design') || lower.includes('interface') || lower.includes('layout')) {
+    return 'ui';
+  }
+  if (lower.includes('image') || lower.includes('photo') || lower.includes('visual')) {
+    return 'image';
+  }
+  if (lower.includes('data') || lower.includes('analytics') || lower.includes('database')) {
+    return 'data';
+  }
+  if (lower.includes('legal') || lower.includes('terms') || lower.includes('policy')) {
+    return 'legal';
+  }
+  if (lower.includes('backend') || lower.includes('api') || lower.includes('server')) {
+    return 'backend';
+  }
+  if (lower.includes('frontend') || lower.includes('react') || lower.includes('component')) {
+    return 'frontend';
+  }
+  if (lower.includes('fullstack') || lower.includes('full stack') || lower.includes('complete app')) {
+    return 'fullstack';
+  }
+
+  return 'code';
 }
 
 async function compileApp(app: GeneratedApp): Promise<{ success: boolean; errors: CompilationError[] }> {

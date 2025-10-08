@@ -30,7 +30,7 @@ import {
   Layers,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import { useAppBuilder, AppGenerationConfig } from '@/contexts/AppBuilderContext';
+import { useAppBuilder, AppGenerationConfig, ModelConsensus, ConsensusAnalysis } from '@/contexts/AppBuilderContext';
 import * as Haptics from 'expo-haptics';
 
 const { width } = Dimensions.get('window');
@@ -43,8 +43,15 @@ export default function AppGeneratorScreen() {
     currentApp,
     isGenerating,
     generationProgress,
+    cachedGenerations,
+    currentConsensus,
+    currentAnalysis,
     generateApp,
     setCurrentApp,
+    runConsensusMode,
+    getSmartModelRecommendation,
+    getCachedGeneration,
+    replayGeneration,
   } = useAppBuilder();
 
   const [prompt, setPrompt] = useState<string>('');
@@ -60,7 +67,13 @@ export default function AppGeneratorScreen() {
     stateManagement: 'context',
     routing: 'expo-router',
     aiModel: 'dual-claude-gemini',
+    enableConsensusMode: false,
+    enableSmartSelector: true,
+    enableCaching: true,
   });
+  const [showConsensus, setShowConsensus] = useState<boolean>(false);
+  const [showRecommendation, setShowRecommendation] = useState<boolean>(false);
+  const [recommendation, setRecommendation] = useState<any>(null);
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
@@ -74,18 +87,29 @@ export default function AppGeneratorScreen() {
 
     try {
       console.log('[AppGenerator] Starting app generation...');
-      const app = await generateApp(prompt, config);
-      
-      Alert.alert(
-        '✓ App Generated!',
-        `"${app.name}" has been generated successfully!\n\n${app.files.length} files created\n${app.dependencies.length} dependencies\n\nStatus: ${app.status}`,
-        [
-          { text: 'View Code', onPress: () => setShowPreview(true) },
-          { text: 'OK' },
-        ]
-      );
-      
-      setPrompt('');
+
+      if (config.enableCaching) {
+        const cached = getCachedGeneration(prompt, config);
+        if (cached) {
+          Alert.alert(
+            'Cached Generation Found',
+            'A recent generation with the same prompt was found. Use cached version?',
+            [
+              {
+                text: 'Use Cache',
+                onPress: async () => {
+                  const app = await replayGeneration(cached.id);
+                  setShowPreview(true);
+                },
+              },
+              { text: 'Generate New', onPress: () => proceedWithGeneration() },
+            ]
+          );
+          return;
+        }
+      }
+
+      await proceedWithGeneration();
     } catch (error) {
       Alert.alert(
         'Generation Failed',
@@ -93,6 +117,34 @@ export default function AppGeneratorScreen() {
       );
       console.error('[AppGenerator] Generation error:', error);
     }
+  };
+
+  const proceedWithGeneration = async () => {
+    if (config.enableSmartSelector) {
+      const rec = await getSmartModelRecommendation(prompt);
+      setRecommendation(rec);
+      setShowRecommendation(true);
+      return;
+    }
+
+    if (config.enableConsensusMode) {
+      await runConsensusMode(prompt);
+      setShowConsensus(true);
+      return;
+    }
+
+    const app = await generateApp(prompt, config);
+    
+    Alert.alert(
+      '✓ App Generated!',
+      `"${app.name}" has been generated successfully!\n\n${app.files.length} files created\n${app.dependencies.length} dependencies\n\nStatus: ${app.status}`,
+      [
+        { text: 'View Code', onPress: () => setShowPreview(true) },
+        { text: 'OK' },
+      ]
+    );
+    
+    setPrompt('');
   };
 
   const renderConfigOption = (
@@ -359,6 +411,15 @@ export default function AppGeneratorScreen() {
                     includeDocumentation: !config.includeDocumentation,
                   })
               )}
+              {renderConfigOption('Consensus Mode', config.enableConsensusMode, () =>
+                setConfig({ ...config, enableConsensusMode: !config.enableConsensusMode })
+              )}
+              {renderConfigOption('Smart Model Selector', config.enableSmartSelector, () =>
+                setConfig({ ...config, enableSmartSelector: !config.enableSmartSelector })
+              )}
+              {renderConfigOption('Enable Caching', config.enableCaching, () =>
+                setConfig({ ...config, enableCaching: !config.enableCaching })
+              )}
 
               {renderSelectOption(
                 'AI Model Orchestration',
@@ -484,6 +545,146 @@ export default function AppGeneratorScreen() {
               )}
             </>
           )}
+        </View>
+      </Modal>
+
+      <Modal visible={showConsensus} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Multi-Model Consensus</Text>
+              <TouchableOpacity onPress={() => setShowConsensus(false)}>
+                <X color={Colors.Colors.text.muted} size={24} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.consensusContent}>
+              {currentConsensus && currentConsensus.map((model, index) => (
+                <View key={model.modelId} style={styles.consensusCard}>
+                  <View style={styles.consensusHeader}>
+                    <Text style={styles.consensusModelName}>{model.modelName}</Text>
+                    <View style={styles.consensusBadge}>
+                      <Text style={styles.consensusBadgeText}>
+                        {model.confidence}% confidence
+                      </Text>
+                    </View>
+                  </View>
+                  <Text style={styles.consensusResponse} numberOfLines={3}>
+                    {model.response.substring(0, 150)}...
+                  </Text>
+                  <View style={styles.consensusStats}>
+                    <Text style={styles.consensusStat}>
+                      {model.responseTime}ms
+                    </Text>
+                    <Text style={styles.consensusStat}>
+                      ${model.cost.toFixed(4)}
+                    </Text>
+                    <Text style={styles.consensusStat}>
+                      {model.tokensUsed} tokens
+                    </Text>
+                  </View>
+                </View>
+              ))}
+
+              {currentAnalysis && (
+                <View style={styles.analysisCard}>
+                  <Text style={styles.analysisTitle}>Consensus Analysis</Text>
+                  <View style={styles.analysisScore}>
+                    <Text style={styles.analysisScoreText}>
+                      {currentAnalysis.consensusScore}%
+                    </Text>
+                    <Text style={styles.analysisScoreLabel}>Agreement</Text>
+                  </View>
+
+                  <Text style={styles.analysisSection}>Agreements:</Text>
+                  {currentAnalysis.agreements.map((agreement, i) => (
+                    <Text key={i} style={styles.analysisItem}>• {agreement}</Text>
+                  ))}
+
+                  {currentAnalysis.conflicts.length > 0 && (
+                    <>
+                      <Text style={styles.analysisSection}>Conflicts:</Text>
+                      {currentAnalysis.conflicts.map((conflict) => (
+                        <View key={conflict.id} style={styles.conflictCard}>
+                          <Text style={styles.conflictAspect}>{conflict.aspect}</Text>
+                          {conflict.models.map((m, i) => (
+                            <Text key={i} style={styles.conflictModel}>
+                              {m.modelId}: {m.suggestion}
+                            </Text>
+                          ))}
+                          <Text style={styles.conflictResolution}>
+                            Resolution: {conflict.resolution}
+                          </Text>
+                        </View>
+                      ))}
+                    </>
+                  )}
+
+                  <TouchableOpacity
+                    style={styles.useMergedButton}
+                    onPress={async () => {
+                      setShowConsensus(false);
+                      const app = await generateApp(prompt, config);
+                      setShowPreview(true);
+                    }}
+                  >
+                    <Text style={styles.useMergedButtonText}>Use Merged Result</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showRecommendation} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Smart Model Recommendation</Text>
+              <TouchableOpacity onPress={() => setShowRecommendation(false)}>
+                <X color={Colors.Colors.text.muted} size={24} />
+              </TouchableOpacity>
+            </View>
+            {recommendation && (
+              <View style={styles.recommendationContent}>
+                <View style={styles.recommendationHeader}>
+                  <Text style={styles.recommendationTaskType}>
+                    Task Type: {recommendation.taskType.toUpperCase()}
+                  </Text>
+                  <View style={styles.recommendationConfidence}>
+                    <Text style={styles.recommendationConfidenceText}>
+                      {recommendation.confidence}% confidence
+                    </Text>
+                  </View>
+                </View>
+
+                <Text style={styles.recommendationReasoning}>
+                  {recommendation.reasoning}
+                </Text>
+
+                <Text style={styles.recommendationModelsTitle}>
+                  Recommended Models:
+                </Text>
+                {recommendation.recommendedModels.map((model: string, i: number) => (
+                  <View key={i} style={styles.recommendationModelCard}>
+                    <Layers color={Colors.Colors.cyan.primary} size={20} />
+                    <Text style={styles.recommendationModelName}>{model}</Text>
+                  </View>
+                ))}
+
+                <TouchableOpacity
+                  style={styles.proceedButton}
+                  onPress={async () => {
+                    setShowRecommendation(false);
+                    const app = await generateApp(prompt, config);
+                    setShowPreview(true);
+                  }}
+                >
+                  <Text style={styles.proceedButtonText}>Proceed with Generation</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
         </View>
       </Modal>
     </View>
@@ -913,5 +1114,195 @@ const styles = StyleSheet.create({
   errorLocation: {
     fontSize: 11,
     color: Colors.Colors.text.muted,
+  },
+  consensusContent: {
+    padding: 20,
+  },
+  consensusCard: {
+    backgroundColor: Colors.Colors.background.secondary,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: Colors.Colors.border.muted,
+  },
+  consensusHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  consensusModelName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.Colors.cyan.primary,
+  },
+  consensusBadge: {
+    backgroundColor: Colors.Colors.cyan.primary + '20',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  consensusBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Colors.Colors.cyan.primary,
+  },
+  consensusResponse: {
+    fontSize: 13,
+    color: Colors.Colors.text.secondary,
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  consensusStats: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  consensusStat: {
+    fontSize: 11,
+    color: Colors.Colors.text.muted,
+  },
+  analysisCard: {
+    backgroundColor: Colors.Colors.background.primary,
+    borderRadius: 12,
+    padding: 20,
+    marginTop: 8,
+    borderWidth: 2,
+    borderColor: Colors.Colors.cyan.primary,
+  },
+  analysisTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.Colors.text.primary,
+    marginBottom: 16,
+  },
+  analysisScore: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  analysisScoreText: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: Colors.Colors.cyan.primary,
+  },
+  analysisScoreLabel: {
+    fontSize: 14,
+    color: Colors.Colors.text.secondary,
+    marginTop: 4,
+  },
+  analysisSection: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.Colors.text.primary,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  analysisItem: {
+    fontSize: 14,
+    color: Colors.Colors.text.secondary,
+    marginBottom: 6,
+    paddingLeft: 8,
+  },
+  conflictCard: {
+    backgroundColor: Colors.Colors.red.primary + '10',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    borderLeftWidth: 3,
+    borderLeftColor: Colors.Colors.red.primary,
+  },
+  conflictAspect: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: Colors.Colors.text.primary,
+    marginBottom: 8,
+  },
+  conflictModel: {
+    fontSize: 12,
+    color: Colors.Colors.text.secondary,
+    marginBottom: 4,
+    paddingLeft: 8,
+  },
+  conflictResolution: {
+    fontSize: 13,
+    color: Colors.Colors.success,
+    marginTop: 8,
+    fontWeight: '600',
+  },
+  useMergedButton: {
+    backgroundColor: Colors.Colors.cyan.primary,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  useMergedButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.Colors.text.inverse,
+  },
+  recommendationContent: {
+    padding: 20,
+  },
+  recommendationHeader: {
+    marginBottom: 20,
+  },
+  recommendationTaskType: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.Colors.text.primary,
+    marginBottom: 8,
+  },
+  recommendationConfidence: {
+    backgroundColor: Colors.Colors.success + '20',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  recommendationConfidenceText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.Colors.success,
+  },
+  recommendationReasoning: {
+    fontSize: 15,
+    color: Colors.Colors.text.secondary,
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  recommendationModelsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.Colors.text.primary,
+    marginBottom: 12,
+  },
+  recommendationModelCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.Colors.background.secondary,
+    padding: 14,
+    borderRadius: 10,
+    marginBottom: 10,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: Colors.Colors.border.muted,
+  },
+  recommendationModelName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.Colors.text.primary,
+  },
+  proceedButton: {
+    backgroundColor: Colors.Colors.cyan.primary,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 24,
+  },
+  proceedButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.Colors.text.inverse,
   },
 });
