@@ -4,6 +4,8 @@ import loginRoute from "./routes/auth/login/route";
 import signupRoute from "./routes/auth/signup/route";
 import profileRoute from "./routes/auth/profile/route";
 import meRoute from "./routes/auth/me/route";
+import githubOAuthRoute from "./routes/auth/github-oauth/route";
+import githubUrlRoute from "./routes/auth/github-url/route";
 import conductResearchRoute from "./routes/research/conduct/route";
 import researchHistoryRoute from "./routes/research/history/route";
 import deleteResearchRoute from "./routes/research/delete/route";
@@ -22,6 +24,8 @@ export const appRouter = createTRPCRouter({
     signup: signupRoute,
     profile: profileRoute,
     me: meRoute,
+    githubOAuth: githubOAuthRoute,
+    githubUrl: githubUrlRoute,
   }),
   research: createTRPCRouter({
     conduct: conductResearchRoute,

@@ -119,23 +119,26 @@ export async function fetchGitHubUser(accessToken: string): Promise<GitHubUser> 
 }
 
 export async function authenticateWithGitHub(): Promise<GitHubAuthResult> {
-  if (Platform.OS === 'web') {
-    throw new Error('GitHub OAuth on web requires server-side implementation. Please use the mobile app or implement a backend OAuth flow.');
-  }
-
   const redirectUri = AuthSession.makeRedirectUri({
     scheme: 'aiappgen',
     path: 'auth/callback',
   });
 
   console.log('[GitHub OAuth] Redirect URI:', redirectUri);
-  console.log('[GitHub OAuth] Client ID:', GITHUB_CLIENT_ID ? 'Configured' : 'Missing');
+  console.log('[GitHub OAuth] Platform:', Platform.OS);
 
-  if (!GITHUB_CLIENT_ID) {
-    throw new Error('GitHub Client ID not configured. Please set EXPO_PUBLIC_GITHUB_CLIENT_ID in your .env file.');
+  let authUrl: string;
+  
+  if (Platform.OS === 'web') {
+    const { trpcClient } = await import('@/lib/trpc');
+    const urlResponse = await trpcClient.auth.githubUrl.query({ redirectUri });
+    authUrl = urlResponse.authUrl;
+  } else {
+    if (!GITHUB_CLIENT_ID) {
+      throw new Error('GitHub Client ID not configured. Please set EXPO_PUBLIC_GITHUB_CLIENT_ID in your .env file.');
+    }
+    authUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=read:user%20user:email%20repo`;
   }
-
-  const authUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=read:user%20user:email%20repo`;
 
   const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
 
@@ -151,8 +154,19 @@ export async function authenticateWithGitHub(): Promise<GitHubAuthResult> {
   }
 
   const code = codeMatch[1];
-  const accessToken = await exchangeCodeForToken(code);
-  const user = await fetchGitHubUser(accessToken);
+  
+  let accessToken: string;
+  let user: GitHubUser;
+  
+  if (Platform.OS === 'web') {
+    const { trpcClient } = await import('@/lib/trpc');
+    const oauthResponse = await trpcClient.auth.githubOAuth.mutate({ code });
+    accessToken = oauthResponse.accessToken;
+    user = oauthResponse.user;
+  } else {
+    accessToken = await exchangeCodeForToken(code);
+    user = await fetchGitHubUser(accessToken);
+  }
 
   console.log('[GitHub OAuth] Authentication successful:', user.login);
 
