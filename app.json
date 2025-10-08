@@ -5,24 +5,19 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "gnidoc",                // deep link: gnidoc://
+    "scheme": "gnidoc",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "app.gnidoc.super-expert-master-web-and-app-coding-agent",
       "usesIcloudStorage": true
-      // Note: enable iCloud capability in Apple Developer, and ensure the
-      // iCloud container matches the plugin's environment (see plugins below).
     },
-
     "android": {
       "package": "app.gnidoc.super-expert-master-web-and-app-coding-agent",
       "adaptiveIcon": {
@@ -30,25 +25,15 @@
         "backgroundColor": "#ffffff"
       },
       "permissions": []
-      /*
-        Why empty?
-        - `INTERNET` is always included automatically.
-        - Storage runtime perms are legacy (READ/WRITE_EXTERNAL_STORAGE). DocumentPicker
-          handles its own intents; with scoped storage you usually don't need them.
-        - `VIBRATE` is auto-added if you use Haptics on older targets; modern SDKs don’t require declaring it.
-      */
     },
-
     "web": {
       "favicon": "./assets/images/favicon.png"
-      // For Next.js/Expo Router on web, you can also add SEO tags in _document or metadata.
     },
-
     "plugins": [
       [
         "expo-router",
         {
-          "origin": "https://gnidoc.xyz"    // update from rork.com → your domain
+          "origin": "https://gnidoc.xyz"
         }
       ],
       [
@@ -57,7 +42,6 @@
           "iCloudContainerEnvironment": "Production"
         }
       ],
-      // Optional but recommended: ensures native splash is configured correctly
       [
         "expo-splash-screen",
         {
@@ -72,11 +56,9 @@
         }
       ]
     ],
-
     "experiments": {
       "typedRoutes": true
     },
-
     "assetBundlePatterns": ["**/*"],
     "runtimeVersion": { "policy": "sdkVersion" },
     "updates": {
