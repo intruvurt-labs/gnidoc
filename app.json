@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Super Expert Master Web and App Coding Agent",
-    "slug": "super-expert-master-web-and-app-coding-agent",
+    "name": "gnidoC terceS",
+    "slug": "gnidoc-terces",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -15,11 +15,11 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.gnidoc.super-expert-master-web-and-app-coding-agent",
+      "bundleIdentifier": "app.rork.gnidoc",
       "usesIcloudStorage": true
     },
     "android": {
-      "package": "app.gnidoc.super-expert-master-web-and-app-coding-agent",
+      "package": "app.rork.gnidoc",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
