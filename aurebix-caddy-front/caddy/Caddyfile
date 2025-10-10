@@ -1,0 +1,14 @@
+
+aurebix.pro {
+  encode zstd gzip
+  @websockets {
+    header Connection *Upgrade*
+    header Upgrade    websocket
+  }
+  reverse_proxy @websockets host.docker.internal:8000
+  reverse_proxy host.docker.internal:8000
+}
+
+www.aurebix.pro {
+  redir https://aurebix.pro{uri}
+}
