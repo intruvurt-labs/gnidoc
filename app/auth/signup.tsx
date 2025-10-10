@@ -13,9 +13,10 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { UserPlus, Mail, Lock, User, Github } from 'lucide-react-native';
+import { Mail, Lock, User, Github, Sparkles } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
+import AnimatedMoltenBackground from '@/components/AnimatedMoltenBackground';
 
 export default function SignupScreen() {
   const [name, setName] = useState<string>('');
@@ -66,19 +67,23 @@ export default function SignupScreen() {
   }, [loginWithOAuth, router]);
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20 }]}
-        showsVerticalScrollIndicator={false}
+    <View style={styles.container}>
+      <AnimatedMoltenBackground intensity={0.5} />
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={styles.header}>
-          <UserPlus color={Colors.Colors.cyan.primary} size={48} />
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join gnidoC Terces today</Text>
-        </View>
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20 }]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.header}>
+            <View style={styles.logoContainer}>
+              <Sparkles color={Colors.Colors.red.primary} size={56} strokeWidth={2.5} />
+            </View>
+            <Text style={styles.title}>Create Account</Text>
+            <Text style={styles.subtitle}>Join gnidoC Terces today</Text>
+          </View>
 
         <View style={styles.form}>
           <View style={styles.inputContainer}>
@@ -176,9 +181,10 @@ export default function SignupScreen() {
               Already have an account? <Text style={styles.loginLinkTextBold}>Sign In</Text>
             </Text>
           </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -186,6 +192,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.Colors.background.primary,
+  },
+  keyboardView: {
+    flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
@@ -196,17 +205,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 40,
   },
+  logoContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: Colors.Colors.background.card,
+    borderWidth: 3,
+    borderColor: Colors.Colors.red.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    shadowColor: Colors.Colors.red.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 10,
+  },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: Colors.Colors.text.primary,
-    marginTop: 16,
+    fontSize: 36,
+    fontWeight: 'bold' as const,
+    color: Colors.Colors.red.primary,
     marginBottom: 8,
+    textShadowColor: Colors.Colors.red.glow,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
   },
   subtitle: {
     fontSize: 16,
-    color: Colors.Colors.text.secondary,
+    color: Colors.Colors.orange.primary,
     textAlign: 'center',
+    fontWeight: '500' as const,
   },
   form: {
     width: '100%',
@@ -216,8 +244,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: Colors.Colors.background.card,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.Colors.border.muted,
+    borderWidth: 2,
+    borderColor: Colors.Colors.red.primary + '40',
     paddingHorizontal: 16,
     marginBottom: 16,
   },
@@ -228,23 +256,30 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 50,
     fontSize: 16,
-    color: Colors.Colors.text.primary,
+    color: Colors.Colors.red.primary,
+    fontWeight: '500' as const,
   },
   signupButton: {
-    backgroundColor: Colors.Colors.cyan.primary,
+    backgroundColor: Colors.Colors.red.primary,
     borderRadius: 12,
-    height: 50,
+    height: 54,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,
+    shadowColor: Colors.Colors.red.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
   },
   signupButtonDisabled: {
     opacity: 0.6,
   },
   signupButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.Colors.text.inverse,
+    fontSize: 18,
+    fontWeight: 'bold' as const,
+    color: Colors.Colors.black.primary,
+    letterSpacing: 0.5,
   },
   divider: {
     flexDirection: 'row',
@@ -267,15 +302,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: Colors.Colors.background.card,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.Colors.border.muted,
+    borderWidth: 2,
+    borderColor: Colors.Colors.cyan.primary + '60',
     height: 50,
     gap: 12,
   },
   oauthButtonText: {
     fontSize: 16,
-    fontWeight: '500',
-    color: Colors.Colors.text.primary,
+    fontWeight: '600' as const,
+    color: Colors.Colors.cyan.primary,
   },
   loginLink: {
     marginTop: 24,
@@ -286,7 +321,7 @@ const styles = StyleSheet.create({
     color: Colors.Colors.text.secondary,
   },
   loginLinkTextBold: {
-    fontWeight: '600',
-    color: Colors.Colors.cyan.primary,
+    fontWeight: '700' as const,
+    color: Colors.Colors.red.primary,
   },
 });
