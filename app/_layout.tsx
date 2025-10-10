@@ -13,6 +13,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { trpc, trpcClient } from "@/lib/trpc";
+import AnimatedMoltenBackground from "@/components/AnimatedMoltenBackground";
 
 const AgentProvider = lazy(() => import("@/contexts/AgentContext").then(m => ({ default: m.AgentProvider })));
 const DatabaseProvider = lazy(() => import("@/contexts/DatabaseContext").then(m => ({ default: m.DatabaseProvider })));
@@ -204,7 +205,14 @@ export default function RootLayout() {
                                 <IntegrationsProvider>
                                   <ResearchProvider>
                                     <StatusBar style="light" backgroundColor={Colors.Colors.background.primary} />
-                                    <RootLayoutNav />
+                                    <View style={{ flex: 1 }}>
+                                      <AnimatedMoltenBackground
+                                        heroBannerUri="https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/3pfuycv4ultfwtbe982xa"
+                                        textLogoUri="https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/zpu4ny0spvqvc2vy7j5l5"
+                                        symbolUri="https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/xmcljnuxc94h1q3rw1hs1"
+                                      />
+                                      <RootLayoutNav />
+                                    </View>
                                   </ResearchProvider>
                                 </IntegrationsProvider>
                               </NoCodeBuilderProvider>
