@@ -10,10 +10,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Mail, Lock, User, Github, Sparkles } from 'lucide-react-native';
+import { Mail, Lock, User, Github, Zap, Shield } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAuth } from '@/contexts/AuthContext';
 import AnimatedMoltenBackground from '@/components/AnimatedMoltenBackground';
@@ -68,21 +69,39 @@ export default function SignupScreen() {
 
   return (
     <View style={styles.container}>
-      <AnimatedMoltenBackground intensity={0.5} />
+      <AnimatedMoltenBackground 
+        intensity={0.8}
+        heroBannerUri="https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/qvhbsg2l35ali5raxtus0"
+        symbolUri="https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/k95rc9dv5sso3otf9ckgb"
+      />
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
-          contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20 }]}
+          contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 40 }]}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
             <View style={styles.logoContainer}>
-              <Sparkles color={Colors.Colors.red.primary} size={56} strokeWidth={2.5} />
+              <Image
+                source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/9uyhiznsj2k9cegpqglzk' }}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
             </View>
-            <Text style={styles.title}>Create Account</Text>
-            <Text style={styles.subtitle}>Join gnidoC Terces today</Text>
+            <Text style={styles.title}>Join gnidoC terceS</Text>
+            <Text style={styles.subtitle}>Start Building with AI Today</Text>
+            <View style={styles.featureBadges}>
+              <View style={styles.featureBadge}>
+                <Zap color={Colors.Colors.cyan.primary} size={14} />
+                <Text style={styles.featureBadgeText}>Free Trial</Text>
+              </View>
+              <View style={styles.featureBadge}>
+                <Shield color={Colors.Colors.red.primary} size={14} />
+                <Text style={styles.featureBadgeText}>No Credit Card</Text>
+              </View>
+            </View>
           </View>
 
         <View style={styles.form}>
@@ -206,35 +225,63 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   logoContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
     backgroundColor: Colors.Colors.background.card,
-    borderWidth: 3,
+    borderWidth: 4,
     borderColor: Colors.Colors.red.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
     shadowColor: Colors.Colors.red.primary,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
-    elevation: 10,
+    shadowOpacity: 0.8,
+    shadowRadius: 30,
+    elevation: 15,
+    overflow: 'hidden',
+  },
+  logoImage: {
+    width: '90%',
+    height: '90%',
   },
   title: {
-    fontSize: 36,
+    fontSize: 32,
     fontWeight: 'bold' as const,
     color: Colors.Colors.red.primary,
     marginBottom: 8,
     textShadowColor: Colors.Colors.red.glow,
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
+    textShadowRadius: 15,
+    letterSpacing: 1.5,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: Colors.Colors.orange.primary,
     textAlign: 'center',
-    fontWeight: '500' as const,
+    fontWeight: '600' as const,
+    marginBottom: 16,
+  },
+  featureBadges: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  featureBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.Colors.background.card,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: Colors.Colors.red.primary + '40',
+  },
+  featureBadgeText: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+    color: Colors.Colors.text.primary,
   },
   form: {
     width: '100%',
@@ -242,12 +289,17 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.Colors.background.card,
-    borderRadius: 12,
+    backgroundColor: Colors.Colors.background.card + 'E6',
+    borderRadius: 16,
     borderWidth: 2,
-    borderColor: Colors.Colors.red.primary + '40',
+    borderColor: Colors.Colors.red.primary + '60',
     paddingHorizontal: 16,
     marginBottom: 16,
+    shadowColor: Colors.Colors.red.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   inputIcon: {
     marginRight: 12,
@@ -261,16 +313,18 @@ const styles = StyleSheet.create({
   },
   signupButton: {
     backgroundColor: Colors.Colors.red.primary,
-    borderRadius: 12,
-    height: 54,
+    borderRadius: 16,
+    height: 56,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,
     shadowColor: Colors.Colors.red.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.6,
+    shadowRadius: 16,
+    elevation: 10,
+    borderWidth: 2,
+    borderColor: Colors.Colors.red.secondary,
   },
   signupButtonDisabled: {
     opacity: 0.6,
@@ -300,12 +354,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.Colors.background.card,
-    borderRadius: 12,
+    backgroundColor: Colors.Colors.background.card + 'E6',
+    borderRadius: 16,
     borderWidth: 2,
-    borderColor: Colors.Colors.cyan.primary + '60',
-    height: 50,
+    borderColor: Colors.Colors.cyan.primary + '80',
+    height: 52,
     gap: 12,
+    shadowColor: Colors.Colors.cyan.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   oauthButtonText: {
     fontSize: 16,
