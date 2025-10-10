@@ -26,6 +26,23 @@ interface Message {
   timestamp: Date;
 }
 
+interface SessionMemory {
+  sessionId: string;
+  startTime: Date;
+  endTime?: Date;
+  messageCount: number;
+  topics: string[];
+  resolvedIssues: string[];
+  pendingIssues: string[];
+}
+
+interface ExtendedMemory {
+  sessions: SessionMemory[];
+  userPreferences: Record<string, any>;
+  commonIssues: string[];
+  lastInteraction: Date;
+}
+
 interface AISupportChatProps {
   userTier?: 'free' | 'starter' | 'professional' | 'premium';
 }
@@ -36,6 +53,9 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
   const [escalated, setEscalated] = useState<boolean>(false);
   const [assistantReplies, setAssistantReplies] = useState<number>(0);
+  const [currentSessionId] = useState<string>(() => `session-${Date.now()}`);
+  const [extendedMemory, setExtendedMemory] = useState<ExtendedMemory | null>(null);
+  const [sessionCount, setSessionCount] = useState<number>(0);
   const slideAnim = useRef(new Animated.Value(height)).current;
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -53,10 +73,107 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
         setMessages(history);
         console.log('[AISupportChat] Loaded conversation history:', history.length, 'messages');
       }
+
+      const memoryStored = await AsyncStorage.getItem('ai-support-extended-memory');
+      if (memoryStored) {
+        const memory: ExtendedMemory = JSON.parse(memoryStored);
+        setExtendedMemory(memory);
+        setSessionCount(memory.sessions.length);
+        console.log('[AISupportChat] Loaded extended memory:', memory.sessions.length, 'sessions');
+
+        if (memory.sessions.length >= 2) {
+          const contextMessage = buildContextFromMemory(memory);
+          console.log('[AISupportChat] Building context from', memory.sessions.length, 'previous sessions');
+          await sendMessage(contextMessage);
+        }
+      }
     } catch (err) {
       console.error('[AISupportChat] Failed to load conversation history:', err);
     }
   }, [setMessages]);
+
+  const buildContextFromMemory = (memory: ExtendedMemory): string => {
+    const recentSessions = memory.sessions.slice(-3);
+    let context = 'Context from previous sessions:\n';
+    
+    recentSessions.forEach((session, idx) => {
+      context += `\nSession ${idx + 1} (${new Date(session.startTime).toLocaleDateString()}):\n`;
+      context += `- Topics discussed: ${session.topics.join(', ')}\n`;
+      if (session.resolvedIssues.length > 0) {
+        context += `- Resolved: ${session.resolvedIssues.join(', ')}\n`;
+      }
+      if (session.pendingIssues.length > 0) {
+        context += `- Still pending: ${session.pendingIssues.join(', ')}\n`;
+      }
+    });
+
+    if (memory.commonIssues.length > 0) {
+      context += `\nCommon issues: ${memory.commonIssues.join(', ')}\n`;
+    }
+
+    return context;
+  };
+
+  const updateExtendedMemory = async (newMessage: Message) => {
+    try {
+      const memoryStored = await AsyncStorage.getItem('ai-support-extended-memory');
+      let memory: ExtendedMemory = memoryStored
+        ? JSON.parse(memoryStored)
+        : {
+            sessions: [],
+            userPreferences: {},
+            commonIssues: [],
+            lastInteraction: new Date(),
+          };
+
+      let currentSession = memory.sessions.find(s => s.sessionId === currentSessionId);
+      if (!currentSession) {
+        currentSession = {
+          sessionId: currentSessionId,
+          startTime: new Date(),
+          messageCount: 0,
+          topics: [],
+          resolvedIssues: [],
+          pendingIssues: [],
+        };
+        memory.sessions.push(currentSession);
+      }
+
+      currentSession.messageCount++;
+      currentSession.endTime = new Date();
+
+      const topics = extractTopics(newMessage.content);
+      topics.forEach(topic => {
+        if (!currentSession!.topics.includes(topic)) {
+          currentSession!.topics.push(topic);
+        }
+      });
+
+      memory.lastInteraction = new Date();
+
+      await AsyncStorage.setItem('ai-support-extended-memory', JSON.stringify(memory));
+      setExtendedMemory(memory);
+      console.log('[AISupportChat] Updated extended memory');
+    } catch (error) {
+      console.error('[AISupportChat] Failed to update extended memory:', error);
+    }
+  };
+
+  const extractTopics = (content: string): string[] => {
+    const topics: string[] = [];
+    const keywords = [
+      'deployment', 'error', 'bug', 'feature', 'authentication', 'database',
+      'api', 'ui', 'performance', 'security', 'testing', 'build', 'configuration'
+    ];
+    
+    keywords.forEach(keyword => {
+      if (content.toLowerCase().includes(keyword)) {
+        topics.push(keyword);
+      }
+    });
+    
+    return topics;
+  };
 
   useEffect(() => {
     loadConversationHistory();
@@ -160,12 +277,16 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
       saveConversationHistory(messages);
 
       const latest = convertedMessages[convertedMessages.length - 1];
-      if (latest && latest.role === 'assistant') {
-        setAssistantReplies((c) => c + 1);
-        console.log('[AISupportChat] Assistant replied. Count =', assistantReplies + 1);
-        if (!escalated && isPaidTier && assistantReplies === 0 && isUnsolvable(latest.content)) {
-          console.log('[AISupportChat] Auto-escalating after first unsolved assistant reply');
-          handleEscalate(true);
+      if (latest) {
+        updateExtendedMemory(latest);
+        
+        if (latest.role === 'assistant') {
+          setAssistantReplies((c) => c + 1);
+          console.log('[AISupportChat] Assistant replied. Count =', assistantReplies + 1);
+          if (!escalated && isPaidTier && assistantReplies === 0 && isUnsolvable(latest.content)) {
+            console.log('[AISupportChat] Auto-escalating after first unsolved assistant reply');
+            handleEscalate(true);
+          }
         }
       }
       
@@ -374,6 +495,11 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
                     {'\n'}• Coding best practices
                     {'\n'}• IDE and terminal guidance
                   </Text>
+                  {sessionCount >= 2 && (
+                    <Text style={styles.welcomeMemory}>
+                      🧠 I remember our last {sessionCount} sessions and can reference previous discussions!
+                    </Text>
+                  )}
                   {(userTier === 'professional' || userTier === 'premium') && (
                     <Text style={styles.welcomePremium}>
                       ⭐ As a {userTier} member, you can escalate to live human
@@ -573,6 +699,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 16,
     fontWeight: '600',
+  },
+  welcomeMemory: {
+    fontSize: 13,
+    color: Colors.Colors.cyan.primary,
+    textAlign: 'center',
+    marginTop: 12,
+    fontWeight: '600',
+    backgroundColor: Colors.Colors.cyan.primary + '15',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   messageContainer: {
     marginBottom: 16,
