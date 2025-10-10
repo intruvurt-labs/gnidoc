@@ -53,6 +53,7 @@ const queryClient = new QueryClient({
 function RootLayoutNav() {
   return (
     <Stack 
+      initialRouteName="app-generator"
       screenOptions={{ 
         headerBackTitle: "Back",
         headerStyle: {
@@ -219,9 +220,9 @@ export default function RootLayout() {
                                     <StatusBar style="light" backgroundColor={Colors.Colors.background.primary} />
                                     <View style={{ flex: 1 }}>
                                       <AnimatedMoltenBackground
-                                        heroBannerUri="https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/3pfuycv4ultfwtbe982xa"
-                                        textLogoUri="https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/zpu4ny0spvqvc2vy7j5l5"
-                                        symbolUri="https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/xmcljnuxc94h1q3rw1hs1"
+                                        heroBannerUri="https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/qvhbsg2l35ali5raxtus0"
+                                        textLogoUri="https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/9uyhiznsj2k9cegpqglzk"
+                                        symbolUri="https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/k95rc9dv5sso3otf9ckgb"
                                       />
                                       <RootLayoutNav />
                                       <FloatingAISupport />
