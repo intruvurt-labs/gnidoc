@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
 
-const GITHUB_CLIENT_ID = process.env.EXPO_PUBLIC_GITHUB_CLIENT_ID || '';
+const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || process.env.EXPO_PUBLIC_GITHUB_CLIENT_ID || '';
 
 export const githubUrlRoute = publicProcedure
   .input(z.object({
@@ -14,7 +14,7 @@ export const githubUrlRoute = publicProcedure
 
     if (!GITHUB_CLIENT_ID) {
       console.error('[GitHub URL Route] GitHub Client ID not configured');
-      throw new Error('GitHub Client ID not configured on server. Please set EXPO_PUBLIC_GITHUB_CLIENT_ID environment variable.');
+      throw new Error('GitHub Client ID not configured on server. Set GITHUB_CLIENT_ID or EXPO_PUBLIC_GITHUB_CLIENT_ID.');
     }
 
     const authUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(input.redirectUri)}&scope=read:user%20user:email%20repo`;

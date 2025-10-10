@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
 
-const GITHUB_CLIENT_ID = process.env.EXPO_PUBLIC_GITHUB_CLIENT_ID || '';
-const GITHUB_CLIENT_SECRET = process.env.EXPO_PUBLIC_GITHUB_CLIENT_SECRET || '';
+const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || process.env.EXPO_PUBLIC_GITHUB_CLIENT_ID || '';
+const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || process.env.EXPO_PUBLIC_GITHUB_CLIENT_SECRET || '';
 
 export const githubOAuthRoute = publicProcedure
   .input(z.object({
@@ -15,7 +15,7 @@ export const githubOAuthRoute = publicProcedure
 
     if (!GITHUB_CLIENT_ID || !GITHUB_CLIENT_SECRET) {
       console.error('[GitHub OAuth Route] GitHub OAuth credentials not configured');
-      throw new Error('GitHub OAuth credentials not configured on server. Please set EXPO_PUBLIC_GITHUB_CLIENT_ID and EXPO_PUBLIC_GITHUB_CLIENT_SECRET environment variables.');
+      throw new Error('GitHub OAuth credentials not configured on server. Set GITHUB_CLIENT_ID/GITHUB_CLIENT_SECRET or EXPO_PUBLIC_GITHUB_CLIENT_ID/EXPO_PUBLIC_GITHUB_CLIENT_SECRET.');
     }
 
     const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
@@ -41,7 +41,7 @@ export const githubOAuthRoute = publicProcedure
       throw new Error(`GitHub OAuth error: ${tokenData.error_description || tokenData.error}`);
     }
 
-    const accessToken = tokenData.access_token;
+    const accessToken = tokenData.access_token as string;
 
     const userResponse = await fetch('https://api.github.com/user', {
       headers: {
