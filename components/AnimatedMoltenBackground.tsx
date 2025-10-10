@@ -156,6 +156,9 @@ const AnimatedMoltenBackground: React.FC<AnimatedMoltenBackgroundProps> = React.
   const heatCyan = Colors.Colors.cyan.primary;
   const heatOrange = Colors.Colors.orange.primary;
   const heatRed = Colors.Colors.red.primary;
+  const glowCyan = Colors.Colors.cyan.glow;
+  const glowRed = Colors.Colors.red.glow;
+  const glowOrange = Colors.Colors.orange.glow;
 
   const glowInterpolate = glow.interpolate({
     inputRange: [0, 1],
@@ -273,11 +276,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: '-50%',
     left: '-50%',
-    opacity: 0.35,
+    opacity: 0.45,
   },
   overlayGlow: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#ffffff10',
+    backgroundColor: Colors.Colors.cyan.glow,
   },
   bannerContainer: {
     ...StyleSheet.absoluteFillObject,
