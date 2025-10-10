@@ -14,6 +14,8 @@ import { SettingsProvider } from "@/contexts/SettingsContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { trpc, trpcClient } from "@/lib/trpc";
 import AnimatedMoltenBackground from "@/components/AnimatedMoltenBackground";
+import AISupportChat from "@/components/AISupportChat";
+import { useAuth } from "@/contexts/AuthContext";
 
 const AgentProvider = lazy(() => import("@/contexts/AgentContext").then(m => ({ default: m.AgentProvider })));
 const DatabaseProvider = lazy(() => import("@/contexts/DatabaseContext").then(m => ({ default: m.DatabaseProvider })));
@@ -171,6 +173,16 @@ const LoadingFallback = () => (
   </View>
 );
 
+function FloatingAISupport() {
+  const { user } = useAuth();
+  const tier = user?.subscription;
+  let mapped: 'free' | 'starter' | 'professional' | 'premium' = 'free';
+  if (tier === 'basic') mapped = 'starter';
+  if (tier === 'pro') mapped = 'professional';
+  if (tier === 'enterprise') mapped = 'premium';
+  return <AISupportChat userTier={mapped} />;
+}
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     ...Ionicons.font,
@@ -212,6 +224,7 @@ export default function RootLayout() {
                                         symbolUri="https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/xmcljnuxc94h1q3rw1hs1"
                                       />
                                       <RootLayoutNav />
+                                      <FloatingAISupport />
                                     </View>
                                   </ResearchProvider>
                                 </IntegrationsProvider>

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,8 +10,9 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
-import { MessageCircle, X, Send, Bot, User as UserIcon, Trash2 } from 'lucide-react-native';
+import { X, Send, Bot, User as UserIcon, Trash2 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useRorkAgent } from '@rork/toolkit-sdk';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -33,8 +34,11 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [inputMessage, setInputMessage] = useState<string>('');
   const [localMessages, setLocalMessages] = useState<Message[]>([]);
+  const [escalated, setEscalated] = useState<boolean>(false);
+  const [assistantReplies, setAssistantReplies] = useState<number>(0);
   const slideAnim = useRef(new Animated.Value(height)).current;
   const scaleAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
   const scrollViewRef = useRef<ScrollView>(null);
 
   const { messages, sendMessage, error, setMessages } = useRorkAgent({
@@ -109,6 +113,39 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
   }, [isOpen, slideAnim, scaleAnim]);
 
   useEffect(() => {
+    if (!isOpen) {
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.05, duration: 1200, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 1200, useNativeDriver: true }),
+        ]),
+      );
+      loop.start();
+      return () => loop.stop();
+    }
+  }, [isOpen, pulseAnim]);
+
+  const isPaidTier = useMemo(() => userTier === 'professional' || userTier === 'premium', [userTier]);
+
+  const isUnsolvable = useCallback((text: string) => {
+    const lower = text.toLowerCase();
+    const hints = [
+      'cannot assist',
+      "can't assist",
+      'unsure',
+      'not sure',
+      'cannot help',
+      'need a human',
+      'contact support',
+      'i do not have enough information',
+      'unable to',
+      'cannot perform',
+      'requires human',
+    ];
+    return hints.some((h) => lower.includes(h));
+  }, []);
+
+  useEffect(() => {
     if (messages.length > 0) {
       const convertedMessages: Message[] = messages.map((msg) => ({
         id: msg.id,
@@ -121,6 +158,16 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
       }));
       setLocalMessages(convertedMessages);
       saveConversationHistory(messages);
+
+      const latest = convertedMessages[convertedMessages.length - 1];
+      if (latest && latest.role === 'assistant') {
+        setAssistantReplies((c) => c + 1);
+        console.log('[AISupportChat] Assistant replied. Count =', assistantReplies + 1);
+        if (!escalated && isPaidTier && assistantReplies === 0 && isUnsolvable(latest.content)) {
+          console.log('[AISupportChat] Auto-escalating after first unsolved assistant reply');
+          handleEscalate(true);
+        }
+      }
       
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -152,9 +199,8 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
     await sendMessage(userMessage);
   };
 
-  const handleEscalate = () => {
-    const canEscalate = userTier === 'professional' || userTier === 'premium';
-    
+  const handleEscalate = (auto?: boolean) => {
+    const canEscalate = isPaidTier;
     if (!canEscalate) {
       setLocalMessages((prev) => [
         ...prev,
@@ -168,15 +214,22 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
       return;
     }
 
+    if (escalated) return;
+    setEscalated(true);
+
     setLocalMessages((prev) => [
       ...prev,
       {
         id: Date.now().toString(),
         role: 'assistant',
-        content: '✅ Escalating to live human support... A support specialist will join this chat within 2-3 minutes. Please describe your issue in detail.',
+        content: auto
+          ? '🤖 Couldn\'t confidently resolve this after the first attempt. Escalating you to a human expert now...'
+          : '✅ Escalating to live human support... A support specialist will join this chat within 2-3 minutes. Please describe your issue in detail.',
         timestamp: new Date(),
       },
     ]);
+
+    console.log('[AISupportChat] Escalation triggered', { auto });
   };
 
   const renderMessage = (message: Message) => {
@@ -233,7 +286,7 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
           style={[
             styles.floatingButton,
             {
-              transform: [{ scale: scaleAnim }],
+              transform: [{ scale: Animated.multiply(scaleAnim, pulseAnim) }],
             },
           ]}
         >
@@ -241,8 +294,13 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
             style={styles.floatingButtonInner}
             onPress={() => setIsOpen(true)}
             activeOpacity={0.8}
+            testID="ai-support-fab"
           >
-            <MessageCircle color={Colors.Colors.text.inverse} size={28} />
+            <Image
+              source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/ayjdxbzel62rlgsqamitb' }}
+              style={styles.fabImage}
+              resizeMode="contain"
+            />
             <View style={styles.badge}>
               <Text style={styles.badgeText}>AI</Text>
             </View>
@@ -301,6 +359,7 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
               style={styles.messagesContainer}
               contentContainerStyle={styles.messagesContent}
               showsVerticalScrollIndicator={false}
+              testID="ai-support-messages"
             >
               {localMessages.length === 0 && (
                 <View style={styles.welcomeContainer}>
@@ -338,7 +397,7 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
               <View style={styles.actionsBar}>
                 <TouchableOpacity
                   style={styles.escalateButton}
-                  onPress={handleEscalate}
+                  onPress={() => handleEscalate()}
                 >
                   <Text style={styles.escalateButtonText}>
                     🆘 Escalate to Human Support
@@ -357,6 +416,7 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
                 placeholderTextColor={Colors.Colors.text.muted}
                 multiline
                 maxLength={500}
+                testID="ai-support-input"
               />
               <TouchableOpacity
                 style={[
@@ -365,6 +425,7 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
                 ]}
                 onPress={handleSend}
                 disabled={!inputMessage.trim()}
+                testID="ai-support-send"
               >
                 <Send
                   color={
@@ -395,7 +456,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: Colors.Colors.cyan.primary,
+    backgroundColor: Colors.Colors.background.primary,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -403,6 +464,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+    overflow: 'hidden',
   },
   badge: {
     position: 'absolute',
@@ -623,5 +685,9 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     backgroundColor: Colors.Colors.background.secondary,
+  },
+  fabImage: {
+    width: 64,
+    height: 64,
   },
 });
