@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -176,11 +176,15 @@ export default function SecurityScreen() {
           {(['standard', 'enhanced', 'maximum'] as const).map((level) => (
             <TouchableOpacity
               key={level}
+              testID={`security-level-${level}`}
               style={[
                 styles.levelButton,
                 securityLevel === level && styles.levelButtonActive,
               ]}
-              onPress={() => setSecurityLevel(level)}
+              onPress={() => {
+                console.log('[SecurityScreen] setSecurityLevel ->', level);
+                setSecurityLevel(level);
+              }}
             >
               <Text style={[
                 styles.levelButtonText,
@@ -190,6 +194,27 @@ export default function SecurityScreen() {
               </Text>
             </TouchableOpacity>
           ))}
+        </View>
+
+        <View style={styles.capabilitiesContainer}>
+          <Text style={styles.capabilitiesTitle}>Live Capabilities Preview</Text>
+          <View style={styles.capabilitiesChips}>
+            {getCapabilities(securityLevel).map((cap) => (
+              <View key={cap} style={styles.capabilityChip} testID={`cap-${cap}`}>
+                <Text style={styles.capabilityText}>{cap}</Text>
+              </View>
+            ))}
+          </View>
+          <View style={styles.workflowMatrix}>
+            {getWorkflowMatrix(securityLevel).map((row) => (
+              <View key={row.label} style={styles.workflowRow}>
+                <Text style={styles.workflowLabel}>{row.label}</Text>
+                <Text style={[styles.workflowBadge, row.ready ? styles.workflowReady : styles.workflowPending]}>
+                  {row.ready ? 'READY' : 'PENDING'}
+                </Text>
+              </View>
+            ))}
+          </View>
         </View>
       </View>
 
@@ -641,6 +666,36 @@ export default function SecurityScreen() {
       </Modal>
     </ScrollView>
   );
+
+  function getCapabilities(level: 'standard' | 'enhanced' | 'maximum'): string[] {
+    switch (level) {
+      case 'maximum':
+        return [
+          'NimRev-Quantum crypto',
+          'FIPS 140-2 modes',
+          'Zero-trust sessions',
+          'Advanced code scanning',
+          'Aggressive obfuscation',
+          'Secure collab tokens',
+        ];
+      case 'enhanced':
+        return ['AES-256 encryption', 'Heuristic scan rules', 'String encryption', 'Control-flow flattening'];
+      default:
+        return ['Baseline hardening', 'HTTPS enforcement', 'Logging guards'];
+    }
+  }
+
+  function getWorkflowMatrix(level: 'standard' | 'enhanced' | 'maximum') {
+    const base = [
+      { label: 'Design Review', ready: true },
+      { label: 'Threat Modeling', ready: level !== 'standard' },
+      { label: 'Static Analysis', ready: true },
+      { label: 'Dependency Audit', ready: true },
+      { label: 'Secrets Scanning', ready: level !== 'standard' },
+      { label: 'Runtime Protections', ready: level === 'maximum' },
+    ];
+    return base;
+  }
 
   return (
     <View style={styles.container}>
@@ -1203,4 +1258,70 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
+  capabilitiesContainer: {
+    backgroundColor: '#001a1a',
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#003d3d',
+    gap: 8,
+  },
+  capabilitiesTitle: {
+    color: '#CCFF00',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  capabilitiesChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  capabilityChip: {
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 14,
+    backgroundColor: '#062b2b',
+    borderWidth: 1,
+    borderColor: '#00FFFF',
+  },
+  capabilityText: {
+    color: '#00FFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  workflowMatrix: {
+    marginTop: 6,
+    gap: 6,
+  },
+  workflowRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#003333',
+  },
+  workflowLabel: {
+    color: '#EEE',
+    fontSize: 13,
+  },
+  workflowBadge: {
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    color: '#000',
+    fontSize: 11,
+    fontWeight: '800',
+    overflow: 'hidden',
+  },
+  workflowReady: {
+    backgroundColor: '#00FFFF',
+    color: '#000',
+  },
+  workflowPending: {
+    backgroundColor: '#444',
+    color: '#FFF',
+  },
 });
+
