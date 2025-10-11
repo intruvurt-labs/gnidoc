@@ -152,9 +152,7 @@ export default function AppGeneratorScreen() {
       recordingRef.current = recording;
       setIsRecording(true);
 
-      if (Platform.OS !== 'web') {
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      }
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
       console.log('[AppGenerator] Recording started');
     } catch (error) {
@@ -217,9 +215,7 @@ export default function AppGeneratorScreen() {
 
       setPrompt(prev => prev ? `${prev} ${data.text}` : data.text);
 
-      if (Platform.OS !== 'web') {
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       Alert.alert('Success', 'Voice input transcribed successfully!');
     } catch (error) {
@@ -251,9 +247,7 @@ export default function AppGeneratorScreen() {
         setSelectedImages(prev => [...prev, ...newImages]);
         console.log('[AppGenerator] Images selected:', newImages.length);
 
-        if (Platform.OS !== 'web') {
-          await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        }
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
     } catch (error) {
       console.error('[AppGenerator] Image picker error:', error);
@@ -279,9 +273,7 @@ export default function AppGeneratorScreen() {
         setSelectedVideo(result.assets[0].uri);
         console.log('[AppGenerator] Video selected:', result.assets[0].uri);
 
-        if (Platform.OS !== 'web') {
-          await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        }
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
     } catch (error) {
       console.error('[AppGenerator] Video picker error:', error);
@@ -295,9 +287,7 @@ export default function AppGeneratorScreen() {
       return;
     }
 
-    if (Platform.OS !== 'web') {
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
     try {
       console.log('[AppGenerator] Starting app generation...');
