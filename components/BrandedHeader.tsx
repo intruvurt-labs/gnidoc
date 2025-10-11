@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import Colors from '@/constants/colors';
 import { limeWithOutline } from '@/constants/textStyles';
+import TypewriterEffect, { gnidocTercesPhases } from './TypewriterEffect';
 
 interface BrandedHeaderProps {
   title?: string;
@@ -9,6 +10,8 @@ interface BrandedHeaderProps {
   showLogo?: boolean;
   rightAction?: React.ReactNode;
   onLogoPress?: () => void;
+  enableTypewriter?: boolean;
+  typewriterPhrases?: string[];
 }
 
 export default function BrandedHeader({
@@ -17,6 +20,8 @@ export default function BrandedHeader({
   showLogo = true,
   rightAction,
   onLogoPress,
+  enableTypewriter = false,
+  typewriterPhrases = gnidocTercesPhases,
 }: BrandedHeaderProps) {
   return (
     <View style={styles.container}>
@@ -40,9 +45,17 @@ export default function BrandedHeader({
         {title && (
           <Text style={[styles.title, limeWithOutline]}>{title}</Text>
         )}
-        {subtitle && (
+        {enableTypewriter ? (
+          <TypewriterEffect
+            phrases={typewriterPhrases}
+            style={styles.subtitle}
+            typingSpeed={60}
+            deletingSpeed={40}
+            pauseDuration={2500}
+          />
+        ) : subtitle ? (
           <Text style={styles.subtitle}>{subtitle}</Text>
-        )}
+        ) : null}
       </View>
 
       {rightAction ? (

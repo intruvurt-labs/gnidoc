@@ -156,7 +156,7 @@ export default function DashboardScreen() {
 
         <BrandedHeader
           title="Dashboard"
-          subtitle={`Welcome back, ${user?.name || 'Builder'}!`}
+          enableTypewriter
         />
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>

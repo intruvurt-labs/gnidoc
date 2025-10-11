@@ -168,7 +168,7 @@ export default function AppGeneratorScreen() {
 
         <BrandedHeader
           title="AI App Generator"
-          subtitle="Production-Ready Apps in Seconds"
+          enableTypewriter
           rightAction={
             <View style={styles.headerActions}>
               <TouchableOpacity 
