@@ -38,6 +38,7 @@ import {
   FileCode,
   Layers,
 } from 'lucide-react-native';
+import { Image } from 'react-native';
 import Colors from '@/constants/colors';
 import { useSettings } from '@/contexts/SettingsContext';
 import { useRouter } from 'expo-router';
@@ -264,7 +265,13 @@ export default function LogoMenu({ onPress, onLongPress }: LogoMenuProps) {
         style={styles.logoButton}
         activeOpacity={0.7}
       >
-        <Zap color={Colors.Colors.cyanRed.primary} size={24} />
+        <View style={styles.logoCircle}>
+          <Image
+            source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/k95rc9dv5sso3otf9ckgb' }}
+            style={styles.logoSymbol}
+            resizeMode="contain"
+          />
+        </View>
       </TouchableOpacity>
 
       {/* Quick Menu Modal */}
@@ -623,7 +630,26 @@ export default function LogoMenu({ onPress, onLongPress }: LogoMenuProps) {
 
 const styles = StyleSheet.create({
   logoButton: {
-    padding: 8,
+    padding: 4,
+  },
+  logoCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.Colors.background.card,
+    borderWidth: 2,
+    borderColor: Colors.Colors.cyan.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: Colors.Colors.cyan.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  logoSymbol: {
+    width: 28,
+    height: 28,
   },
   modalOverlay: {
     flex: 1,
