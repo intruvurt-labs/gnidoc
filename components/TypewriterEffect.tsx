@@ -98,12 +98,12 @@ export const gnidocTercesPhases = [
 const styles = StyleSheet.create({
   text: {
     fontSize: 12,
-    color: Colors.Colors.cyan.primary,
+    color: '#4DD0E1',
     fontWeight: '500' as const,
   },
   cursor: {
     fontSize: 12,
-    color: Colors.Colors.cyan.primary,
+    color: '#4DD0E1',
     fontWeight: '700' as const,
   },
 });

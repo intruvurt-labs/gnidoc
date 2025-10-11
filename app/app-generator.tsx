@@ -38,9 +38,10 @@ import {
   Image as ImageIcon,
   Video,
   Users,
-
   Brain,
+  Lock,
 } from 'lucide-react-native';
+import TypewriterEffect, { gnidocTercesPhases } from '@/components/TypewriterEffect';
 import Colors from '@/constants/colors';
 import { useAppBuilder, AppGenerationConfig, ModelConsensus, ConsensusAnalysis } from '@/contexts/AppBuilderContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -422,14 +423,23 @@ export default function AppGeneratorScreen() {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.heroSection}>
-          <View style={styles.heroIcon}>
-            <Sparkles color={Colors.Colors.cyan.primary} size={48} />
+          <View style={styles.logoContainer}>
+            <View style={styles.brainLockIcon}>
+              <Brain color={Colors.Colors.cyan.primary} size={40} />
+              <View style={styles.lockOverlay}>
+                <Lock color={Colors.Colors.cyan.primary} size={20} />
+              </View>
+            </View>
           </View>
-          <Text style={styles.heroTitle}>Build Complete Apps with AI</Text>
-          <Text style={styles.heroDescription}>
-            Describe your app idea and watch as our 4-model AI orchestration
-            generates production-ready code with full compilation and live preview
+          <Text style={styles.brandTitle}>
+            <Text style={styles.brandTitleCyan}>gnidoc</Text>
+            {' '}
+            <Text style={styles.brandTitleRed}>terces</Text>
           </Text>
+          <Text style={styles.brandSubtitle}>multi-model AI builder</Text>
+          <View style={styles.typewriterContainer}>
+            <TypewriterEffect phrases={gnidocTercesPhases} style={styles.typewriterText} />
+          </View>
         </View>
 
         <View style={styles.promptSection}>
@@ -635,35 +645,54 @@ export default function AppGeneratorScreen() {
         )}
 
         <View style={styles.featuresSection}>
-          <Text style={styles.sectionTitle}>Features</Text>
+          <Text style={styles.featuresSectionTitle}>features</Text>
           <View style={styles.featureGrid}>
             <View style={styles.featureCard}>
-              <Zap color={Colors.Colors.cyan.primary} size={32} />
-              <Text style={styles.featureTitle}>4-Model Orchestration</Text>
+              <View style={styles.featureIconContainer}>
+                <Zap color={Colors.Colors.cyan.primary} size={28} />
+              </View>
+              <Text style={styles.featureTitle}>Multi-Model Orchestration</Text>
               <Text style={styles.featureDescription}>
-                Uses 4 AI models simultaneously for unmatched quality
+                Harness LLMs, vision, embedding, and code models
               </Text>
             </View>
             <View style={styles.featureCard}>
-              <Code color={Colors.Colors.success} size={32} />
-              <Text style={styles.featureTitle}>Production Ready</Text>
+              <View style={styles.featureIconContainer}>
+                <Code color={Colors.Colors.cyan.primary} size={28} />
+              </View>
+              <Text style={styles.featureTitle}>Prompt-to-App Generator</Text>
               <Text style={styles.featureDescription}>
-                Complete, error-free code with proper architecture
+                Build apps using natural language or visual inputs
               </Text>
             </View>
             <View style={styles.featureCard}>
-              <Play color={Colors.Colors.warning} size={32} />
-              <Text style={styles.featureTitle}>Live Preview</Text>
+              <View style={styles.featureIconContainer}>
+                <Layers color={Colors.Colors.cyan.primary} size={28} />
+              </View>
+              <Text style={styles.featureTitle}>AI Consensus & Validation</Text>
               <Text style={styles.featureDescription}>
-                Instant compilation and preview of generated apps
+                Leverage multiple models for reliability and accuracy
               </Text>
             </View>
-            <View style={styles.featureCard}>
-              <Eye color={Colors.Colors.red.primary} size={32} />
-              <Text style={styles.featureTitle}>Full IDE</Text>
-              <Text style={styles.featureDescription}>
-                Edit, debug, and deploy directly from the app
-              </Text>
+          </View>
+        </View>
+
+        <View style={styles.preferencesSection}>
+          <Text style={styles.preferencesSectionTitle}>Preferences</Text>
+          <View style={styles.preferencesGrid}>
+            <View style={styles.preferenceCard}>
+              <View style={styles.preferenceIconContainer}>
+                <Code color={Colors.Colors.cyan.primary} size={20} />
+              </View>
+              <Text style={styles.preferenceTitle}>Code Discipline</Text>
+              <Text style={styles.preferenceValue}>Flexible JavaScript</Text>
+            </View>
+            <View style={styles.preferenceCardRed}>
+              <View style={styles.preferenceIconContainerRed}>
+                <Zap color={Colors.Colors.red.primary} size={20} />
+              </View>
+              <Text style={styles.preferenceTitleRed}>Fire</Text>
+              <Text style={styles.preferenceValueRed}>Balanced</Text>
             </View>
           </View>
         </View>
@@ -1195,27 +1224,47 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
     paddingHorizontal: 20,
   },
-  heroIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.Colors.cyan.primary + '20',
-    justifyContent: 'center',
-    alignItems: 'center',
+  logoContainer: {
     marginBottom: 20,
   },
-  heroTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: Colors.Colors.text.primary,
-    textAlign: 'center',
-    marginBottom: 12,
+  brainLockIcon: {
+    width: 100,
+    height: 100,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
   },
-  heroDescription: {
-    fontSize: 16,
-    color: Colors.Colors.text.secondary,
+  lockOverlay: {
+    position: 'absolute',
+    bottom: 10,
+  },
+  brandTitle: {
+    fontSize: 48,
+    fontWeight: 'bold',
     textAlign: 'center',
-    lineHeight: 24,
+    marginBottom: 8,
+  },
+  brandTitleCyan: {
+    color: Colors.Colors.cyan.primary,
+  },
+  brandTitleRed: {
+    color: Colors.Colors.red.primary,
+  },
+  brandSubtitle: {
+    fontSize: 16,
+    color: Colors.Colors.cyan.primary,
+    textAlign: 'center',
+    marginBottom: 20,
+    fontWeight: '400' as const,
+  },
+  typewriterContainer: {
+    minHeight: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  typewriterText: {
+    fontSize: 14,
+    fontWeight: '500' as const,
   },
   promptSection: {
     paddingHorizontal: 20,
@@ -1228,14 +1277,15 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   promptInput: {
-    backgroundColor: Colors.Colors.background.card,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     borderRadius: 12,
     padding: 16,
     color: Colors.Colors.text.primary,
     fontSize: 16,
     minHeight: 150,
-    borderWidth: 1,
-    borderColor: Colors.Colors.border.muted,
+    borderWidth: 2,
+    borderColor: Colors.Colors.cyan.primary,
+    borderStyle: 'dashed',
     marginBottom: 16,
   },
   configSummary: {
@@ -1266,8 +1316,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: Colors.Colors.cyan.primary,
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: 24,
     gap: 12,
+    borderWidth: 2,
+    borderColor: Colors.Colors.cyan.primary,
   },
   generateButtonDisabled: {
     opacity: 0.6,
@@ -1353,30 +1405,94 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 32,
   },
+  featuresSectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.Colors.red.primary,
+    marginBottom: 16,
+  },
   featureGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: 12,
   },
   featureCard: {
-    width: (width - 52) / 2,
-    backgroundColor: Colors.Colors.background.card,
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: Colors.Colors.border.muted,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 2,
+    borderColor: Colors.Colors.red.primary,
+    borderStyle: 'dashed',
+  },
+  featureIconContainer: {
+    marginBottom: 12,
   },
   featureTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: 'bold',
-    color: Colors.Colors.text.primary,
-    marginTop: 12,
-    marginBottom: 4,
+    color: Colors.Colors.cyan.primary,
+    marginBottom: 8,
   },
   featureDescription: {
+    fontSize: 13,
+    color: Colors.Colors.red.primary,
+    lineHeight: 20,
+  },
+  preferencesSection: {
+    paddingHorizontal: 20,
+    marginBottom: 32,
+  },
+  preferencesSectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.Colors.cyan.primary,
+    marginBottom: 16,
+  },
+  preferencesGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  preferenceCard: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: Colors.Colors.cyan.primary,
+    borderStyle: 'dashed',
+  },
+  preferenceCardRed: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: Colors.Colors.red.primary,
+    borderStyle: 'dashed',
+  },
+  preferenceIconContainer: {
+    marginBottom: 8,
+  },
+  preferenceIconContainerRed: {
+    marginBottom: 8,
+  },
+  preferenceTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: Colors.Colors.cyan.primary,
+    marginBottom: 4,
+  },
+  preferenceTitleRed: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: Colors.Colors.red.primary,
+    marginBottom: 4,
+  },
+  preferenceValue: {
     fontSize: 12,
     color: Colors.Colors.text.secondary,
-    lineHeight: 18,
+  },
+  preferenceValueRed: {
+    fontSize: 12,
+    color: Colors.Colors.text.secondary,
   },
   modalOverlay: {
     flex: 1,
