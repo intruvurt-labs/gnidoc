@@ -36,6 +36,10 @@ export const compareModelsProcedure = protectedProcedure
     const token = ctx.token;
     console.log(`[Comparison] Token ${token.substring(0, 10)}... comparing ${input.modelIds.length} models`);
 
+    if (!process.env.EXPO_PUBLIC_TOOLKIT_URL) {
+      throw new Error('EXPO_PUBLIC_TOOLKIT_URL environment variable is not set. Please configure it in your .env file.');
+    }
+
     const availableModels = [
       {
         id: 'gpt-4-turbo',

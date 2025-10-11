@@ -20,6 +20,10 @@ export const orchestrateGenerationProcedure = protectedProcedure
 
     console.log(`[Orchestration] Token ${token.substring(0, 10)}... starting orchestration with ${input.models.length} models`);
 
+    if (!process.env.EXPO_PUBLIC_TOOLKIT_URL) {
+      throw new Error('EXPO_PUBLIC_TOOLKIT_URL environment variable is not set. Please configure it in your .env file.');
+    }
+
     const availableModels = [
       {
         id: 'gpt-4-turbo',
