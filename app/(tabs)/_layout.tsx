@@ -5,7 +5,8 @@ import {
   Monitor,
   Settings,
   Network,
-  User
+  User,
+  Shield
 } from "lucide-react-native";
 import React from "react";
 import { View, ScrollView, TouchableOpacity, Text, StyleSheet, Platform } from "react-native";
@@ -124,6 +125,13 @@ export default function TabLayout() {
         options={{
           title: "Preferences",
           tabBarIcon: ({ color }) => <User color={color} size={26} />,
+        }}
+      />
+      <Tabs.Screen
+        name="security"
+        options={{
+          title: "Security",
+          tabBarIcon: ({ color }) => <Shield color={color} size={26} />,
         }}
       />
       <Tabs.Screen
