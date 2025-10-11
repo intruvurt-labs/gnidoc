@@ -24,6 +24,7 @@ import {
   History,
   X,
   Check,
+  AlertCircle,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useTriModel } from '@/contexts/TriModelContext';
@@ -63,6 +64,7 @@ export default function OrchestrationScreen() {
   const [consensusResults, setConsensusResults] = useState<any[]>([]);
   const [isComparing, setIsComparing] = useState(false);
   const [modelNodes, setModelNodes] = useState<ModelNode[]>([]);
+  const [errorMessage, setErrorMessage] = useState<string>('');
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -105,6 +107,7 @@ export default function OrchestrationScreen() {
   const handleOrchestrate = async () => {
     if (!prompt.trim()) return;
 
+    setErrorMessage('');
     try {
       const result = await orchestrateGeneration(prompt);
       setCurrentResult(result);
@@ -112,18 +115,23 @@ export default function OrchestrationScreen() {
       setPrompt('');
     } catch (error) {
       console.error('[Orchestration] Failed:', error);
+      const message = error instanceof Error ? error.message : 'Orchestration failed. Please try again.';
+      setErrorMessage(message);
     }
   };
 
   const handleConsensusMode = async () => {
     if (!prompt.trim()) return;
 
+    setErrorMessage('');
     setIsComparing(true);
     try {
       const results = await compareModels(prompt, config.models);
       setConsensusResults(results);
     } catch (error) {
       console.error('[Consensus] Failed:', error);
+      const message = error instanceof Error ? error.message : 'Comparison failed. Please try again.';
+      setErrorMessage(message);
     } finally {
       setIsComparing(false);
     }
@@ -589,6 +597,15 @@ export default function OrchestrationScreen() {
       </View>
 
       <View style={styles.inputContainer}>
+        {errorMessage ? (
+          <View style={styles.errorBanner}>
+            <AlertCircle color={Colors.Colors.error} size={20} />
+            <Text style={styles.errorText}>{errorMessage}</Text>
+            <TouchableOpacity onPress={() => setErrorMessage('')}>
+              <X color={Colors.Colors.error} size={20} />
+            </TouchableOpacity>
+          </View>
+        ) : null}
         <TextInput
           style={styles.promptInput}
           placeholder="Enter your prompt for multi-model orchestration..."
@@ -1052,6 +1069,23 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.Colors.background.secondary,
     borderTopWidth: 1,
     borderTopColor: Colors.Colors.border.muted,
+  },
+  errorBanner: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+    backgroundColor: Colors.Colors.error + '20',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: Colors.Colors.error,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.Colors.error,
+    fontWeight: '500' as const,
   },
   promptInput: {
     backgroundColor: Colors.Colors.background.card,

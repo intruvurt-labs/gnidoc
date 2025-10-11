@@ -139,6 +139,12 @@ export const [TriModelProvider, useTriModel] = createContextHook(() => {
     console.log(`[TriModel] Starting orchestration with ${config.models.length} models`);
 
     try {
+      const token = await AsyncStorage.getItem('auth-token');
+      
+      if (!token) {
+        throw new Error('Authentication required. Please log in to use multi-model orchestration.');
+      }
+
       const { trpcClient } = await import('@/lib/trpc');
       
       setCurrentProgress(10);
@@ -188,6 +194,16 @@ export const [TriModelProvider, useTriModel] = createContextHook(() => {
       return result;
     } catch (error) {
       console.error('[TriModel] Orchestration failed:', error);
+      
+      if (error instanceof Error) {
+        if (error.message.includes('UNAUTHORIZED') || error.message.includes('Authentication')) {
+          throw new Error('Authentication required. Please log in to use multi-model orchestration.');
+        }
+        if (error.message.includes('fetch')) {
+          throw new Error('Network error. Please check your connection and ensure the backend server is running.');
+        }
+      }
+      
       throw error;
     } finally {
       setIsOrchestrating(false);
@@ -202,6 +218,12 @@ export const [TriModelProvider, useTriModel] = createContextHook(() => {
     console.log(`[TriModel] Comparing ${modelIds.length} models`);
     
     try {
+      const token = await AsyncStorage.getItem('auth-token');
+      
+      if (!token) {
+        throw new Error('Authentication required. Please log in to compare models.');
+      }
+
       const { trpcClient } = await import('@/lib/trpc');
       
       const result = await trpcClient.orchestration.compare.mutate({
@@ -220,7 +242,17 @@ export const [TriModelProvider, useTriModel] = createContextHook(() => {
       }));
     } catch (error) {
       console.error('[TriModel] Comparison failed:', error);
-      return [];
+      
+      if (error instanceof Error) {
+        if (error.message.includes('UNAUTHORIZED') || error.message.includes('Authentication')) {
+          throw new Error('Authentication required. Please log in to compare models.');
+        }
+        if (error.message.includes('fetch')) {
+          throw new Error('Network error. Please check your connection and ensure the backend server is running.');
+        }
+      }
+      
+      throw error;
     }
   }, []);
 
