@@ -34,6 +34,8 @@ import Colors from '@/constants/colors';
 import { limeWithOutline } from '@/constants/textStyles';
 import { useAppBuilder, AppGenerationConfig } from '@/contexts/AppBuilderContext';
 import * as Haptics from 'expo-haptics';
+import BrandedHeader from '@/components/BrandedHeader';
+import ScreenBackground from '@/components/ScreenBackground';
 
 const { width } = Dimensions.get('window');
 
@@ -156,31 +158,34 @@ export default function AppGeneratorScreen() {
   );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <Stack.Screen
-        options={{
-          headerShown: false,
-        }}
-      />
+    <ScreenBackground variant="default" showPattern>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <Stack.Screen
+          options={{
+            headerShown: false,
+          }}
+        />
 
-      <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.menuButton}
-          onPress={() => setShowQuickMenu(true)}
-        >
-          <Menu color={Colors.Colors.cyan.primary} size={24} />
-        </TouchableOpacity>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>AI App Generator</Text>
-          <Text style={styles.headerSubtitle}>Production-Ready Apps in Seconds</Text>
-        </View>
-        <TouchableOpacity
-          style={styles.configButton}
-          onPress={() => setShowConfig(true)}
-        >
-          <Settings color={Colors.Colors.cyan.primary} size={24} />
-        </TouchableOpacity>
-      </View>
+        <BrandedHeader
+          title="AI App Generator"
+          subtitle="Production-Ready Apps in Seconds"
+          rightAction={
+            <View style={styles.headerActions}>
+              <TouchableOpacity 
+                style={styles.menuButton}
+                onPress={() => setShowQuickMenu(true)}
+              >
+                <Menu color={Colors.Colors.cyan.primary} size={24} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.configButton}
+                onPress={() => setShowConfig(true)}
+              >
+                <Settings color={Colors.Colors.cyan.primary} size={24} />
+              </TouchableOpacity>
+            </View>
+          }
+        />
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.heroSection}>
@@ -533,6 +538,7 @@ export default function AppGeneratorScreen() {
         </View>
       </Modal>
     </View>
+    </ScreenBackground>
   );
 }
 
@@ -585,6 +591,10 @@ const styles = StyleSheet.create({
   },
   configButton: {
     padding: 8,
+  },
+  headerActions: {
+    flexDirection: 'row' as const,
+    gap: 8,
   },
   content: {
     flex: 1,
