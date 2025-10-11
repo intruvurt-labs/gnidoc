@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
   Dimensions,
   Image,
   ActivityIndicator,
+  Animated,
+  Easing,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -42,7 +44,7 @@ import {
 } from 'lucide-react-native';
 import TypewriterEffect, { gnidocTercesPhases } from '@/components/TypewriterEffect';
 import Colors from '@/constants/colors';
-import { useAppBuilder, AppGenerationConfig, ModelConsensus, ConsensusAnalysis } from '@/contexts/AppBuilderContext';
+import { useAppBuilder, AppGenerationConfig } from '@/contexts/AppBuilderContext';
 import { useAuth } from '@/contexts/AuthContext';
 import * as Haptics from 'expo-haptics';
 
@@ -56,7 +58,6 @@ export default function AppGeneratorScreen() {
     currentApp,
     isGenerating,
     generationProgress,
-    cachedGenerations,
     currentConsensus,
     currentAnalysis,
     generateApp,
@@ -69,6 +70,7 @@ export default function AppGeneratorScreen() {
 
   const { user } = useAuth();
   const [prompt, setPrompt] = useState<string>('');
+  const [suggestions] = useState<string[]>(['Add Login', 'Generate 3D Preview', 'Link Wallet']);
   const [showConfig, setShowConfig] = useState<boolean>(false);
   const [showPreview, setShowPreview] = useState<boolean>(false);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
@@ -103,6 +105,34 @@ export default function AppGeneratorScreen() {
   const [showRecommendation, setShowRecommendation] = useState<boolean>(false);
   const [recommendation, setRecommendation] = useState<any>(null);
 
+  const rippleAnim = useRef(new Animated.Value(0)).current;
+  const scanAnim = useRef(new Animated.Value(0)).current;
+  const [rippleLoop, setRippleLoop] = useState<Animated.CompositeAnimation | null>(null);
+  const [scanLoop, setScanLoop] = useState<Animated.CompositeAnimation | null>(null);
+
+  useEffect(() => {
+    if (isGenerating) {
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(rippleAnim, { toValue: 1, duration: 1800, easing: Easing.out(Easing.cubic), useNativeDriver: false }),
+          Animated.timing(rippleAnim, { toValue: 0, duration: 600, easing: Easing.in(Easing.cubic), useNativeDriver: false }),
+        ])
+      );
+      const scan = Animated.loop(
+        Animated.timing(scanAnim, { toValue: 1, duration: 2200, easing: Easing.inOut(Easing.quad), useNativeDriver: false })
+      );
+      setRippleLoop(loop);
+      setScanLoop(scan);
+      loop.start();
+      scan.start(() => scanAnim.setValue(0));
+    } else {
+      rippleLoop?.stop();
+      scanLoop?.stop();
+      rippleAnim.setValue(0);
+      scanAnim.setValue(0);
+    }
+  }, [isGenerating, rippleAnim, scanAnim, rippleLoop, scanLoop]);
+
   const startRecording = async () => {
     try {
       if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
@@ -110,7 +140,7 @@ export default function AppGeneratorScreen() {
         return;
       }
 
-      console.log('[AppGenerator] Requesting audio permissions...');
+      console.log('[CreatorStudio] Requesting audio permissions...');
       const { status } = await Audio.requestPermissionsAsync();
       
       if (status !== 'granted') {
@@ -123,7 +153,7 @@ export default function AppGeneratorScreen() {
         playsInSilentModeIOS: true,
       });
 
-      console.log('[AppGenerator] Starting recording...');
+      console.log('[CreatorStudio] Starting recording...');
       const recording = new Audio.Recording();
       await recording.prepareToRecordAsync({
         android: {
@@ -154,9 +184,9 @@ export default function AppGeneratorScreen() {
 
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-      console.log('[AppGenerator] Recording started');
+      console.log('[CreatorStudio] Recording started');
     } catch (error) {
-      console.error('[AppGenerator] Failed to start recording:', error);
+      console.error('[CreatorStudio] Failed to start recording:', error);
       Alert.alert('Recording Error', 'Failed to start recording. Please try again.');
     }
   };
@@ -165,7 +195,7 @@ export default function AppGeneratorScreen() {
     try {
       if (!recordingRef.current) return;
 
-      console.log('[AppGenerator] Stopping recording...');
+      console.log('[CreatorStudio] Stopping recording...');
       setIsRecording(false);
       await recordingRef.current.stopAndUnloadAsync();
       await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
@@ -178,10 +208,10 @@ export default function AppGeneratorScreen() {
         return;
       }
 
-      console.log('[AppGenerator] Recording saved:', uri);
+      console.log('[CreatorStudio] Recording saved:', uri);
       await transcribeAudio(uri);
     } catch (error) {
-      console.error('[AppGenerator] Failed to stop recording:', error);
+      console.error('[CreatorStudio] Failed to stop recording:', error);
       Alert.alert('Recording Error', 'Failed to stop recording. Please try again.');
     }
   };
@@ -189,7 +219,7 @@ export default function AppGeneratorScreen() {
   const transcribeAudio = async (uri: string) => {
     try {
       setIsTranscribing(true);
-      console.log('[AppGenerator] Transcribing audio...');
+      console.log('[CreatorStudio] Transcribing audio...');
 
       const uriParts = uri.split('.');
       const fileType = uriParts[uriParts.length - 1];
@@ -211,15 +241,15 @@ export default function AppGeneratorScreen() {
       }
 
       const data = await response.json();
-      console.log('[AppGenerator] Transcription complete:', data.text);
+      console.log('[CreatorStudio] Transcription complete:', data.text);
 
-      setPrompt(prev => prev ? `${prev} ${data.text}` : data.text);
+      setPrompt(prev => (prev ? `${prev} ${data.text}` : data.text));
 
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       Alert.alert('Success', 'Voice input transcribed successfully!');
     } catch (error) {
-      console.error('[AppGenerator] Transcription failed:', error);
+      console.error('[CreatorStudio] Transcription failed:', error);
       Alert.alert('Transcription Error', 'Failed to transcribe audio. Please try again.');
     } finally {
       setIsTranscribing(false);
@@ -245,12 +275,12 @@ export default function AppGeneratorScreen() {
       if (!result.canceled && result.assets) {
         const newImages = result.assets.map(asset => asset.uri);
         setSelectedImages(prev => [...prev, ...newImages]);
-        console.log('[AppGenerator] Images selected:', newImages.length);
+        console.log('[CreatorStudio] Images selected:', newImages.length);
 
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
     } catch (error) {
-      console.error('[AppGenerator] Image picker error:', error);
+      console.error('[CreatorStudio] Image picker error:', error);
       Alert.alert('Error', 'Failed to pick images. Please try again.');
     }
   };
@@ -271,12 +301,12 @@ export default function AppGeneratorScreen() {
 
       if (!result.canceled && result.assets[0]) {
         setSelectedVideo(result.assets[0].uri);
-        console.log('[AppGenerator] Video selected:', result.assets[0].uri);
+        console.log('[CreatorStudio] Video selected:', result.assets[0].uri);
 
         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       }
     } catch (error) {
-      console.error('[AppGenerator] Video picker error:', error);
+      console.error('[CreatorStudio] Video picker error:', error);
       Alert.alert('Error', 'Failed to pick video. Please try again.');
     }
   };
@@ -290,7 +320,7 @@ export default function AppGeneratorScreen() {
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
     try {
-      console.log('[AppGenerator] Starting app generation...');
+      console.log('[CreatorStudio] Starting app generation...');
 
       if (config.enableCaching) {
         const cached = getCachedGeneration(prompt, config);
@@ -302,7 +332,7 @@ export default function AppGeneratorScreen() {
               {
                 text: 'Use Cache',
                 onPress: async () => {
-                  const app = await replayGeneration(cached.id);
+                  await replayGeneration(cached.id);
                   setShowPreview(true);
                 },
               },
@@ -319,7 +349,7 @@ export default function AppGeneratorScreen() {
         'Generation Failed',
         error instanceof Error ? error.message : 'Failed to generate app'
       );
-      console.error('[AppGenerator] Generation error:', error);
+      console.error('[CreatorStudio] Generation error:', error);
     }
   };
 
@@ -337,11 +367,11 @@ export default function AppGeneratorScreen() {
       return;
     }
 
-    const app = await generateApp(prompt, config);
+    await generateApp(prompt, config);
     
     Alert.alert(
       '✓ App Generated!',
-      `"${app.name}" has been generated successfully!\n\n${app.files.length} files created\n${app.dependencies.length} dependencies\n\nStatus: ${app.status}`,
+      'Your app has been generated successfully!',
       [
         { text: 'View Code', onPress: () => setShowPreview(true) },
         { text: 'OK' },
@@ -356,7 +386,7 @@ export default function AppGeneratorScreen() {
     value: boolean,
     onToggle: () => void
   ) => (
-    <TouchableOpacity style={styles.configOption} onPress={onToggle}>
+    <TouchableOpacity style={styles.configOption} onPress={onToggle} testID={`config-${label.replace(/\s+/g,'-').toLowerCase()}`}>
       <Text style={styles.configLabel}>{label}</Text>
       <View style={[styles.configToggle, value && styles.configToggleActive]}>
         {value && <CheckCircle color={Colors.Colors.text.inverse} size={16} />}
@@ -397,20 +427,20 @@ export default function AppGeneratorScreen() {
   );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top }]} testID="creator-studio-screen">
       <Stack.Screen
         options={{
           headerShown: false,
         }}
       />
 
-      <View style={styles.header}>
+      <View style={styles.header} testID="creator-studio-header">
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <X color={Colors.Colors.text.primary} size={24} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>AI App Generator</Text>
-          <Text style={styles.headerSubtitle}>Production-Ready Apps in Seconds</Text>
+          <Text style={styles.headerTitle}>Creator Studio</Text>
+          <Text style={styles.headerSubtitle}>Type ideas or drop visuals. Agent turns them into apps.</Text>
         </View>
         <TouchableOpacity
           style={styles.configButton}
@@ -421,7 +451,7 @@ export default function AppGeneratorScreen() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.heroSection}>
+        <View style={styles.heroSection} testID="neon-creator-board">
           <View style={styles.logoContainer}>
             <View style={styles.brainLockIcon}>
               <Brain color={Colors.Colors.cyan.primary} size={40} />
@@ -435,29 +465,67 @@ export default function AppGeneratorScreen() {
             {' '}
             <Text style={styles.brandTitleRed}>terces</Text>
           </Text>
-          <Text style={styles.brandSubtitle}>multi-model AI builder</Text>
+          <Text style={styles.brandSubtitle}>multi-model Agent builder</Text>
           <View style={styles.typewriterContainer}>
             <TypewriterEffect phrases={gnidocTercesPhases} style={styles.typewriterText} />
           </View>
         </View>
 
         <View style={styles.promptSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle3D}>What do you want to build?</Text>
-            <TouchableOpacity
-              style={styles.mgaButton}
-              onPress={() => setShowModelSelector(true)}
-            >
-              <Brain color={Colors.Colors.cyan.primary} size={20} />
-              <Text style={styles.mgaButtonText}>MGA</Text>
-            </TouchableOpacity>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.suggestionsRow} contentContainerStyle={{ paddingRight: 12 }} testID="creator-suggestions">
+            {suggestions.map((s) => (
+              <TouchableOpacity key={s} style={styles.suggestionChip} onPress={() => setPrompt(prev => (prev ? `${prev}\n${s}` : s))} accessibilityLabel={`Add suggestion ${s}`} testID={`chip-${s.replace(/\s+/g,'-').toLowerCase()}`}>
+                <Text style={styles.suggestionText}>{s}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <View style={styles.neonBoardWrap} pointerEvents="box-none">
+            <Animated.View
+              style={[
+                styles.ripple,
+                {
+                  opacity: rippleAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 0.35] }),
+                  transform: [
+                    { scale: rippleAnim.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1.6] }) },
+                  ],
+                },
+              ]}
+              testID="ai-processing-ripple"
+            />
+            <Animated.View
+              style={[
+                styles.neonScan,
+                {
+                  transform: [
+                    {
+                      translateY: scanAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 200] }),
+                    },
+                  ],
+                  opacity: scanAnim.interpolate({ inputRange: [0, 1], outputRange: [0.08, 0.3] }),
+                },
+              ]}
+            />
           </View>
+
+          <TextInput
+            style={styles.promptInput}
+            placeholder="Creator Studio: Describe your app idea or paste a link. You can also add images/videos."
+            placeholderTextColor={Colors.Colors.text.muted}
+            value={prompt}
+            onChangeText={setPrompt}
+            multiline
+            numberOfLines={8}
+            textAlignVertical="top"
+            testID="creator-studio-input"
+          />
 
           <View style={styles.inputToolbar}>
             <TouchableOpacity
               style={[styles.toolButton, isRecording && styles.toolButtonActive]}
               onPress={isRecording ? stopRecording : startRecording}
               disabled={isTranscribing}
+              testID="voice-tool"
             >
               {isRecording ? (
                 <MicOff color={Colors.Colors.red.primary} size={20} />
@@ -465,16 +533,17 @@ export default function AppGeneratorScreen() {
                 <Mic color={Colors.Colors.cyan.primary} size={20} />
               )}
             </TouchableOpacity>
-            <TouchableOpacity style={styles.toolButton} onPress={pickImage}>
+            <TouchableOpacity style={styles.toolButton} onPress={pickImage} testID="image-tool">
               <ImageIcon color={Colors.Colors.cyan.primary} size={20} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.toolButton} onPress={pickVideo}>
+            <TouchableOpacity style={styles.toolButton} onPress={pickVideo} testID="video-tool">
               <Video color={Colors.Colors.cyan.primary} size={20} />
             </TouchableOpacity>
             {user && (
               <TouchableOpacity
                 style={styles.toolButton}
                 onPress={() => setShowCollabModal(true)}
+                testID="collab-tool"
               >
                 <Users color={Colors.Colors.cyan.primary} size={20} />
                 {collaborators.length > 0 && (
@@ -522,17 +591,6 @@ export default function AppGeneratorScreen() {
             </View>
           )}
 
-          <TextInput
-            style={styles.promptInput}
-            placeholder="E.g., A fitness tracking app with workout plans, progress charts, and social features..."
-            placeholderTextColor={Colors.Colors.text.muted}
-            value={prompt}
-            onChangeText={setPrompt}
-            multiline
-            numberOfLines={6}
-            textAlignVertical="top"
-          />
-
           <View style={styles.configSummary}>
             <View style={styles.configBadge}>
               <Layers color={Colors.Colors.cyan.primary} size={14} />
@@ -559,6 +617,7 @@ export default function AppGeneratorScreen() {
             style={[styles.generateButton, isGenerating && styles.generateButtonDisabled]}
             onPress={handleGenerate}
             disabled={isGenerating}
+            testID="create-in-studio"
           >
             {isGenerating ? (
               <>
@@ -574,7 +633,7 @@ export default function AppGeneratorScreen() {
                   style={styles.generateButtonIcon}
                   resizeMode="contain"
                 />
-                <Text style={styles.generateButtonText}>Generate App</Text>
+                <Text style={styles.generateButtonText}>Create in Studio</Text>
               </>
             )}
           </TouchableOpacity>
@@ -779,7 +838,7 @@ export default function AppGeneratorScreen() {
       </Modal>
 
       <Modal visible={showPreview} animationType="slide">
-        <View style={[styles.previewContainer, { paddingTop: insets.top }]}>
+        <View style={[styles.previewContainer, { paddingTop: insets.top }] }>
           <View style={styles.previewHeader}>
             <Text style={styles.previewTitle}>{currentApp?.name}</Text>
             <TouchableOpacity onPress={() => setShowPreview(false)}>
@@ -873,7 +932,7 @@ export default function AppGeneratorScreen() {
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.consensusContent}>
-              {currentConsensus && currentConsensus.map((model, index) => (
+              {currentConsensus && currentConsensus.map((model) => (
                 <View key={model.modelId} style={styles.consensusCard}>
                   <View style={styles.consensusHeader}>
                     <Text style={styles.consensusModelName}>{model.modelName}</Text>
@@ -938,7 +997,7 @@ export default function AppGeneratorScreen() {
                     style={styles.useMergedButton}
                     onPress={async () => {
                       setShowConsensus(false);
-                      const app = await generateApp(prompt, config);
+                      await generateApp(prompt, config);
                       setShowPreview(true);
                     }}
                   >
@@ -991,7 +1050,7 @@ export default function AppGeneratorScreen() {
                   style={styles.proceedButton}
                   onPress={async () => {
                     setShowRecommendation(false);
-                    const app = await generateApp(prompt, config);
+                    await generateApp(prompt, config);
                     setShowPreview(true);
                   }}
                 >
@@ -1236,6 +1295,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
+    backgroundColor: 'transparent',
+    borderRadius: 50,
+    overflow: 'hidden',
   },
   lockOverlay: {
     position: 'absolute',
@@ -1289,25 +1351,14 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 10,
   },
-  sectionTitle3D: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: Colors.Colors.cyan.primary,
-    marginBottom: 16,
-    textShadowColor: '#00FFFF',
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 15,
-    letterSpacing: 1.5,
-    textTransform: 'uppercase' as const,
-  },
   promptInput: {
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 20,
     color: Colors.Colors.text.secondary,
     fontSize: 16,
-    minHeight: 150,
-    borderWidth: 3,
+    minHeight: 200,
+    borderWidth: 2,
     borderColor: Colors.Colors.cyan.primary,
     borderStyle: 'dashed',
     marginBottom: 16,
@@ -2222,5 +2273,51 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: 'bold',
     color: Colors.Colors.text.inverse,
+  },
+  suggestionsRow: {
+    flexDirection: 'row',
+    marginBottom: 12,
+  },
+  suggestionChip: {
+    backgroundColor: Colors.Colors.cyan.primary + '26',
+    borderWidth: 1,
+    borderColor: Colors.Colors.cyan.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginRight: 8,
+    borderRadius: 16,
+  },
+  suggestionText: {
+    color: Colors.Colors.cyan.primary,
+    fontWeight: '700',
+    fontSize: 12,
+    letterSpacing: 0.5,
+  },
+  neonBoardWrap: {
+    position: 'absolute',
+    left: 10,
+    right: 10,
+    top: -6,
+    height: 220,
+    zIndex: -1,
+  },
+  neonScan: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    height: 4,
+    backgroundColor: Colors.Colors.cyan.glow,
+  },
+  ripple: {
+    position: 'absolute',
+    alignSelf: 'center',
+    top: 20,
+    width: width * 0.9,
+    height: width * 0.9,
+    borderRadius: width * 0.45,
+    borderWidth: 2,
+    borderColor: Colors.Colors.cyan.primary,
+    backgroundColor: 'transparent',
   },
 });
