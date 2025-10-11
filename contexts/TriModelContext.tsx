@@ -136,96 +136,54 @@ export const [TriModelProvider, useTriModel] = createContextHook(() => {
     setIsOrchestrating(true);
     setCurrentProgress(0);
     
-    const startTime = Date.now();
     console.log(`[TriModel] Starting orchestration with ${config.models.length} models`);
 
     try {
-      const { generateText } = await import('@rork/toolkit-sdk');
-      const selectedModels = availableModels.filter(m => config.models.includes(m.id));
-      const responses: ModelResponse[] = [];
+      const { trpcClient } = await import('@/lib/trpc');
       
-      for (let i = 0; i < selectedModels.length; i++) {
-        const model = selectedModels[i];
-        setCurrentProgress(((i + 1) / selectedModels.length) * 90);
-        
-        console.log(`[TriModel] Generating with ${model.name}...`);
-        const modelStartTime = Date.now();
-        
-        try {
-          const systemPrompt = `You are an expert ${model.capabilities.join(', ')} AI assistant. Generate high-quality, production-ready code based on the user's request.
+      setCurrentProgress(10);
 
-CRITICAL REQUIREMENTS:
-- Use TypeScript with proper typing
-- Follow React Native and Expo best practices
-- Include proper error handling
-- Use StyleSheet for styling
-- Ensure web compatibility
-- Add comprehensive comments
-- Follow the cyan (#00FFFF) and red (#FF0040) color scheme
-
-${context ? `CONTEXT:\n${JSON.stringify(context, null, 2)}` : ''}
-
-Generate ONLY valid code without markdown formatting.`;
-
-          const content = await generateText({
-            messages: [
-              { role: 'user', content: `${systemPrompt}\n\nUser Request: ${prompt}` }
-            ]
-          });
-
-          const responseTime = Date.now() - modelStartTime;
-          const tokensUsed = Math.ceil(content.length / 4);
-          const cost = (tokensUsed / 1000) * model.costPerRequest;
-          
-          const qualityScore = await evaluateQuality(content, prompt);
-
-          responses.push({
-            modelId: model.id,
-            content,
-            qualityScore,
-            responseTime,
-            tokensUsed,
-            cost,
-            timestamp: new Date(),
-          });
-
-          console.log(`[TriModel] ${model.name} completed: Quality ${qualityScore}%, ${responseTime}ms`);
-        } catch (error) {
-          console.error(`[TriModel] ${model.name} failed:`, error);
-          responses.push({
-            modelId: model.id,
-            content: `// Error: ${error instanceof Error ? error.message : 'Generation failed'}`,
-            qualityScore: 0,
-            responseTime: Date.now() - modelStartTime,
-            tokensUsed: 0,
-            cost: 0,
-            timestamp: new Date(),
-          });
-        }
-      }
+      const backendResult = await trpcClient.orchestration.generate.mutate({
+        prompt,
+        models: config.models,
+        selectionStrategy: config.selectionStrategy,
+        context,
+      });
 
       setCurrentProgress(95);
 
-      const selectedResponse = selectBestResponse(responses, config.selectionStrategy);
-      const totalTime = Date.now() - startTime;
-      const totalCost = responses.reduce((sum, r) => sum + r.cost, 0);
-
       const result: OrchestrationResult = {
-        id: `orch-${Date.now()}`,
-        prompt,
-        models: config.models,
-        responses,
-        selectedResponse,
-        totalCost,
-        totalTime,
-        createdAt: new Date(),
+        id: backendResult.id,
+        prompt: backendResult.prompt,
+        models: backendResult.models,
+        responses: backendResult.responses.map(r => ({
+          modelId: r.modelId,
+          content: r.content,
+          qualityScore: r.qualityScore,
+          responseTime: r.responseTime,
+          tokensUsed: r.tokensUsed,
+          cost: r.cost,
+          timestamp: r.timestamp,
+        })),
+        selectedResponse: {
+          modelId: backendResult.selectedResponse.modelId,
+          content: backendResult.selectedResponse.content,
+          qualityScore: backendResult.selectedResponse.qualityScore,
+          responseTime: backendResult.selectedResponse.responseTime,
+          tokensUsed: backendResult.selectedResponse.tokensUsed,
+          cost: backendResult.selectedResponse.cost,
+          timestamp: backendResult.selectedResponse.timestamp,
+        },
+        totalCost: backendResult.totalCost,
+        totalTime: backendResult.totalTime,
+        createdAt: backendResult.createdAt,
       };
 
       const updatedHistory = [result, ...orchestrationHistory].slice(0, 50);
       await saveHistory(updatedHistory);
 
       setCurrentProgress(100);
-      console.log(`[TriModel] Orchestration complete: Selected ${selectedResponse.modelId} with quality ${selectedResponse.qualityScore}%`);
+      console.log(`[TriModel] Orchestration complete: Selected ${result.selectedResponse.modelId} with quality ${result.selectedResponse.qualityScore}%`);
 
       return result;
     } catch (error) {
@@ -235,7 +193,7 @@ Generate ONLY valid code without markdown formatting.`;
       setIsOrchestrating(false);
       setCurrentProgress(0);
     }
-  }, [config, availableModels, orchestrationHistory, saveHistory]);
+  }, [config, orchestrationHistory, saveHistory]);
 
   const compareModels = useCallback(async (
     prompt: string,
@@ -243,38 +201,28 @@ Generate ONLY valid code without markdown formatting.`;
   ): Promise<ModelResponse[]> => {
     console.log(`[TriModel] Comparing ${modelIds.length} models`);
     
-    const { generateText } = await import('@rork/toolkit-sdk');
-    const responses: ModelResponse[] = [];
+    try {
+      const { trpcClient } = await import('@/lib/trpc');
+      
+      const result = await trpcClient.orchestration.compare.mutate({
+        prompt,
+        modelIds,
+      });
 
-    for (const modelId of modelIds) {
-      const model = availableModels.find(m => m.id === modelId);
-      if (!model) continue;
-
-      const startTime = Date.now();
-      try {
-        const content = await generateText({
-          messages: [{ role: 'user', content: prompt }]
-        });
-
-        const responseTime = Date.now() - startTime;
-        const qualityScore = await evaluateQuality(content, prompt);
-
-        responses.push({
-          modelId,
-          content,
-          qualityScore,
-          responseTime,
-          tokensUsed: Math.ceil(content.length / 4),
-          cost: model.costPerRequest,
-          timestamp: new Date(),
-        });
-      } catch (error) {
-        console.error(`[TriModel] Model ${modelId} comparison failed:`, error);
-      }
+      return result.results.map(r => ({
+        modelId: r.modelId,
+        content: r.content,
+        qualityScore: r.qualityScore,
+        responseTime: r.responseTime,
+        tokensUsed: r.tokensUsed,
+        cost: r.cost,
+        timestamp: r.timestamp,
+      }));
+    } catch (error) {
+      console.error('[TriModel] Comparison failed:', error);
+      return [];
     }
-
-    return responses;
-  }, [availableModels]);
+  }, []);
 
   const getModelStats = useCallback(() => {
     const stats = orchestrationHistory.reduce((acc, result) => {
@@ -330,60 +278,4 @@ Generate ONLY valid code without markdown formatting.`;
   ]);
 });
 
-async function evaluateQuality(content: string, prompt: string): Promise<number> {
-  let score = 70;
 
-  if (content.includes('import') && content.includes('export')) score += 5;
-  if (content.includes('interface') || content.includes('type')) score += 5;
-  if (content.includes('StyleSheet.create')) score += 5;
-  if (content.includes('try') && content.includes('catch')) score += 5;
-  if (content.includes('useState') || content.includes('useEffect')) score += 5;
-  if (!content.includes('any')) score += 3;
-  if (!content.includes('console.log')) score += 2;
-  
-  const hasComments = (content.match(/\/\//g) || []).length > 2;
-  if (hasComments) score += 3;
-  
-  const lines = content.split('\n').length;
-  if (lines > 20 && lines < 500) score += 2;
-
-  return Math.min(100, score);
-}
-
-function selectBestResponse(
-  responses: ModelResponse[],
-  strategy: OrchestrationConfig['selectionStrategy']
-): ModelResponse {
-  if (responses.length === 0) {
-    throw new Error('No responses to select from');
-  }
-
-  switch (strategy) {
-    case 'quality':
-      return responses.reduce((best, current) =>
-        current.qualityScore > best.qualityScore ? current : best
-      );
-    
-    case 'speed':
-      return responses.reduce((best, current) =>
-        current.responseTime < best.responseTime ? current : best
-      );
-    
-    case 'cost':
-      return responses.reduce((best, current) =>
-        current.cost < best.cost ? current : best
-      );
-    
-    case 'balanced':
-    default:
-      return responses.reduce((best, current) => {
-        const bestScore = (best.qualityScore * 0.6) + 
-                         ((10000 / best.responseTime) * 0.3) + 
-                         ((1 / best.cost) * 0.1);
-        const currentScore = (current.qualityScore * 0.6) + 
-                            ((10000 / current.responseTime) * 0.3) + 
-                            ((1 / current.cost) * 0.1);
-        return currentScore > bestScore ? current : best;
-      });
-  }
-}

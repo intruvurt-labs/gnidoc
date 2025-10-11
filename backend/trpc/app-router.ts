@@ -18,6 +18,10 @@ import { executeQueryProcedure } from "./routes/database/execute/route";
 import { testConnectionProcedure } from "./routes/database/test-connection/route";
 import { listTablesProcedure } from "./routes/database/list-tables/route";
 import { getTableSchemaProcedure } from "./routes/database/table-schema/route";
+import { orchestrateGenerationProcedure } from "./routes/orchestration/generate/route";
+import { compareModelsProcedure } from "./routes/orchestration/compare/route";
+import { getOrchestrationHistoryProcedure, deleteOrchestrationHistoryProcedure } from "./routes/orchestration/history/route";
+import { getModelStatsProcedure } from "./routes/orchestration/stats/route";
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -48,6 +52,13 @@ export const appRouter = createTRPCRouter({
     testConnection: testConnectionProcedure,
     listTables: listTablesProcedure,
     getTableSchema: getTableSchemaProcedure,
+  }),
+  orchestration: createTRPCRouter({
+    generate: orchestrateGenerationProcedure,
+    compare: compareModelsProcedure,
+    history: getOrchestrationHistoryProcedure,
+    deleteHistory: deleteOrchestrationHistoryProcedure,
+    stats: getModelStatsProcedure,
   }),
 });
 
