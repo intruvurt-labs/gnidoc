@@ -49,19 +49,31 @@ export default function FAQScreen() {
         {
           id: 'what-is-gnidoc',
           question: 'What is gnidoC Terces?',
-          answer: 'gnidoC Terces is a professional mobile development environment powered by AI. It provides advanced code generation, real-time analysis, and comprehensive development tools for building React Native applications directly on your mobile device.',
+          answer: 'gnidoC Terces (Coding Secrets reversed) is a revolutionary AI-powered mobile development platform available at https://gnidoc.xyz. It transforms your mobile device into a complete development environment with advanced code generation, real-time analysis, database management, research capabilities, and comprehensive deployment tools for building production-ready React Native applications.',
+          category: 'getting-started',
+        },
+        {
+          id: 'platform-philosophy',
+          question: 'What is the philosophy behind gnidoC Terces?',
+          answer: 'gnidoC Terces embodies the ethos of democratizing software development by making professional-grade tools accessible on mobile devices. We believe in empowering developers to code anywhere, anytime, with AI assistance that enhances creativity rather than replacing it. Our platform combines cutting-edge AI with intuitive design to unlock the secrets of efficient mobile development.',
           category: 'getting-started',
         },
         {
           id: 'how-to-start',
           question: 'How do I get started with the app?',
-          answer: 'Simply launch the app and you\'ll be guided through an onboarding tour. You can create your first project from the Dashboard by tapping "New Project" and selecting your preferred project type (React Native, Web App, or API Service).',
+          answer: 'Simply launch the app and you\'ll be guided through an onboarding tour. You can create your first project from the Dashboard by tapping "New Project" and selecting your preferred project type (React Native, Web App, or API Service). Visit https://gnidoc.xyz for comprehensive tutorials and documentation.',
           category: 'getting-started',
         },
         {
           id: 'system-requirements',
           question: 'What are the system requirements?',
-          answer: 'gnidoC Terces works on iOS 13+ and Android 8+ devices. For optimal performance, we recommend devices with at least 4GB RAM and a stable internet connection for AI features.',
+          answer: 'gnidoC Terces works on iOS 13+ and Android 8+ devices. For optimal performance, we recommend devices with at least 4GB RAM and a stable internet connection for AI features. The platform is also accessible via web at https://gnidoc.xyz.',
+          category: 'getting-started',
+        },
+        {
+          id: 'account-setup',
+          question: 'Do I need an account to use gnidoC Terces?',
+          answer: 'Yes, creating an account allows you to sync projects across devices, access cloud features, and utilize AI-powered tools. You can sign up using email or GitHub OAuth. Premium features require a subscription, but core functionality is available in the free tier.',
           category: 'getting-started',
         },
       ],
@@ -74,25 +86,49 @@ export default function FAQScreen() {
         {
           id: 'ai-code-generation',
           question: 'How does AI code generation work?',
-          answer: 'Our AI assistant analyzes your requirements and generates production-ready code following React Native best practices. Simply describe what you want to build, and the AI will create components, screens, or entire features with proper TypeScript typing and styling.',
+          answer: 'Our AI assistant analyzes your requirements and generates production-ready code following React Native best practices. Simply describe what you want to build, and the AI will create components, screens, or entire features with proper TypeScript typing and styling. The AI learns from your coding patterns and adapts to your project structure.',
           category: 'features',
         },
         {
           id: 'code-analysis',
           question: 'What does the code analysis feature do?',
-          answer: 'The analysis feature scans your project for code quality, performance issues, security vulnerabilities, and best practice violations. It provides detailed reports with actionable recommendations to improve your codebase.',
+          answer: 'The analysis feature scans your project for code quality, performance issues, security vulnerabilities, and best practice violations. It provides detailed reports with actionable recommendations to improve your codebase. Analysis includes dependency checks, bundle size optimization, and accessibility audits.',
+          category: 'features',
+        },
+        {
+          id: 'database-management',
+          question: 'What database features are available?',
+          answer: 'gnidoC Terces includes a full-featured SQL editor with support for PostgreSQL, MySQL, SQLite, and MongoDB. You can execute queries, view table schemas, manage connections, and visualize data relationships. The platform includes query optimization suggestions and transaction management.',
+          category: 'features',
+        },
+        {
+          id: 'research-capabilities',
+          question: 'What is the Research feature?',
+          answer: 'The Research feature allows you to conduct AI-powered research on any topic, generate comprehensive reports, and export findings in multiple formats. It\'s perfect for gathering requirements, exploring new technologies, or documenting architectural decisions.',
           category: 'features',
         },
         {
           id: 'terminal-commands',
           question: 'Can I run real terminal commands?',
-          answer: 'Yes! The terminal supports real command execution including npm/yarn operations, git commands, file system operations, and Expo CLI commands. All commands run in a secure sandboxed environment.',
+          answer: 'Yes! The terminal supports real command execution including npm/yarn operations, git commands, file system operations, and Expo CLI commands. All commands run in a secure sandboxed environment with full output streaming.',
           category: 'features',
         },
         {
           id: 'project-management',
           question: 'How do I manage multiple projects?',
-          answer: 'You can create and switch between multiple projects from the Dashboard. Each project maintains its own files, settings, and analysis results. Projects are automatically saved and synced across your devices.',
+          answer: 'You can create and switch between multiple projects from the Dashboard. Each project maintains its own files, settings, and analysis results. Projects are automatically saved and synced across your devices with version control integration.',
+          category: 'features',
+        },
+        {
+          id: 'deployment',
+          question: 'How do I deploy my applications?',
+          answer: 'gnidoC Terces provides one-click deployment to multiple platforms including Vercel, Netlify, and custom servers. The deployment feature includes automatic SEO optimization, environment variable management, and rollback capabilities. Monitor your deployments directly from the app.',
+          category: 'features',
+        },
+        {
+          id: 'integrations',
+          question: 'What integrations are supported?',
+          answer: 'The platform integrates with GitHub, GitLab, Bitbucket, Slack, Discord, Jira, Trello, and many more services. You can connect APIs, manage webhooks, and automate workflows. Custom integrations can be created using our API.',
           category: 'features',
         },
       ],
@@ -123,6 +159,80 @@ export default function FAQScreen() {
       ],
     },
     {
+      id: 'advanced',
+      name: 'Advanced Features',
+      icon: <Zap color={Colors.Colors.warning} size={20} />,
+      items: [
+        {
+          id: 'orchestration',
+          question: 'What is the Orchestration feature?',
+          answer: 'Orchestration allows you to coordinate multiple AI models and services to work together on complex tasks. You can create workflows that combine code generation, analysis, testing, and deployment in automated pipelines. Perfect for large-scale projects requiring multi-step processes.',
+          category: 'advanced',
+        },
+        {
+          id: 'tri-model',
+          question: 'What is the Tri-Model Builder?',
+          answer: 'The Tri-Model Builder is an advanced feature that combines three AI models (GPT-4, Claude, and Gemini) to generate more robust and diverse code solutions. It compares outputs, identifies best practices, and produces optimized code by leveraging the strengths of each model.',
+          category: 'advanced',
+        },
+        {
+          id: 'workflow-automation',
+          question: 'How do I automate workflows?',
+          answer: 'Use the Workflow tab to create custom automation pipelines. You can trigger actions based on events (commits, deployments, errors), schedule tasks, and chain multiple operations together. Workflows support conditional logic and error handling.',
+          category: 'advanced',
+        },
+        {
+          id: 'security-features',
+          question: 'What security features are available?',
+          answer: 'gnidoC Terces includes comprehensive security scanning, dependency vulnerability detection, secret detection in code, OWASP compliance checking, and automated security reports. All data is encrypted in transit and at rest. Two-factor authentication is available for account protection.',
+          category: 'advanced',
+        },
+        {
+          id: 'api-access',
+          question: 'Can I access gnidoC Terces via API?',
+          answer: 'Yes! Premium users have access to our REST and GraphQL APIs. You can programmatically create projects, run analyses, execute deployments, and integrate gnidoC Terces into your existing development workflows. API documentation is available at https://gnidoc.xyz/docs/api.',
+          category: 'advanced',
+        },
+      ],
+    },
+    {
+      id: 'subscription',
+      name: 'Subscription & Pricing',
+      icon: <Shield color={Colors.Colors.success} size={20} />,
+      items: [
+        {
+          id: 'pricing-tiers',
+          question: 'What subscription tiers are available?',
+          answer: 'gnidoC Terces offers Free, Pro, and Enterprise tiers. Free includes basic features and limited AI usage. Pro unlocks unlimited AI generations, advanced features, priority support, and team collaboration. Enterprise includes custom deployments, dedicated support, and SLA guarantees. Visit https://gnidoc.xyz/pricing for details.',
+          category: 'subscription',
+        },
+        {
+          id: 'free-tier',
+          question: 'What is included in the free tier?',
+          answer: 'The free tier includes up to 3 projects, 50 AI generations per month, basic code analysis, terminal access, and community support. It\'s perfect for learning and small personal projects. Upgrade anytime to unlock unlimited features.',
+          category: 'subscription',
+        },
+        {
+          id: 'payment-methods',
+          question: 'What payment methods do you accept?',
+          answer: 'We accept all major credit cards, PayPal, and cryptocurrency payments. Enterprise customers can pay via invoice. All subscriptions are billed monthly or annually with a discount for annual plans.',
+          category: 'subscription',
+        },
+        {
+          id: 'refund-policy',
+          question: 'What is your refund policy?',
+          answer: 'We offer a 14-day money-back guarantee for all paid subscriptions. If you\'re not satisfied, contact support within 14 days of purchase for a full refund. No questions asked.',
+          category: 'subscription',
+        },
+        {
+          id: 'team-features',
+          question: 'Can I collaborate with my team?',
+          answer: 'Yes! Pro and Enterprise plans include team collaboration features. Share projects, manage permissions, track team activity, and collaborate in real-time. Enterprise plans support unlimited team members with advanced role-based access control.',
+          category: 'subscription',
+        },
+      ],
+    },
+    {
       id: 'troubleshooting',
       name: 'Troubleshooting',
       icon: <Shield color={Colors.Colors.success} size={20} />,
@@ -130,19 +240,31 @@ export default function FAQScreen() {
         {
           id: 'app-crashes',
           question: 'What should I do if the app crashes?',
-          answer: 'First, try restarting the app. If crashes persist, check for app updates in the App Store/Play Store. Clear the app cache if needed, and ensure you have sufficient device storage. Contact support if issues continue.',
+          answer: 'First, try restarting the app. If crashes persist, check for app updates in the App Store/Play Store. Clear the app cache if needed, and ensure you have sufficient device storage. Contact support at support@intruvurt.space if issues continue.',
           category: 'troubleshooting',
         },
         {
           id: 'sync-issues',
           question: 'My projects aren\'t syncing properly',
-          answer: 'Ensure you have a stable internet connection and sufficient cloud storage. Try manually syncing from Settings > Sync. If problems persist, check your account status and contact support for assistance.',
+          answer: 'Ensure you have a stable internet connection and sufficient cloud storage. Try manually syncing from Settings -> Sync. If problems persist, check your account status and contact support for assistance. Check https://gnidoc.xyz/status for service status.',
           category: 'troubleshooting',
         },
         {
           id: 'performance-issues',
           question: 'The app is running slowly',
-          answer: 'Close other apps to free up memory, ensure you have adequate storage space, and check your internet connection. Large projects may require more processing time. Consider breaking large projects into smaller modules.',
+          answer: 'Close other apps to free up memory, ensure you have adequate storage space, and check your internet connection. Large projects may require more processing time. Consider breaking large projects into smaller modules. Enable performance mode in Settings for better optimization.',
+          category: 'troubleshooting',
+        },
+        {
+          id: 'ai-errors',
+          question: 'AI features are not working',
+          answer: 'Check your internet connection and ensure you haven\'t exceeded your monthly AI usage quota. Verify your subscription status in Settings. If the issue persists, try logging out and back in. Contact support if AI services remain unavailable.',
+          category: 'troubleshooting',
+        },
+        {
+          id: 'deployment-failures',
+          question: 'My deployment failed',
+          answer: 'Check the deployment logs for specific error messages. Common issues include missing environment variables, build errors, or insufficient permissions. Ensure your deployment target is properly configured. Visit https://gnidoc.xyz/docs/deployment for troubleshooting guides.',
           category: 'troubleshooting',
         },
       ],
@@ -273,6 +395,31 @@ export default function FAQScreen() {
           </View>
         </View>
 
+        {/* Platform Info */}
+        <View style={styles.platformSection}>
+          <Text style={styles.platformTitle}>About gnidoC Terces</Text>
+          <Text style={styles.platformDescription}>
+            gnidoC Terces (Coding Secrets reversed) represents a paradigm shift in mobile development. 
+            Our platform combines the power of AI with intuitive mobile-first design to create a 
+            professional development environment that fits in your pocket.
+          </Text>
+          <Text style={styles.platformDescription}>
+            Visit <Text style={styles.linkText}>https://gnidoc.xyz</Text> for comprehensive documentation, 
+            tutorials, API references, and community resources. Join thousands of developers who are 
+            unlocking the secrets of efficient mobile development.
+          </Text>
+          <View style={styles.platformFeatures}>
+            <Text style={styles.featureItem}>✨ AI-Powered Code Generation</Text>
+            <Text style={styles.featureItem}>🔍 Advanced Code Analysis</Text>
+            <Text style={styles.featureItem}>🗄️ Database Management</Text>
+            <Text style={styles.featureItem}>🔬 Research Capabilities</Text>
+            <Text style={styles.featureItem}>🚀 One-Click Deployment</Text>
+            <Text style={styles.featureItem}>🔗 Extensive Integrations</Text>
+            <Text style={styles.featureItem}>🎯 Workflow Automation</Text>
+            <Text style={styles.featureItem}>🔒 Enterprise Security</Text>
+          </View>
+        </View>
+
         {/* Tips */}
         <View style={styles.tipsSection}>
           <Text style={styles.tipsTitle}>Pro Tips</Text>
@@ -296,6 +443,67 @@ export default function FAQScreen() {
               🚀 Use quick commands in the terminal to speed up common tasks
             </Text>
           </View>
+          <View style={styles.tipItem}>
+            <Text style={styles.tipText}>
+              🎨 Customize your workspace theme and layout in Settings {'->'} Preferences
+            </Text>
+          </View>
+          <View style={styles.tipItem}>
+            <Text style={styles.tipText}>
+              🔄 Enable auto-sync to keep your projects backed up across devices
+            </Text>
+          </View>
+          <View style={styles.tipItem}>
+            <Text style={styles.tipText}>
+              📚 Check out https://gnidoc.xyz/tutorials for step-by-step guides
+            </Text>
+          </View>
+          <View style={styles.tipItem}>
+            <Text style={styles.tipText}>
+              🏆 Complete challenges to earn achievements and unlock features
+            </Text>
+          </View>
+        </View>
+
+        {/* Resources */}
+        <View style={styles.resourcesSection}>
+          <Text style={styles.resourcesTitle}>Additional Resources</Text>
+          <TouchableOpacity 
+            style={styles.resourceItem}
+            onPress={() => Linking.openURL('https://gnidoc.xyz/docs')}
+          >
+            <Text style={styles.resourceText}>📖 Documentation</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.resourceItem}
+            onPress={() => Linking.openURL('https://gnidoc.xyz/tutorials')}
+          >
+            <Text style={styles.resourceText}>🎓 Tutorials</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.resourceItem}
+            onPress={() => Linking.openURL('https://gnidoc.xyz/api')}
+          >
+            <Text style={styles.resourceText}>🔌 API Reference</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.resourceItem}
+            onPress={() => Linking.openURL('https://gnidoc.xyz/community')}
+          >
+            <Text style={styles.resourceText}>👥 Community Forum</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.resourceItem}
+            onPress={() => Linking.openURL('https://gnidoc.xyz/blog')}
+          >
+            <Text style={styles.resourceText}>📝 Blog</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.resourceItem}
+            onPress={() => Linking.openURL('https://gnidoc.xyz/changelog')}
+          >
+            <Text style={styles.resourceText}>🔔 Changelog</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </View>
@@ -448,5 +656,62 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.Colors.text.secondary,
     lineHeight: 18,
+  },
+  platformSection: {
+    backgroundColor: Colors.Colors.background.card,
+    borderRadius: 16,
+    padding: 24,
+    marginBottom: 24,
+    borderWidth: 2,
+    borderColor: Colors.Colors.cyan.primary,
+  },
+  platformTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: Colors.Colors.text.primary,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  platformDescription: {
+    fontSize: 14,
+    color: Colors.Colors.text.secondary,
+    lineHeight: 22,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  linkText: {
+    color: Colors.Colors.cyan.primary,
+    fontWeight: '600',
+  },
+  platformFeatures: {
+    marginTop: 8,
+    gap: 8,
+  },
+  featureItem: {
+    fontSize: 14,
+    color: Colors.Colors.text.secondary,
+    lineHeight: 20,
+  },
+  resourcesSection: {
+    marginBottom: 32,
+  },
+  resourcesTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.Colors.text.primary,
+    marginBottom: 16,
+  },
+  resourceItem: {
+    backgroundColor: Colors.Colors.background.card,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: Colors.Colors.border.muted,
+  },
+  resourceText: {
+    fontSize: 16,
+    color: Colors.Colors.text.primary,
+    fontWeight: '500',
   },
 });
