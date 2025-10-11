@@ -19,7 +19,6 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { Audio } from 'expo-av';
 import {
-  Sparkles,
   Code,
   Play,
   Download,
@@ -444,7 +443,7 @@ export default function AppGeneratorScreen() {
 
         <View style={styles.promptSection}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>What do you want to build?</Text>
+            <Text style={styles.sectionTitle3D}>What do you want to build?</Text>
             <TouchableOpacity
               style={styles.mgaButton}
               onPress={() => setShowModelSelector(true)}
@@ -570,7 +569,11 @@ export default function AppGeneratorScreen() {
               </>
             ) : (
               <>
-                <Sparkles color={Colors.Colors.text.inverse} size={24} />
+                <Image
+                  source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/k95rc9dv5sso3otf9ckgb' }}
+                  style={styles.generateButtonIcon}
+                  resizeMode="contain"
+                />
                 <Text style={styles.generateButtonText}>Generate App</Text>
               </>
             )}
@@ -1286,6 +1289,17 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 10,
   },
+  sectionTitle3D: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: Colors.Colors.cyan.primary,
+    marginBottom: 16,
+    textShadowColor: '#00FFFF',
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 15,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase' as const,
+  },
   promptInput: {
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
     borderRadius: 12,
@@ -1342,6 +1356,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: Colors.Colors.text.inverse,
+  },
+  generateButtonIcon: {
+    width: 24,
+    height: 24,
   },
   progressSection: {
     paddingHorizontal: 20,
