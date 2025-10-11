@@ -23,6 +23,12 @@ jobs:
         node-version: ${{ matrix.node-version }}
 
     - name: Build
+      env:
+        EXPO_PUBLIC_GITHUB_CLIENT_ID: ${{ secrets.EXPO_PUBLIC_GITHUB_CLIENT_ID }}
+        EXPO_PUBLIC_GITHUB_CLIENT_SECRET: ${{ secrets.EXPO_PUBLIC_GITHUB_CLIENT_SECRET }}
+        GITHUB_CLIENT_ID: ${{ secrets.GITHUB_CLIENT_ID }}
+        GITHUB_CLIENT_SECRET: ${{ secrets.GITHUB_CLIENT_SECRET }}
+        EXPO_PUBLIC_RORK_API_BASE_URL: ${{ secrets.EXPO_PUBLIC_RORK_API_BASE_URL }}
       run: |
         npm install
         npx webpack
