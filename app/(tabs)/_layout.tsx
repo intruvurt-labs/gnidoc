@@ -3,8 +3,8 @@ import {
   Code, 
   Brain,
   Monitor,
-  Workflow,
-  Settings
+  Settings,
+  Network
 } from "lucide-react-native";
 import React from "react";
 import Colors from "@/constants/colors";
@@ -56,10 +56,10 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="workflow"
+        name="orchestration"
         options={{
-          title: "Workflow",
-          tabBarIcon: ({ color }) => <Workflow color={color} size={26} />,
+          title: "Orchestrate",
+          tabBarIcon: ({ color }) => <Network color={color} size={26} />,
         }}
       />
       <Tabs.Screen
@@ -67,6 +67,12 @@ export default function TabLayout() {
         options={{
           title: "Settings",
           tabBarIcon: ({ color }) => <Settings color={color} size={26} />,
+        }}
+      />
+      <Tabs.Screen
+        name="workflow"
+        options={{
+          href: null,
         }}
       />
       <Tabs.Screen
