@@ -100,10 +100,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#4DD0E1',
     fontWeight: '500' as const,
+    textShadowColor: 'rgba(0, 255, 255, 0.5)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 8,
   },
   cursor: {
     fontSize: 12,
     color: '#4DD0E1',
     fontWeight: '700' as const,
+    textShadowColor: 'rgba(0, 255, 255, 0.8)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
   },
 });
