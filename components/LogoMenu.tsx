@@ -280,7 +280,7 @@ export default function LogoMenu({ onPress, onLongPress }: LogoMenuProps) {
       >
         <View style={styles.logoCircle}>
           <Image
-            source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/k95rc9dv5sso3otf9ckgb' }}
+            source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/uye4njpfgqn6jz42axovy' }}
             style={styles.logoSymbol}
             resizeMode="contain"
           />
@@ -686,23 +686,23 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   logoCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: Colors.Colors.background.card,
-    borderWidth: 2,
+    borderWidth: 3,
     borderColor: Colors.Colors.cyan.primary,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: Colors.Colors.cyan.primary,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowOpacity: 0.8,
+    shadowRadius: 12,
+    elevation: 12,
   },
   logoSymbol: {
-    width: 28,
-    height: 28,
+    width: 56,
+    height: 56,
   },
   modalOverlay: {
     flex: 1,
@@ -713,18 +713,26 @@ const styles = StyleSheet.create({
   },
   quickMenu: {
     backgroundColor: Colors.Colors.background.card,
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 24,
+    padding: 24,
     width: '100%',
     maxWidth: 400,
-    borderWidth: 1,
-    borderColor: Colors.Colors.border.primary,
+    borderWidth: 3,
+    borderColor: Colors.Colors.cyan.primary,
+    shadowColor: '#FF1493',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 20,
+    elevation: 20,
   },
   menuHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 20,
     gap: 12,
+    paddingBottom: 16,
+    borderBottomWidth: 2,
+    borderBottomColor: Colors.Colors.cyan.primary,
   },
   menuTitle: {
     flex: 1,

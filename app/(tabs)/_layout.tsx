@@ -9,79 +9,165 @@ import {
   BarChart3,
   Trophy,
   Crown,
-  Gift
+  Gift,
+  Menu
 } from "lucide-react-native";
-import React from "react";
-import { View, TouchableOpacity, Text, StyleSheet, Platform } from "react-native";
+import React, { useState } from "react";
+import { View, TouchableOpacity, Text, StyleSheet, Platform, Modal, ScrollView, Image } from "react-native";
 import Colors from "@/constants/colors";
 import LogoMenu from "@/components/LogoMenu";
 
 function CustomTabBar({ state, descriptors, navigation }: any) {
+  const [showOverflowMenu, setShowOverflowMenu] = useState(false);
+  
   const visibleRoutes = state.routes.filter((route: any) => {
     const { options } = descriptors[route.key];
     return options.href !== null;
   });
 
   const mainTabs = visibleRoutes.slice(0, 3);
+  const overflowTabs = visibleRoutes.slice(3);
 
   return (
-    <View style={styles.tabBarContainer}>
-      <View style={styles.tabBarContent}>
-        <LogoMenu />
-        
-        {mainTabs.map((route: any, index: number) => {
-          const routeIndex = state.routes.indexOf(route);
-          const { options } = descriptors[route.key];
-          const label =
-            options.tabBarLabel !== undefined
-              ? options.tabBarLabel
-              : options.title !== undefined
-              ? options.title
-              : route.name;
+    <>
+      <View style={styles.tabBarContainer}>
+        <View style={styles.tabBarContent}>
+          <LogoMenu />
+          
+          {mainTabs.map((route: any, index: number) => {
+            const routeIndex = state.routes.indexOf(route);
+            const { options } = descriptors[route.key];
+            const label =
+              options.tabBarLabel !== undefined
+                ? options.tabBarLabel
+                : options.title !== undefined
+                ? options.title
+                : route.name;
 
-          const isFocused = state.index === routeIndex;
+            const isFocused = state.index === routeIndex;
 
-          const onPress = () => {
-            const event = navigation.emit({
-              type: 'tabPress',
-              target: route.key,
-              canPreventDefault: true,
-            });
+            const onPress = () => {
+              const event = navigation.emit({
+                type: 'tabPress',
+                target: route.key,
+                canPreventDefault: true,
+              });
 
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name);
-            }
-          };
+              if (!isFocused && !event.defaultPrevented) {
+                navigation.navigate(route.name);
+              }
+            };
 
-          const iconColor = isFocused ? Colors.Colors.cyan.primary : Colors.Colors.text.muted;
+            const iconColor = isFocused ? Colors.Colors.cyan.primary : Colors.Colors.text.muted;
 
-          return (
-            <TouchableOpacity
-              key={route.key}
-              accessibilityRole="button"
-              accessibilityState={isFocused ? { selected: true } : {}}
-              accessibilityLabel={options.tabBarAccessibilityLabel}
-              onPress={onPress}
-              style={[
-                styles.tabButton,
-                isFocused && styles.tabButtonActive,
-              ]}
-            >
-              {options.tabBarIcon && options.tabBarIcon({ color: iconColor, size: 24, focused: isFocused })}
-              <Text
+            return (
+              <TouchableOpacity
+                key={route.key}
+                accessibilityRole="button"
+                accessibilityState={isFocused ? { selected: true } : {}}
+                accessibilityLabel={options.tabBarAccessibilityLabel}
+                onPress={onPress}
                 style={[
-                  styles.tabLabel,
-                  { color: iconColor },
-                  isFocused && styles.tabLabelActive,
+                  styles.tabButton,
+                  isFocused && styles.tabButtonActive,
                 ]}
               >
-                {typeof label === 'string' ? label : ''}
-              </Text>
+                {options.tabBarIcon && options.tabBarIcon({ color: iconColor, size: 24, focused: isFocused })}
+                <Text
+                  style={[
+                    styles.tabLabel,
+                    { color: iconColor },
+                    isFocused && styles.tabLabelActive,
+                  ]}
+                >
+                  {typeof label === 'string' ? label : ''}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+          
+          {overflowTabs.length > 0 && (
+            <TouchableOpacity
+              style={styles.tabButton}
+              onPress={() => setShowOverflowMenu(true)}
+            >
+              <Menu color={Colors.Colors.text.muted} size={24} />
+              <Text style={styles.tabLabel}>More</Text>
             </TouchableOpacity>
-          );
-        })}
+          )}
+        </View>
+        
+        <View style={styles.footerLogoContainer}>
+          <Image
+            source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/1nutezip17rqx39f27nrb' }}
+            style={styles.footerLogo}
+            resizeMode="contain"
+          />
+        </View>
       </View>
-    </View>
+
+      <Modal
+        visible={showOverflowMenu}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowOverflowMenu(false)}
+      >
+        <TouchableOpacity
+          style={styles.overflowModalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowOverflowMenu(false)}
+        >
+          <View style={styles.overflowMenu}>
+            <Text style={styles.overflowMenuTitle}>More Tabs</Text>
+            <ScrollView>
+              {overflowTabs.map((route: any) => {
+                const routeIndex = state.routes.indexOf(route);
+                const { options } = descriptors[route.key];
+                const label =
+                  options.tabBarLabel !== undefined
+                    ? options.tabBarLabel
+                    : options.title !== undefined
+                    ? options.title
+                    : route.name;
+
+                const isFocused = state.index === routeIndex;
+
+                const onPress = () => {
+                  setShowOverflowMenu(false);
+                  const event = navigation.emit({
+                    type: 'tabPress',
+                    target: route.key,
+                    canPreventDefault: true,
+                  });
+
+                  if (!isFocused && !event.defaultPrevented) {
+                    navigation.navigate(route.name);
+                  }
+                };
+
+                const iconColor = isFocused ? Colors.Colors.cyan.primary : Colors.Colors.text.muted;
+
+                return (
+                  <TouchableOpacity
+                    key={route.key}
+                    style={[
+                      styles.overflowMenuItem,
+                      isFocused && styles.overflowMenuItemActive,
+                    ]}
+                    onPress={onPress}
+                  >
+                    {options.tabBarIcon && options.tabBarIcon({ color: iconColor, size: 20, focused: isFocused })}
+                    <Text style={[styles.overflowMenuItemText, { color: iconColor }]}>
+                      {typeof label === 'string' ? label : ''}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </>
   );
 }
 
@@ -256,5 +342,54 @@ const styles = StyleSheet.create({
   },
   tabLabelActive: {
     fontWeight: '700' as const,
+  },
+  footerLogoContainer: {
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: Colors.Colors.border.muted,
+  },
+  footerLogo: {
+    width: 120,
+    height: 24,
+  },
+  overflowModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'flex-end',
+  },
+  overflowMenu: {
+    backgroundColor: Colors.Colors.background.card,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    maxHeight: '60%',
+    borderWidth: 2,
+    borderColor: Colors.Colors.cyan.primary,
+  },
+  overflowMenuTitle: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: Colors.Colors.cyanRed.primary,
+    marginBottom: 16,
+  },
+  overflowMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: Colors.Colors.background.secondary,
+  },
+  overflowMenuItemActive: {
+    backgroundColor: Colors.Colors.cyan.primary + '20',
+    borderWidth: 1,
+    borderColor: Colors.Colors.cyan.primary,
+  },
+  overflowMenuItemText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
   },
 });

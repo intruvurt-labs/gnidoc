@@ -10,6 +10,8 @@ import {
   Modal,
   Animated,
   Dimensions,
+  Image,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -525,7 +527,25 @@ export default function OrchestrationScreen() {
             </Text>
           </View>
         </View>
-        <View style={{ width: 24 }} />
+        <TouchableOpacity 
+          style={styles.goldenBallButton}
+          onPress={() => {
+            Alert.alert(
+              'Golden Orchestration',
+              'Premium orchestration mode activated! This uses the most advanced models for optimal results.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Activate', onPress: () => console.log('Golden mode activated') }
+              ]
+            );
+          }}
+        >
+          <Image
+            source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/ruqmtjh8jps7myboazf1v' }}
+            style={styles.goldenBall}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
       </View>
 
       {isOrchestrating && (
@@ -683,6 +703,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.Colors.text.muted,
     marginTop: 2,
+  },
+  goldenBallButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 16,
+    elevation: 16,
+  },
+  goldenBall: {
+    width: 56,
+    height: 56,
   },
   progressContainer: {
     paddingHorizontal: 20,
