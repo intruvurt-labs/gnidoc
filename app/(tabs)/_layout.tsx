@@ -4,7 +4,8 @@ import {
   Brain,
   Monitor,
   Settings,
-  Network
+  Network,
+  User
 } from "lucide-react-native";
 import React from "react";
 import { View, ScrollView, TouchableOpacity, Text, StyleSheet, Platform } from "react-native";
@@ -119,10 +120,16 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="preferences"
+        options={{
+          title: "Preferences",
+          tabBarIcon: ({ color }) => <User color={color} size={26} />,
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
-          title: "Settings",
-          tabBarIcon: ({ color }) => <Settings color={color} size={26} />,
+          href: null,
         }}
       />
       <Tabs.Screen

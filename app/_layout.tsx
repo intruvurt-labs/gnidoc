@@ -26,6 +26,7 @@ const TriModelProvider = lazy(() => import("@/contexts/TriModelContext").then(m 
 const NoCodeBuilderProvider = lazy(() => import("@/contexts/NoCodeBuilderContext").then(m => ({ default: m.NoCodeBuilderProvider })));
 const IntegrationsProvider = lazy(() => import("@/contexts/IntegrationsContext").then(m => ({ default: m.IntegrationsProvider })));
 const ResearchProvider = lazy(() => import("@/contexts/ResearchContext").then(m => ({ default: m.ResearchProvider })));
+const PreferencesProvider = lazy(() => import("@/contexts/PreferencesContext").then(m => ({ default: m.PreferencesProvider })));
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -208,15 +209,16 @@ export default function RootLayout() {
               <AuthProvider>
                 <SettingsProvider>
                   <Suspense fallback={<LoadingFallback />}>
-                    <DatabaseProvider>
-                      <AgentProvider>
-                        <WorkflowProvider>
-                          <DeploymentProvider>
-                            <AppBuilderProvider>
-                              <TriModelProvider>
-                              <NoCodeBuilderProvider>
-                                <IntegrationsProvider>
-                                  <ResearchProvider>
+                    <PreferencesProvider>
+                      <DatabaseProvider>
+                        <AgentProvider>
+                          <WorkflowProvider>
+                            <DeploymentProvider>
+                              <AppBuilderProvider>
+                                <TriModelProvider>
+                                <NoCodeBuilderProvider>
+                                  <IntegrationsProvider>
+                                    <ResearchProvider>
                                     <StatusBar style="light" backgroundColor={Colors.Colors.background.primary} />
                                     <View style={{ flex: 1 }}>
                                       <AnimatedMoltenBackground
@@ -227,15 +229,16 @@ export default function RootLayout() {
                                       <RootLayoutNav />
                                       <FloatingAISupport />
                                     </View>
-                                  </ResearchProvider>
-                                </IntegrationsProvider>
-                              </NoCodeBuilderProvider>
-                              </TriModelProvider>
-                            </AppBuilderProvider>
-                          </DeploymentProvider>
-                        </WorkflowProvider>
-                      </AgentProvider>
-                    </DatabaseProvider>
+                                    </ResearchProvider>
+                                  </IntegrationsProvider>
+                                </NoCodeBuilderProvider>
+                                </TriModelProvider>
+                              </AppBuilderProvider>
+                            </DeploymentProvider>
+                          </WorkflowProvider>
+                        </AgentProvider>
+                      </DatabaseProvider>
+                    </PreferencesProvider>
                   </Suspense>
                 </SettingsProvider>
               </AuthProvider>
