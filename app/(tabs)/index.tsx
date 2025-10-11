@@ -14,7 +14,6 @@ import {
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  Sparkles,
   Code,
   Play,
   Download,
@@ -30,6 +29,7 @@ import {
   Layers,
   Menu,
 } from 'lucide-react-native';
+import { Image } from 'react-native';
 import Colors from '@/constants/colors';
 import { limeWithOutline } from '@/constants/textStyles';
 import { useAppBuilder, AppGenerationConfig } from '@/contexts/AppBuilderContext';
@@ -190,9 +190,13 @@ export default function AppGeneratorScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.heroSection}>
           <View style={styles.heroIcon}>
-            <Sparkles color={Colors.Colors.cyan.primary} size={48} />
+            <Image
+              source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/k95rc9dv5sso3otf9ckgb' }}
+              style={styles.heroIconImage}
+              resizeMode="contain"
+            />
           </View>
-          <Text style={styles.heroTitle}>Build Complete Apps with AI</Text>
+          <Text style={styles.heroTitle3D}>Build Complete Apps with AI</Text>
           <Text style={styles.heroDescription}>
             Describe your app idea and watch as our dual-model AI (Claude + Gemini)
             generates production-ready code with full compilation and live preview
@@ -248,7 +252,11 @@ export default function AppGeneratorScreen() {
               </>
             ) : (
               <>
-                <Sparkles color={Colors.Colors.text.inverse} size={24} />
+                <Image
+                  source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/k95rc9dv5sso3otf9ckgb' }}
+                  style={styles.generateButtonIcon}
+                  resizeMode="contain"
+                />
                 <Text style={styles.generateButtonText}>Generate App</Text>
               </>
             )}
@@ -612,6 +620,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
+    borderWidth: 2,
+    borderColor: Colors.Colors.cyan.primary,
+    shadowColor: Colors.Colors.cyan.glow,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 15,
+    elevation: 10,
+  },
+  heroIconImage: {
+    width: 60,
+    height: 60,
   },
   heroTitle: {
     fontSize: 28,
@@ -619,6 +638,18 @@ const styles = StyleSheet.create({
     color: Colors.Colors.cyan.primary,
     textAlign: 'center',
     marginBottom: 12,
+  },
+  heroTitle3D: {
+    fontSize: 32,
+    fontWeight: 'bold' as const,
+    color: Colors.Colors.cyan.primary,
+    textAlign: 'center',
+    marginBottom: 12,
+    textShadowColor: '#00FFFF',
+    textShadowOffset: { width: 3, height: 3 },
+    textShadowRadius: 20,
+    letterSpacing: 2,
+    textTransform: 'uppercase' as const,
   },
   heroDescription: {
     fontSize: 16,
@@ -685,6 +716,10 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold' as const,
     color: Colors.Colors.text.inverse,
+  },
+  generateButtonIcon: {
+    width: 24,
+    height: 24,
   },
   progressSection: {
     paddingHorizontal: 20,
