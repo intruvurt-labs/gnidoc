@@ -37,6 +37,14 @@ import {
   HelpCircle,
   FileCode,
   Layers,
+  Network,
+  User,
+  BarChart3,
+  Trophy,
+  Crown,
+  Gift,
+  Brain,
+  Monitor,
 } from 'lucide-react-native';
 import { Image } from 'react-native';
 import Colors from '@/constants/colors';
@@ -191,6 +199,11 @@ export default function LogoMenu({ onPress, onLongPress }: LogoMenuProps) {
     router.push('/app-generator' as any);
   };
 
+  const navigateToTab = (tabName: string) => {
+    setShowQuickMenu(false);
+    router.push(`/(tabs)/${tabName}` as any);
+  };
+
   const handlePreview = () => {
     setShowQuickMenu(false);
     Alert.alert('Preview', 'Opening preview in web/native...');
@@ -324,6 +337,46 @@ export default function LogoMenu({ onPress, onLongPress }: LogoMenuProps) {
               <Users color={Colors.Colors.red.primary} size={20} />
               <Text style={styles.menuItemText}>Switch Workspace</Text>
             </TouchableOpacity>
+
+            <View style={styles.menuDivider} />
+            <Text style={styles.menuSectionTitle}>Navigation</Text>
+
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigateToTab('orchestration')}>
+              <Network color={Colors.Colors.cyan.primary} size={20} />
+              <Text style={styles.menuItemText}>Orchestrate</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigateToTab('preferences')}>
+              <User color={Colors.Colors.cyan.primary} size={20} />
+              <Text style={styles.menuItemText}>Preferences</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigateToTab('security')}>
+              <Shield color={Colors.Colors.cyan.primary} size={20} />
+              <Text style={styles.menuItemText}>Security</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigateToTab('dashboard')}>
+              <BarChart3 color={Colors.Colors.cyan.primary} size={20} />
+              <Text style={styles.menuItemText}>Dashboard</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigateToTab('leaderboard')}>
+              <Trophy color={Colors.Colors.cyan.primary} size={20} />
+              <Text style={styles.menuItemText}>Leaderboard</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigateToTab('subscription')}>
+              <Crown color={Colors.Colors.cyan.primary} size={20} />
+              <Text style={styles.menuItemText}>Subscription</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuItem} onPress={() => navigateToTab('referrals')}>
+              <Gift color={Colors.Colors.cyan.primary} size={20} />
+              <Text style={styles.menuItemText}>Referrals</Text>
+            </TouchableOpacity>
+
+            <View style={styles.menuDivider} />
 
             <TouchableOpacity
               style={styles.advancedButton}
@@ -715,6 +768,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600' as const,
     color: Colors.Colors.text.muted,
+  },
+  menuDivider: {
+    height: 1,
+    backgroundColor: Colors.Colors.border.muted,
+    marginVertical: 12,
+  },
+  menuSectionTitle: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+    color: Colors.Colors.text.muted,
+    textTransform: 'uppercase' as const,
+    marginBottom: 8,
+    paddingHorizontal: 4,
   },
   advancedModalContainer: {
     flex: 1,

@@ -3,7 +3,6 @@ import {
   Code, 
   Brain,
   Monitor,
-  Settings,
   Network,
   User,
   Shield,
@@ -13,19 +12,25 @@ import {
   Gift
 } from "lucide-react-native";
 import React from "react";
-import { View, ScrollView, TouchableOpacity, Text, StyleSheet, Platform } from "react-native";
+import { View, TouchableOpacity, Text, StyleSheet, Platform } from "react-native";
 import Colors from "@/constants/colors";
+import LogoMenu from "@/components/LogoMenu";
 
 function CustomTabBar({ state, descriptors, navigation }: any) {
+  const visibleRoutes = state.routes.filter((route: any) => {
+    const { options } = descriptors[route.key];
+    return options.href !== null;
+  });
+
+  const mainTabs = visibleRoutes.slice(0, 3);
+
   return (
     <View style={styles.tabBarContainer}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tabBarScrollContent}
-        style={styles.tabBarScroll}
-      >
-        {state.routes.map((route: any, index: number) => {
+      <View style={styles.tabBarContent}>
+        <LogoMenu />
+        
+        {mainTabs.map((route: any, index: number) => {
+          const routeIndex = state.routes.indexOf(route);
           const { options } = descriptors[route.key];
           const label =
             options.tabBarLabel !== undefined
@@ -34,7 +39,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
               ? options.title
               : route.name;
 
-          const isFocused = state.index === index;
+          const isFocused = state.index === routeIndex;
 
           const onPress = () => {
             const event = navigation.emit({
@@ -48,13 +53,6 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
             }
           };
 
-          const onLongPress = () => {
-            navigation.emit({
-              type: 'tabLongPress',
-              target: route.key,
-            });
-          };
-
           const iconColor = isFocused ? Colors.Colors.cyan.primary : Colors.Colors.text.muted;
 
           return (
@@ -64,7 +62,6 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
               accessibilityState={isFocused ? { selected: true } : {}}
               accessibilityLabel={options.tabBarAccessibilityLabel}
               onPress={onPress}
-              onLongPress={onLongPress}
               style={[
                 styles.tabButton,
                 isFocused && styles.tabButtonActive,
@@ -83,7 +80,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
             </TouchableOpacity>
           );
         })}
-      </ScrollView>
+      </View>
     </View>
   );
 }
@@ -232,22 +229,19 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 20 : 8,
     paddingTop: 8,
   },
-  tabBarScroll: {
-    flexGrow: 0,
-  },
-  tabBarScrollContent: {
-    paddingHorizontal: 8,
+  tabBarContent: {
+    flexDirection: 'row',
     alignItems: 'center',
-    minWidth: '100%',
+    justifyContent: 'space-around',
+    paddingHorizontal: 8,
   },
   tabButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 8,
-    marginHorizontal: 4,
     borderRadius: 12,
-    minWidth: 80,
+    flex: 1,
     backgroundColor: 'transparent',
   },
   tabButtonActive: {
