@@ -36,6 +36,7 @@ import { useAppBuilder, AppGenerationConfig } from '@/contexts/AppBuilderContext
 import * as Haptics from 'expo-haptics';
 import BrandedHeader from '@/components/BrandedHeader';
 import ScreenBackground from '@/components/ScreenBackground';
+import TypewriterEffect from '@/components/TypewriterEffect';
 
 const { width } = Dimensions.get('window');
 
@@ -167,8 +168,6 @@ export default function AppGeneratorScreen() {
         />
 
         <BrandedHeader
-          title="AI App Generator"
-          enableTypewriter
           rightAction={
             <View style={styles.headerActions}>
               <TouchableOpacity 
@@ -189,14 +188,19 @@ export default function AppGeneratorScreen() {
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.heroSection}>
-          <View style={styles.heroIcon}>
-            <Image
-              source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/k95rc9dv5sso3otf9ckgb' }}
-              style={styles.heroIconImage}
-              resizeMode="contain"
-            />
-          </View>
-          <Text style={styles.heroTitle3D}>Build Complete Apps with AI</Text>
+          <Text style={styles.heroTitle}>AI App Generator</Text>
+          <TypewriterEffect
+            phrases={[
+              'Build Complete Apps with AI',
+              'Generate Production-Ready Code',
+              'Dual-Model AI Technology',
+              'Live Preview & Compilation'
+            ]}
+            style={styles.typewriterText}
+            typingSpeed={60}
+            deletingSpeed={40}
+            pauseDuration={2500}
+          />
           <Text style={styles.heroDescription}>
             Describe your app idea and watch as our dual-model AI (Claude + Gemini)
             generates production-ready code with full compilation and live preview
@@ -204,7 +208,10 @@ export default function AppGeneratorScreen() {
         </View>
 
         <View style={styles.promptSection}>
-          <Text style={styles.sectionTitle}>What do you want to build?</Text>
+          <View style={styles.sectionTitleContainer}>
+            <Text style={styles.sectionTitle}>What do you want to build?</Text>
+            <View style={styles.underline} />
+          </View>
           <TextInput
             style={styles.promptInput}
             placeholder="E.g., A fitness tracking app with workout plans, progress charts, and social features..."
@@ -609,37 +616,10 @@ const styles = StyleSheet.create({
   },
   heroSection: {
     alignItems: 'center',
-    paddingVertical: 40,
+    paddingVertical: 24,
     paddingHorizontal: 20,
   },
-  heroIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.Colors.cyan.primary + '20',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-    borderWidth: 2,
-    borderColor: Colors.Colors.cyan.primary,
-    shadowColor: Colors.Colors.cyan.glow,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 15,
-    elevation: 10,
-  },
-  heroIconImage: {
-    width: 60,
-    height: 60,
-  },
   heroTitle: {
-    fontSize: 28,
-    fontWeight: 'bold' as const,
-    color: Colors.Colors.cyan.primary,
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  heroTitle3D: {
     fontSize: 32,
     fontWeight: 'bold' as const,
     color: Colors.Colors.cyan.primary,
@@ -651,6 +631,13 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     textTransform: 'uppercase' as const,
   },
+  typewriterText: {
+    fontSize: 18,
+    color: Colors.Colors.cyan.primary,
+    textAlign: 'center',
+    marginBottom: 16,
+    fontWeight: '600' as const,
+  },
   heroDescription: {
     fontSize: 16,
     ...limeWithOutline,
@@ -661,11 +648,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 32,
   },
+  sectionTitleContainer: {
+    marginBottom: 16,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold' as const,
     ...limeWithOutline,
-    marginBottom: 16,
+    marginBottom: 8,
+  },
+  underline: {
+    height: 3,
+    backgroundColor: '#FF4444',
+    width: '100%',
+    borderRadius: 2,
   },
   promptInput: {
     backgroundColor: Colors.Colors.background.card,

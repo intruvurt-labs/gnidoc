@@ -33,7 +33,7 @@ export default function BrandedHeader({
         >
           <View style={styles.logoCircle}>
             <Image
-              source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/k95rc9dv5sso3otf9ckgb' }}
+              source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/3m84a7w7p2uwori7ld5pn' }}
               style={styles.logoSymbol}
               resizeMode="contain"
             />
@@ -42,11 +42,6 @@ export default function BrandedHeader({
       )}
       
       <View style={styles.textContainer}>
-        <Image
-          source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/1nutezip17rqx39f27nrb' }}
-          style={styles.textLogo}
-          resizeMode="contain"
-        />
         {title && (
           <Text style={[styles.title, limeWithOutline]}>{title}</Text>
         )}
@@ -89,29 +84,17 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: Colors.Colors.black.tertiary,
-    borderWidth: 3,
-    borderColor: Colors.Colors.cyan.primary,
+    backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: Colors.Colors.cyan.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 12,
-    elevation: 12,
   },
   logoSymbol: {
-    width: 72,
-    height: 72,
+    width: 96,
+    height: 96,
   },
   textContainer: {
     flex: 1,
     justifyContent: 'center',
-  },
-  textLogo: {
-    width: 180,
-    height: 40,
-    marginBottom: 4,
   },
   title: {
     fontSize: 20,

@@ -280,7 +280,7 @@ export default function LogoMenu({ onPress, onLongPress }: LogoMenuProps) {
       >
         <View style={styles.logoCircle}>
           <Image
-            source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/uye4njpfgqn6jz42axovy' }}
+            source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/3m84a7w7p2uwori7ld5pn' }}
             style={styles.logoSymbol}
             resizeMode="contain"
           />
@@ -689,20 +689,13 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: Colors.Colors.background.card,
-    borderWidth: 3,
-    borderColor: Colors.Colors.cyan.primary,
+    backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: Colors.Colors.cyan.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 12,
-    elevation: 12,
   },
   logoSymbol: {
-    width: 56,
-    height: 56,
+    width: 80,
+    height: 80,
   },
   modalOverlay: {
     flex: 1,
