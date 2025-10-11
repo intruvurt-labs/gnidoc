@@ -28,6 +28,8 @@ const IntegrationsProvider = lazy(() => import("@/contexts/IntegrationsContext")
 const ResearchProvider = lazy(() => import("@/contexts/ResearchContext").then(m => ({ default: m.ResearchProvider })));
 const PreferencesProvider = lazy(() => import("@/contexts/PreferencesContext").then(m => ({ default: m.PreferencesProvider })));
 const SecurityProvider = lazy(() => import("@/contexts/SecurityContext").then(m => ({ default: m.SecurityProvider })));
+const GamificationProvider = lazy(() => import("@/contexts/GamificationContext").then(m => ({ default: m.GamificationProvider })));
+const SubscriptionProvider = lazy(() => import("@/contexts/SubscriptionContext").then(m => ({ default: m.SubscriptionProvider })));
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -210,8 +212,10 @@ export default function RootLayout() {
               <AuthProvider>
                 <SettingsProvider>
                   <Suspense fallback={<LoadingFallback />}>
-                    <SecurityProvider>
-                      <PreferencesProvider>
+                    <GamificationProvider>
+                      <SubscriptionProvider>
+                        <SecurityProvider>
+                          <PreferencesProvider>
                         <DatabaseProvider>
                         <AgentProvider>
                           <WorkflowProvider>
@@ -240,8 +244,10 @@ export default function RootLayout() {
                           </WorkflowProvider>
                         </AgentProvider>
                         </DatabaseProvider>
-                      </PreferencesProvider>
-                    </SecurityProvider>
+                          </PreferencesProvider>
+                        </SecurityProvider>
+                      </SubscriptionProvider>
+                    </GamificationProvider>
                   </Suspense>
                 </SettingsProvider>
               </AuthProvider>

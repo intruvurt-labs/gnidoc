@@ -6,7 +6,11 @@ import {
   Settings,
   Network,
   User,
-  Shield
+  Shield,
+  BarChart3,
+  Trophy,
+  Crown,
+  Gift
 } from "lucide-react-native";
 import React from "react";
 import { View, ScrollView, TouchableOpacity, Text, StyleSheet, Platform } from "react-native";
@@ -132,6 +136,34 @@ export default function TabLayout() {
         options={{
           title: "Security",
           tabBarIcon: ({ color }) => <Shield color={color} size={26} />,
+        }}
+      />
+      <Tabs.Screen
+        name="dashboard"
+        options={{
+          title: "Dashboard",
+          tabBarIcon: ({ color }) => <BarChart3 color={color} size={26} />,
+        }}
+      />
+      <Tabs.Screen
+        name="leaderboard"
+        options={{
+          title: "Leaderboard",
+          tabBarIcon: ({ color }) => <Trophy color={color} size={26} />,
+        }}
+      />
+      <Tabs.Screen
+        name="subscription"
+        options={{
+          title: "Subscription",
+          tabBarIcon: ({ color }) => <Crown color={color} size={26} />,
+        }}
+      />
+      <Tabs.Screen
+        name="referrals"
+        options={{
+          title: "Referrals",
+          tabBarIcon: ({ color }) => <Gift color={color} size={26} />,
         }}
       />
       <Tabs.Screen
