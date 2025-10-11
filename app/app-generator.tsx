@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,9 +10,14 @@ import {
   Modal,
   Platform,
   Dimensions,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
+
+import { Audio } from 'expo-av';
 import {
   Sparkles,
   Code,
@@ -28,9 +33,17 @@ import {
   Package,
   Zap,
   Layers,
+  Mic,
+  MicOff,
+  Image as ImageIcon,
+  Video,
+  Users,
+
+  Brain,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useAppBuilder, AppGenerationConfig, ModelConsensus, ConsensusAnalysis } from '@/contexts/AppBuilderContext';
+import { useAuth } from '@/contexts/AuthContext';
 import * as Haptics from 'expo-haptics';
 
 const { width } = Dimensions.get('window');
@@ -54,10 +67,19 @@ export default function AppGeneratorScreen() {
     replayGeneration,
   } = useAppBuilder();
 
+  const { user } = useAuth();
   const [prompt, setPrompt] = useState<string>('');
   const [showConfig, setShowConfig] = useState<boolean>(false);
   const [showPreview, setShowPreview] = useState<boolean>(false);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
+  const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
+  const [showModelSelector, setShowModelSelector] = useState<boolean>(false);
+  const [showCollabModal, setShowCollabModal] = useState<boolean>(false);
+  const [collaborators, setCollaborators] = useState<string[]>([]);
+  const recordingRef = useRef<Audio.Recording | null>(null);
 
   const [config, setConfig] = useState<AppGenerationConfig>({
     useTypeScript: true,
@@ -71,13 +93,205 @@ export default function AppGeneratorScreen() {
     enableSmartSelector: true,
     enableCaching: true,
   });
+  const [mgaSettings, setMgaSettings] = useState({
+    modelGauge: 'balanced' as 'fast' | 'balanced' | 'quality' | 'custom',
+    adaptiveMode: true,
+    costOptimization: true,
+    selectedModels: ['claude', 'gemini', 'gpt-4'] as string[],
+  });
   const [showConsensus, setShowConsensus] = useState<boolean>(false);
   const [showRecommendation, setShowRecommendation] = useState<boolean>(false);
   const [recommendation, setRecommendation] = useState<any>(null);
 
+  const startRecording = async () => {
+    try {
+      if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
+        Alert.alert('Not Supported', 'Voice recording is not available on web. Please use text input.');
+        return;
+      }
+
+      console.log('[AppGenerator] Requesting audio permissions...');
+      const { status } = await Audio.requestPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant microphone permission to use voice input.');
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      console.log('[AppGenerator] Starting recording...');
+      const recording = new Audio.Recording();
+      await recording.prepareToRecordAsync({
+        android: {
+          extension: '.m4a',
+          outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+          audioEncoder: Audio.AndroidAudioEncoder.AAC,
+          sampleRate: 44100,
+          numberOfChannels: 2,
+          bitRate: 128000,
+        },
+        ios: {
+          extension: '.wav',
+          outputFormat: Audio.IOSOutputFormat.LINEARPCM,
+          audioQuality: Audio.IOSAudioQuality.HIGH,
+          sampleRate: 44100,
+          numberOfChannels: 2,
+          bitRate: 128000,
+          linearPCMBitDepth: 16,
+          linearPCMIsBigEndian: false,
+          linearPCMIsFloat: false,
+        },
+        web: {},
+      });
+
+      await recording.startAsync();
+      recordingRef.current = recording;
+      setIsRecording(true);
+
+      if (Platform.OS !== 'web') {
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      }
+
+      console.log('[AppGenerator] Recording started');
+    } catch (error) {
+      console.error('[AppGenerator] Failed to start recording:', error);
+      Alert.alert('Recording Error', 'Failed to start recording. Please try again.');
+    }
+  };
+
+  const stopRecording = async () => {
+    try {
+      if (!recordingRef.current) return;
+
+      console.log('[AppGenerator] Stopping recording...');
+      setIsRecording(false);
+      await recordingRef.current.stopAndUnloadAsync();
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+
+      const uri = recordingRef.current.getURI();
+      recordingRef.current = null;
+
+      if (!uri) {
+        Alert.alert('Error', 'Failed to get recording URI');
+        return;
+      }
+
+      console.log('[AppGenerator] Recording saved:', uri);
+      await transcribeAudio(uri);
+    } catch (error) {
+      console.error('[AppGenerator] Failed to stop recording:', error);
+      Alert.alert('Recording Error', 'Failed to stop recording. Please try again.');
+    }
+  };
+
+  const transcribeAudio = async (uri: string) => {
+    try {
+      setIsTranscribing(true);
+      console.log('[AppGenerator] Transcribing audio...');
+
+      const uriParts = uri.split('.');
+      const fileType = uriParts[uriParts.length - 1];
+
+      const formData = new FormData();
+      formData.append('audio', {
+        uri,
+        name: `recording.${fileType}`,
+        type: `audio/${fileType}`,
+      } as any);
+
+      const response = await fetch('https://toolkit.rork.com/stt/transcribe/', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Transcription failed');
+      }
+
+      const data = await response.json();
+      console.log('[AppGenerator] Transcription complete:', data.text);
+
+      setPrompt(prev => prev ? `${prev} ${data.text}` : data.text);
+
+      if (Platform.OS !== 'web') {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
+
+      Alert.alert('Success', 'Voice input transcribed successfully!');
+    } catch (error) {
+      console.error('[AppGenerator] Transcription failed:', error);
+      Alert.alert('Transcription Error', 'Failed to transcribe audio. Please try again.');
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
+  const pickImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant photo library permission.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets) {
+        const newImages = result.assets.map(asset => asset.uri);
+        setSelectedImages(prev => [...prev, ...newImages]);
+        console.log('[AppGenerator] Images selected:', newImages.length);
+
+        if (Platform.OS !== 'web') {
+          await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
+      }
+    } catch (error) {
+      console.error('[AppGenerator] Image picker error:', error);
+      Alert.alert('Error', 'Failed to pick images. Please try again.');
+    }
+  };
+
+  const pickVideo = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant photo library permission.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setSelectedVideo(result.assets[0].uri);
+        console.log('[AppGenerator] Video selected:', result.assets[0].uri);
+
+        if (Platform.OS !== 'web') {
+          await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
+      }
+    } catch (error) {
+      console.error('[AppGenerator] Video picker error:', error);
+      Alert.alert('Error', 'Failed to pick video. Please try again.');
+    }
+  };
+
   const handleGenerate = async () => {
-    if (!prompt.trim()) {
-      Alert.alert('Error', 'Please enter a description of the app you want to build');
+    if (!prompt.trim() && selectedImages.length === 0 && !selectedVideo) {
+      Alert.alert('Error', 'Please provide a description, image, or video of the app you want to build');
       return;
     }
 
@@ -229,7 +443,86 @@ export default function AppGeneratorScreen() {
         </View>
 
         <View style={styles.promptSection}>
-          <Text style={styles.sectionTitle}>What do you want to build?</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>What do you want to build?</Text>
+            <TouchableOpacity
+              style={styles.mgaButton}
+              onPress={() => setShowModelSelector(true)}
+            >
+              <Brain color={Colors.Colors.cyan.primary} size={20} />
+              <Text style={styles.mgaButtonText}>MGA</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.inputToolbar}>
+            <TouchableOpacity
+              style={[styles.toolButton, isRecording && styles.toolButtonActive]}
+              onPress={isRecording ? stopRecording : startRecording}
+              disabled={isTranscribing}
+            >
+              {isRecording ? (
+                <MicOff color={Colors.Colors.red.primary} size={20} />
+              ) : (
+                <Mic color={Colors.Colors.cyan.primary} size={20} />
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.toolButton} onPress={pickImage}>
+              <ImageIcon color={Colors.Colors.cyan.primary} size={20} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.toolButton} onPress={pickVideo}>
+              <Video color={Colors.Colors.cyan.primary} size={20} />
+            </TouchableOpacity>
+            {user && (
+              <TouchableOpacity
+                style={styles.toolButton}
+                onPress={() => setShowCollabModal(true)}
+              >
+                <Users color={Colors.Colors.cyan.primary} size={20} />
+                {collaborators.length > 0 && (
+                  <View style={styles.collabBadge}>
+                    <Text style={styles.collabBadgeText}>{collaborators.length}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {isTranscribing && (
+            <View style={styles.transcribingIndicator}>
+              <ActivityIndicator color={Colors.Colors.cyan.primary} />
+              <Text style={styles.transcribingText}>Transcribing voice input...</Text>
+            </View>
+          )}
+
+          {selectedImages.length > 0 && (
+            <ScrollView horizontal style={styles.mediaPreview} showsHorizontalScrollIndicator={false}>
+              {selectedImages.map((uri, index) => (
+                <View key={index} style={styles.mediaItem}>
+                  <Image source={{ uri }} style={styles.mediaImage} />
+                  <TouchableOpacity
+                    style={styles.mediaRemove}
+                    onPress={() => setSelectedImages(prev => prev.filter((_, i) => i !== index))}
+                  >
+                    <X color={Colors.Colors.text.inverse} size={16} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          )}
+
+          {selectedVideo && (
+            <View style={styles.videoPreview}>
+              <Video color={Colors.Colors.cyan.primary} size={48} />
+              <Text style={styles.videoText}>Video selected</Text>
+              <TouchableOpacity
+                style={styles.videoRemove}
+                onPress={() => setSelectedVideo(null)}
+              >
+                <X color={Colors.Colors.text.primary} size={20} />
+              </TouchableOpacity>
+            </View>
+          )}
+
           <TextInput
             style={styles.promptInput}
             placeholder="E.g., A fitness tracking app with workout plans, progress charts, and social features..."
@@ -684,6 +977,169 @@ export default function AppGeneratorScreen() {
                 </TouchableOpacity>
               </View>
             )}
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showModelSelector} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>MGA Model Selector</Text>
+              <TouchableOpacity onPress={() => setShowModelSelector(false)}>
+                <X color={Colors.Colors.text.muted} size={24} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.mgaContent}>
+              <Text style={styles.mgaDescription}>
+                Model-Gauge-Adaptation: Intelligently select and adapt AI models based on your task requirements.
+              </Text>
+
+              <Text style={styles.mgaLabel}>Model Gauge</Text>
+              <View style={styles.gaugeOptions}>
+                {['fast', 'balanced', 'quality', 'custom'].map(gauge => (
+                  <TouchableOpacity
+                    key={gauge}
+                    style={[
+                      styles.gaugeButton,
+                      mgaSettings.modelGauge === gauge && styles.gaugeButtonActive,
+                    ]}
+                    onPress={() => setMgaSettings(prev => ({ ...prev, modelGauge: gauge as any }))}
+                  >
+                    <Text
+                      style={[
+                        styles.gaugeButtonText,
+                        mgaSettings.modelGauge === gauge && styles.gaugeButtonTextActive,
+                      ]}
+                    >
+                      {gauge.toUpperCase()}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View style={styles.mgaToggle}>
+                <Text style={styles.mgaLabel}>Adaptive Mode</Text>
+                <TouchableOpacity
+                  style={[styles.toggle, mgaSettings.adaptiveMode && styles.toggleActive]}
+                  onPress={() => setMgaSettings(prev => ({ ...prev, adaptiveMode: !prev.adaptiveMode }))}
+                >
+                  {mgaSettings.adaptiveMode && <CheckCircle color={Colors.Colors.text.inverse} size={16} />}
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.mgaToggle}>
+                <Text style={styles.mgaLabel}>Cost Optimization</Text>
+                <TouchableOpacity
+                  style={[styles.toggle, mgaSettings.costOptimization && styles.toggleActive]}
+                  onPress={() => setMgaSettings(prev => ({ ...prev, costOptimization: !prev.costOptimization }))}
+                >
+                  {mgaSettings.costOptimization && <CheckCircle color={Colors.Colors.text.inverse} size={16} />}
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.mgaLabel}>Selected Models</Text>
+              {['claude', 'gemini', 'gpt-4', 'gpt-4-vision', 'llama'].map(model => (
+                <TouchableOpacity
+                  key={model}
+                  style={styles.modelOption}
+                  onPress={() => {
+                    setMgaSettings(prev => ({
+                      ...prev,
+                      selectedModels: prev.selectedModels.includes(model)
+                        ? prev.selectedModels.filter(m => m !== model)
+                        : [...prev.selectedModels, model],
+                    }));
+                  }}
+                >
+                  <View style={[
+                    styles.modelCheckbox,
+                    mgaSettings.selectedModels.includes(model) && styles.modelCheckboxActive,
+                  ]}>
+                    {mgaSettings.selectedModels.includes(model) && (
+                      <CheckCircle color={Colors.Colors.text.inverse} size={16} />
+                    )}
+                  </View>
+                  <Text style={styles.modelOptionText}>{model.toUpperCase()}</Text>
+                </TouchableOpacity>
+              ))}
+
+              <TouchableOpacity
+                style={styles.mgaSaveButton}
+                onPress={() => {
+                  setShowModelSelector(false);
+                  Alert.alert('MGA Settings Saved', 'Your model preferences have been updated.');
+                }}
+              >
+                <Text style={styles.mgaSaveButtonText}>Save MGA Settings</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={showCollabModal} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Collaboration</Text>
+              <TouchableOpacity onPress={() => setShowCollabModal(false)}>
+                <X color={Colors.Colors.text.muted} size={24} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.collabContent}>
+              <View style={styles.tierInfo}>
+                <Text style={styles.tierTitle}>Your Plan: {user?.subscription?.toUpperCase() || 'FREE'}</Text>
+                <Text style={styles.tierDescription}>
+                  {user?.subscription === 'free' || !user?.subscription
+                    ? 'Freemium: 1 collaboration seat'
+                    : user?.subscription === 'basic'
+                    ? 'Basic: 3 collaboration seats'
+                    : user?.subscription === 'pro'
+                    ? 'Pro: 10 collaboration seats'
+                    : 'Enterprise: Unlimited seats'}
+                </Text>
+              </View>
+
+              <Text style={styles.collabLabel}>Collaborators ({collaborators.length}/{user?.subscription === 'free' || !user?.subscription ? 1 : user?.subscription === 'basic' ? 3 : user?.subscription === 'pro' ? 10 : '∞'})</Text>
+              
+              {collaborators.map((email, index) => (
+                <View key={index} style={styles.collabItem}>
+                  <Text style={styles.collabEmail}>{email}</Text>
+                  <TouchableOpacity
+                    onPress={() => setCollaborators(prev => prev.filter((_, i) => i !== index))}
+                  >
+                    <X color={Colors.Colors.red.primary} size={20} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+
+              {(user?.subscription === 'free' || !user?.subscription) && collaborators.length >= 1 ? (
+                <View style={styles.upgradePrompt}>
+                  <Text style={styles.upgradeText}>Upgrade to add more collaborators</Text>
+                  <TouchableOpacity style={styles.upgradeButton}>
+                    <Text style={styles.upgradeButtonText}>Upgrade Plan</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.addCollabButton}
+                  onPress={() => {
+                    Alert.prompt(
+                      'Add Collaborator',
+                      'Enter email address',
+                      (email) => {
+                        if (email && email.includes('@')) {
+                          setCollaborators(prev => [...prev, email]);
+                        }
+                      }
+                    );
+                  }}
+                >
+                  <Text style={styles.addCollabButtonText}>+ Add Collaborator</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         </View>
       </Modal>
@@ -1302,6 +1758,291 @@ const styles = StyleSheet.create({
   },
   proceedButtonText: {
     fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.Colors.text.inverse,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  mgaButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.Colors.cyan.primary + '20',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: Colors.Colors.cyan.primary,
+  },
+  mgaButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.Colors.cyan.primary,
+  },
+  inputToolbar: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  toolButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.Colors.background.card,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.Colors.border.muted,
+  },
+  toolButtonActive: {
+    backgroundColor: Colors.Colors.red.primary + '20',
+    borderColor: Colors.Colors.red.primary,
+  },
+  collabBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: Colors.Colors.red.primary,
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  collabBadgeText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: Colors.Colors.text.inverse,
+  },
+  transcribingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.Colors.cyan.primary + '20',
+    padding: 12,
+    borderRadius: 8,
+    gap: 12,
+    marginBottom: 12,
+  },
+  transcribingText: {
+    fontSize: 14,
+    color: Colors.Colors.cyan.primary,
+    fontWeight: '600',
+  },
+  mediaPreview: {
+    marginBottom: 12,
+  },
+  mediaItem: {
+    marginRight: 8,
+    position: 'relative',
+  },
+  mediaImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
+  },
+  mediaRemove: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: Colors.Colors.red.primary,
+    borderRadius: 12,
+    width: 24,
+    height: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  videoPreview: {
+    backgroundColor: Colors.Colors.background.card,
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: Colors.Colors.border.muted,
+  },
+  videoText: {
+    fontSize: 14,
+    color: Colors.Colors.text.secondary,
+    marginTop: 8,
+  },
+  videoRemove: {
+    marginTop: 8,
+  },
+  mgaContent: {
+    padding: 20,
+  },
+  mgaDescription: {
+    fontSize: 14,
+    color: Colors.Colors.text.secondary,
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  mgaLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.Colors.text.primary,
+    marginBottom: 12,
+  },
+  gaugeOptions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 20,
+  },
+  gaugeButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    backgroundColor: Colors.Colors.background.secondary,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.Colors.border.muted,
+  },
+  gaugeButtonActive: {
+    backgroundColor: Colors.Colors.cyan.primary,
+    borderColor: Colors.Colors.cyan.primary,
+  },
+  gaugeButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.Colors.text.secondary,
+  },
+  gaugeButtonTextActive: {
+    color: Colors.Colors.text.inverse,
+  },
+  mgaToggle: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  toggle: {
+    width: 48,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: Colors.Colors.background.secondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  toggleActive: {
+    backgroundColor: Colors.Colors.cyan.primary,
+  },
+  modelOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    gap: 12,
+  },
+  modelCheckbox: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    backgroundColor: Colors.Colors.background.secondary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.Colors.border.muted,
+  },
+  modelCheckboxActive: {
+    backgroundColor: Colors.Colors.cyan.primary,
+    borderColor: Colors.Colors.cyan.primary,
+  },
+  modelOptionText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.Colors.text.primary,
+  },
+  mgaSaveButton: {
+    backgroundColor: Colors.Colors.cyan.primary,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 24,
+  },
+  mgaSaveButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.Colors.text.inverse,
+  },
+  collabContent: {
+    padding: 20,
+  },
+  tierInfo: {
+    backgroundColor: Colors.Colors.cyan.primary + '20',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: Colors.Colors.cyan.primary,
+  },
+  tierTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: Colors.Colors.cyan.primary,
+    marginBottom: 4,
+  },
+  tierDescription: {
+    fontSize: 14,
+    color: Colors.Colors.text.secondary,
+  },
+  collabLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.Colors.text.primary,
+    marginBottom: 12,
+  },
+  collabItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: Colors.Colors.background.card,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: Colors.Colors.border.muted,
+  },
+  collabEmail: {
+    fontSize: 14,
+    color: Colors.Colors.text.primary,
+  },
+  upgradePrompt: {
+    backgroundColor: Colors.Colors.warning + '20',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: Colors.Colors.warning,
+  },
+  upgradeText: {
+    fontSize: 14,
+    color: Colors.Colors.text.primary,
+    marginBottom: 12,
+  },
+  upgradeButton: {
+    backgroundColor: Colors.Colors.warning,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  upgradeButtonText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: Colors.Colors.text.inverse,
+  },
+  addCollabButton: {
+    backgroundColor: Colors.Colors.cyan.primary,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  addCollabButtonText: {
+    fontSize: 15,
     fontWeight: 'bold',
     color: Colors.Colors.text.inverse,
   },
