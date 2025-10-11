@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator,
   Modal,
+  Image,
 } from 'react-native';
 
 import { Stack } from 'expo-router';
@@ -25,7 +26,6 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
-  Brain,
   Zap,
   Clock,
   Users,
@@ -150,9 +150,19 @@ export default function SecurityScreen() {
     <ScrollView style={styles.tabContent}>
       <View style={styles.brandingSection}>
         <View style={styles.brandingHeader}>
-          <Brain size={40} color="#00FFFF" />
+          <Image
+            source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/o6hz4skpayoyq2j4jg1bc' }}
+            style={{ width: 40, height: 40, resizeMode: 'contain', backgroundColor: 'transparent' }}
+            accessibilityLabel="Key Symbol"
+            testID="security-key-logo"
+          />
           <Text style={styles.brandingTitle}>gnidoC TerceS</Text>
-          <Lock size={32} color="#CCFF00" />
+          <Image
+            source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/o6hz4skpayoyq2j4jg1bc' }}
+            style={{ width: 32, height: 32, resizeMode: 'contain', backgroundColor: 'transparent' }}
+            accessibilityLabel="Key Symbol"
+            testID="security-key-icon-right"
+          />
         </View>
         <Text style={styles.brandingSubtitle}>NimRev Security Protocol</Text>
       </View>
@@ -208,7 +218,12 @@ export default function SecurityScreen() {
 
       <View style={styles.card}>
         <View style={styles.cardHeader}>
-          <Lock size={24} color="#00FFFF" />
+          <Image
+            source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/o6hz4skpayoyq2j4jg1bc' }}
+            style={{ width: 24, height: 24, resizeMode: 'contain', backgroundColor: 'transparent' }}
+            accessibilityLabel="Key Symbol"
+            testID="encrypted-sessions-key"
+          />
           <Text style={styles.cardTitle}>Encrypted Sessions</Text>
         </View>
         {currentSession ? (
@@ -256,11 +271,12 @@ export default function SecurityScreen() {
 
       <View style={styles.card}>
         <View style={styles.cardHeader}>
-          {isEncryptionEnabled ? (
-            <Lock size={24} color="#00FFFF" />
-          ) : (
-            <Unlock size={24} color="#FF6B6B" />
-          )}
+          <Image
+            source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/o6hz4skpayoyq2j4jg1bc' }}
+            style={{ width: 24, height: 24, resizeMode: 'contain', backgroundColor: 'transparent' }}
+            accessibilityLabel="Key Symbol"
+            testID="data-encryption-key"
+          />
           <Text style={styles.cardTitle}>Data Encryption</Text>
         </View>
         <View style={styles.switchRow}>
@@ -306,6 +322,21 @@ export default function SecurityScreen() {
           </View>
         </View>
       )}
+
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Image
+            source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/45o0641t71ywrwurghufl' }}
+            style={{ width: 28, height: 28, borderRadius: 14, resizeMode: 'cover' }}
+            accessibilityLabel="Agent Support"
+            testID="agent-support-avatar"
+          />
+          <Text style={styles.cardTitle}>Agent Support</Text>
+        </View>
+        <Text style={{ color: '#CCC' }}>
+          Agent is available for tech support on security configuration. Your settings are saved per user and persist across sessions.
+        </Text>
+      </View>
     </ScrollView>
   );
 
