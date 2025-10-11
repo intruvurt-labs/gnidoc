@@ -13,7 +13,7 @@ import {
   Menu
 } from "lucide-react-native";
 import React, { useState } from "react";
-import { View, TouchableOpacity, Text, StyleSheet, Platform, Modal, ScrollView, Image } from "react-native";
+import { View, TouchableOpacity, Text, StyleSheet, Platform, Modal, ScrollView } from "react-native";
 import Colors from "@/constants/colors";
 import LogoMenu from "@/components/LogoMenu";
 
@@ -96,14 +96,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
             </TouchableOpacity>
           )}
         </View>
-        
-        <View style={styles.footerLogoContainer}>
-          <Image
-            source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/3m84a7w7p2uwori7ld5pn' }}
-            style={styles.footerLogo}
-            resizeMode="contain"
-          />
-        </View>
+
       </View>
 
       <Modal
@@ -343,16 +336,7 @@ const styles = StyleSheet.create({
   tabLabelActive: {
     fontWeight: '700' as const,
   },
-  footerLogoContainer: {
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: Colors.Colors.border.muted,
-  },
-  footerLogo: {
-    width: 60,
-    height: 60,
-  },
+
   overflowModalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
