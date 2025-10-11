@@ -16,11 +16,11 @@ const Colors = {
     glow: '#FF004080',
   },
   orange: {
-    primary: '#FF6B35',
-    secondary: '#FF8C66',
-    tertiary: '#FFB84D',
-    dark: '#CC5529',
-    glow: '#FF6B3580',
+    primary: '#BFFF00',
+    secondary: '#D4FF33',
+    tertiary: '#E6FF66',
+    dark: '#99CC00',
+    glow: '#BFFF0080',
   },
   cyanRed: {
     primary: '#FF0080',
@@ -30,11 +30,11 @@ const Colors = {
     glow: '#FF008080',
   },
   cyanOrange: {
-    primary: '#FF9933',
-    secondary: '#FFB366',
-    tertiary: '#FFCC99',
-    dark: '#CC7A29',
-    glow: '#FF993380',
+    primary: '#CCFF00',
+    secondary: '#D9FF33',
+    tertiary: '#E6FF66',
+    dark: '#A3CC00',
+    glow: '#CCFF0080',
   },
   black: {
     primary: '#000000',
@@ -70,13 +70,13 @@ const Colors = {
   info: '#00FFFF',
   // IDE Specific Colors
   ide: {
-    keyword: '#FF6B35',      // Orange for keywords
+    keyword: '#BFFF00',      // Lime for keywords
     string: '#00FFFF',       // Cyan for strings
     comment: '#808080',      // Gray for comments
     function: '#FF0040',     // Red for functions
-    variable: '#FFB84D',     // Light orange for variables
+    variable: '#E6FF66',     // Light lime for variables
     number: '#00E6E6',       // Cyan secondary for numbers
-    operator: '#FF8C66',     // Coral for operators
+    operator: '#D4FF33',     // Lime-yellow for operators
     type: '#FF4757',         // Red-pink for types
   },
 };

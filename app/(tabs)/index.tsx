@@ -31,6 +31,7 @@ import {
   Menu,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+import { limeWithOutline } from '@/constants/textStyles';
 import { useAppBuilder, AppGenerationConfig } from '@/contexts/AppBuilderContext';
 import * as Haptics from 'expo-haptics';
 
@@ -62,6 +63,9 @@ export default function AppGeneratorScreen() {
     stateManagement: 'context',
     routing: 'expo-router',
     aiModel: 'dual-claude-gemini',
+    enableConsensusMode: false,
+    enableSmartSelector: true,
+    enableCaching: true,
   });
 
   const handleGenerate = async () => {
@@ -572,11 +576,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold' as const,
-    color: Colors.Colors.cyanRed.primary,
+    ...limeWithOutline,
   },
   headerSubtitle: {
     fontSize: 12,
-    color: Colors.Colors.cyanOrange.primary,
+    ...limeWithOutline,
     marginTop: 2,
   },
   configButton: {
@@ -608,7 +612,7 @@ const styles = StyleSheet.create({
   },
   heroDescription: {
     fontSize: 16,
-    color: Colors.Colors.cyanOrange.primary,
+    ...limeWithOutline,
     textAlign: 'center',
     lineHeight: 24,
   },
@@ -619,14 +623,14 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold' as const,
-    color: Colors.Colors.cyanRed.primary,
+    ...limeWithOutline,
     marginBottom: 16,
   },
   promptInput: {
     backgroundColor: Colors.Colors.background.card,
     borderRadius: 12,
     padding: 16,
-    color: Colors.Colors.orange.primary,
+    ...limeWithOutline,
     fontSize: 16,
     minHeight: 150,
     borderWidth: 1,
@@ -653,7 +657,7 @@ const styles = StyleSheet.create({
   configBadgeText: {
     fontSize: 12,
     fontWeight: '600' as const,
-    color: Colors.Colors.cyanOrange.primary,
+    ...limeWithOutline,
   },
   generateButton: {
     flexDirection: 'row',
@@ -689,7 +693,7 @@ const styles = StyleSheet.create({
   },
   progressText: {
     fontSize: 14,
-    color: Colors.Colors.cyanOrange.primary,
+    ...limeWithOutline,
     textAlign: 'center',
   },
   appsSection: {
@@ -718,7 +722,7 @@ const styles = StyleSheet.create({
   },
   appCardDescription: {
     fontSize: 14,
-    color: Colors.Colors.cyanOrange.primary,
+    ...limeWithOutline,
   },
   appStatusBadge: {
     paddingHorizontal: 10,
@@ -764,13 +768,13 @@ const styles = StyleSheet.create({
   featureTitle: {
     fontSize: 14,
     fontWeight: 'bold' as const,
-    color: Colors.Colors.cyanRed.primary,
+    ...limeWithOutline,
     marginTop: 12,
     marginBottom: 4,
   },
   featureDescription: {
     fontSize: 12,
-    color: Colors.Colors.cyanOrange.primary,
+    ...limeWithOutline,
     lineHeight: 18,
   },
   modalOverlay: {
@@ -842,7 +846,7 @@ const styles = StyleSheet.create({
   },
   configLabel: {
     fontSize: 16,
-    color: Colors.Colors.cyanOrange.primary,
+    ...limeWithOutline,
     fontWeight: '500' as const,
   },
   configToggle: {
@@ -876,7 +880,7 @@ const styles = StyleSheet.create({
   },
   selectButtonText: {
     fontSize: 14,
-    color: Colors.Colors.cyanOrange.primary,
+    ...limeWithOutline,
     fontWeight: '500' as const,
   },
   selectButtonTextActive: {
@@ -921,7 +925,7 @@ const styles = StyleSheet.create({
   previewButtonText: {
     fontSize: 13,
     fontWeight: '600' as const,
-    color: Colors.Colors.cyanOrange.primary,
+    ...limeWithOutline,
   },
   fileList: {
     maxHeight: 200,
@@ -943,7 +947,7 @@ const styles = StyleSheet.create({
   fileName: {
     flex: 1,
     fontSize: 14,
-    color: Colors.Colors.cyanOrange.primary,
+    ...limeWithOutline,
   },
   fileSize: {
     fontSize: 12,
@@ -957,7 +961,7 @@ const styles = StyleSheet.create({
   codeText: {
     fontFamily: 'monospace',
     fontSize: 12,
-    color: Colors.Colors.orange.primary,
+    ...limeWithOutline,
     lineHeight: 18,
   },
   errorsSection: {
@@ -980,7 +984,7 @@ const styles = StyleSheet.create({
   },
   errorMessage: {
     fontSize: 13,
-    color: Colors.Colors.cyanOrange.primary,
+    ...limeWithOutline,
     marginBottom: 2,
   },
   errorLocation: {
