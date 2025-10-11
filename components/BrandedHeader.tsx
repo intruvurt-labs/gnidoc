@@ -71,14 +71,17 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: Colors.Colors.background.secondary,
+    backgroundColor: '#000000',
     borderBottomWidth: 2,
     borderBottomColor: Colors.Colors.cyan.primary,
   },
   logoContainer: {
-    marginRight: 12,
+    position: 'absolute' as const,
+    left: '50%' as any,
+    transform: [{ translateX: -48 }],
   },
   logoCircle: {
     width: 96,
@@ -95,6 +98,7 @@ const styles = StyleSheet.create({
   textContainer: {
     flex: 1,
     justifyContent: 'center',
+    opacity: 0,
   },
   title: {
     fontSize: 20,

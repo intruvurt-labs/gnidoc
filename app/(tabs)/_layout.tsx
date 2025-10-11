@@ -99,7 +99,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
         
         <View style={styles.footerLogoContainer}>
           <Image
-            source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/k95rc9dv5sso3otf9ckgb' }}
+            source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/3m84a7w7p2uwori7ld5pn' }}
             style={styles.footerLogo}
             resizeMode="contain"
           />
@@ -309,7 +309,7 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   tabBarContainer: {
-    backgroundColor: Colors.Colors.background.secondary,
+    backgroundColor: '#000000',
     borderTopColor: Colors.Colors.cyan.primary,
     borderTopWidth: 2,
     paddingBottom: Platform.OS === 'ios' ? 20 : 8,
@@ -350,8 +350,8 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.Colors.border.muted,
   },
   footerLogo: {
-    width: 48,
-    height: 48,
+    width: 60,
+    height: 60,
   },
   overflowModalOverlay: {
     flex: 1,

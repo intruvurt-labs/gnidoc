@@ -686,16 +686,16 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   logoCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
   },
   logoSymbol: {
-    width: 80,
-    height: 80,
+    width: 60,
+    height: 60,
   },
   modalOverlay: {
     flex: 1,
