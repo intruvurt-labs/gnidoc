@@ -14,6 +14,10 @@ import createDeploymentRoute from "./routes/deploy/create/route";
 import listDeploymentsRoute from "./routes/deploy/list/route";
 import deleteDeploymentRoute from "./routes/deploy/delete/route";
 import generateSEORoute from "./routes/deploy/seo/route";
+import { executeQueryProcedure } from "./routes/database/execute/route";
+import { testConnectionProcedure } from "./routes/database/test-connection/route";
+import { listTablesProcedure } from "./routes/database/list-tables/route";
+import { getTableSchemaProcedure } from "./routes/database/table-schema/route";
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -38,6 +42,12 @@ export const appRouter = createTRPCRouter({
     list: listDeploymentsRoute,
     delete: deleteDeploymentRoute,
     generateSEO: generateSEORoute,
+  }),
+  database: createTRPCRouter({
+    execute: executeQueryProcedure,
+    testConnection: testConnectionProcedure,
+    listTables: listTablesProcedure,
+    getTableSchema: getTableSchemaProcedure,
   }),
 });
 

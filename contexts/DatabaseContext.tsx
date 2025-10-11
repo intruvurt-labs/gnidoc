@@ -1,7 +1,7 @@
 import createContextHook from '@nkzw/create-context-hook';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
+import { trpcClient } from '@/lib/trpc';
 
 export interface DatabaseConnection {
   id: string;
@@ -170,37 +170,28 @@ export const [DatabaseProvider, useDatabase] = createContextHook(() => {
     const startTime = Date.now();
     
     try {
-      if (Platform.OS === 'web') {
-        const response = await fetch('/api/database/query', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            connection: activeConnection,
-            query,
-          }),
-        });
+      console.log('[DatabaseContext] Executing query via tRPC:', query.substring(0, 100));
+      
+      const result = await trpcClient.database.execute.mutate({
+        connection: activeConnection,
+        query,
+      });
 
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.message || 'Query failed');
-        }
+      const duration = Date.now() - startTime;
 
-        const result = await response.json();
-        const duration = Date.now() - startTime;
+      await addToHistory({
+        query,
+        duration,
+        success: true,
+        rowCount: result.rowCount,
+      });
 
-        await addToHistory({
-          query,
-          duration,
-          success: true,
-          rowCount: result.rowCount,
-        });
-
-        return result;
-      } else {
-        throw new Error('Database queries are only supported on web platform');
-      }
+      console.log('[DatabaseContext] Query executed successfully:', result.rowCount, 'rows');
+      return result;
     } catch (error) {
       const duration = Date.now() - startTime;
+      console.error('[DatabaseContext] Query execution failed:', error);
+      
       await addToHistory({
         query,
         duration,
