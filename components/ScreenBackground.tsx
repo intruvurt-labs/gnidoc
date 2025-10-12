@@ -16,7 +16,7 @@ export default function ScreenBackground({
 }: ScreenBackgroundProps) {
   const blueBallUri = useMemo(() => {
     return (
-      'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=1600&auto=format&fit=crop'
+      'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/67larhn240y7vp8n0kn5e'
     );
   }, []);
 
