@@ -1,9 +1,7 @@
-import React from 'react';
-import { View, StyleSheet, ImageBackground } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, StyleSheet, ImageBackground, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Colors from '@/constants/colors';
-
-const blueBall = require('@/assets/images/Glowing Hexagonal Sphere in Blue.png');
 
 interface ScreenBackgroundProps {
   children: React.ReactNode;
@@ -16,9 +14,15 @@ export default function ScreenBackground({
   variant = 'default',
   showPattern = true,
 }: ScreenBackgroundProps) {
+  const blueBallUri = useMemo(() => {
+    return (
+      'https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=1600&auto=format&fit=crop'
+    );
+  }, []);
+
   if (variant === 'minimal') {
     return (
-      <View style={styles.container}>
+      <View style={styles.container} testID="screen-bg-minimal">
         <View style={styles.solidBackground} />
         {children}
       </View>
@@ -27,11 +31,14 @@ export default function ScreenBackground({
 
   if (variant === 'hero') {
     return (
-      <View style={styles.container}>
+      <View style={styles.container} testID="screen-bg-hero">
         <ImageBackground
-          source={blueBall}
+          source={{ uri: blueBallUri }}
           style={styles.heroBackground}
           resizeMode="cover"
+          onError={(e) => {
+            console.log('[ScreenBackground] hero image failed', e.nativeEvent?.error ?? 'unknown');
+          }}
         >
           <LinearGradient
             colors={[
@@ -48,7 +55,7 @@ export default function ScreenBackground({
   }
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} testID="screen-bg-default">
       <LinearGradient
         colors={[
           Colors.Colors.background.primary,
@@ -59,10 +66,13 @@ export default function ScreenBackground({
       />
       {showPattern && (
         <ImageBackground
-          source={blueBall}
+          source={{ uri: blueBallUri }}
           style={styles.patternBackground}
           resizeMode="cover"
           imageStyle={{ opacity: 0.12 }}
+          onError={(e) => {
+            console.log('[ScreenBackground] pattern image failed', e.nativeEvent?.error ?? 'unknown');
+          }}
         />
       )}
       {children}
