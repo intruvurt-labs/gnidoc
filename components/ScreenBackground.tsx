@@ -3,6 +3,8 @@ import { View, StyleSheet, ImageBackground } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Colors from '@/constants/colors';
 
+const blueBall = require('@/assets/images/Glowing Hexagonal Sphere in Blue.png');
+
 interface ScreenBackgroundProps {
   children: React.ReactNode;
   variant?: 'default' | 'hero' | 'minimal';
@@ -27,7 +29,7 @@ export default function ScreenBackground({
     return (
       <View style={styles.container}>
         <ImageBackground
-          source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/qvhbsg2l35ali5raxtus0' }}
+          source={blueBall}
           style={styles.heroBackground}
           resizeMode="cover"
         >
@@ -57,10 +59,10 @@ export default function ScreenBackground({
       />
       {showPattern && (
         <ImageBackground
-          source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/qvhbsg2l35ali5raxtus0' }}
+          source={blueBall}
           style={styles.patternBackground}
           resizeMode="cover"
-          imageStyle={{ opacity: 0.05 }}
+          imageStyle={{ opacity: 0.12 }}
         />
       )}
       {children}
