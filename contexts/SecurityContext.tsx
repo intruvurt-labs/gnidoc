@@ -1,5 +1,6 @@
 // SecurityContext.tsx (drop-in replacement)
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
@@ -144,6 +145,14 @@ async function aesDecrypt(payloadJson: string, keyRawHex: string) {
 
 // HMAC SHA-256 for token signing (client-side; prefer server)
 async function getOrCreateMasterHmacKeyHex() {
+  if (Platform.OS === 'web') {
+    const existing = await AsyncStorage.getItem(MASTER_HMAC_KEY);
+    if (existing) return existing;
+    const raw = await randBytes(32);
+    const hex = toHex(raw);
+    await AsyncStorage.setItem(MASTER_HMAC_KEY, hex);
+    return hex;
+  }
   const existing = await SecureStore.getItemAsync(MASTER_HMAC_KEY);
   if (existing) return existing;
   const raw = await randBytes(32);
@@ -167,13 +176,24 @@ async function hmacSHA256Hex(message: string, hexKey: string) {
 // SecureStore helpers for session keys
 async function putSessionKey(hexKey: string) {
   const ref = `${SESSION_KEY_PREFIX}${Date.now()}`;
+  if (Platform.OS === 'web') {
+    await AsyncStorage.setItem(ref, hexKey);
+    return ref;
+  }
   await SecureStore.setItemAsync(ref, hexKey, { keychainService: ref });
   return ref;
 }
 async function getSessionKeyByRef(ref: string) {
+  if (Platform.OS === 'web') {
+    return await AsyncStorage.getItem(ref);
+  }
   return await SecureStore.getItemAsync(ref);
 }
 async function deleteSessionKey(ref: string) {
+  if (Platform.OS === 'web') {
+    await AsyncStorage.removeItem(ref);
+    return;
+  }
   await SecureStore.deleteItemAsync(ref);
 }
 
@@ -441,7 +461,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
       out = out.replace(/(['"`])(?:(?=(\\?))\2.)*?\1/g, (m) => {
         if (m.length < 4) return m;
         const inner = m.slice(1, -1);
-        const hex = toHex(new TextEncoder().encode(inner));
+        const hex = toHex(new TextEncoder().encode(inner).buffer as ArrayBuffer);
         const idx = table.push(hex) - 1;
         return `__nrv(${idx})`;
       });
@@ -481,7 +501,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     const payloadStr = JSON.stringify(payload);
     const macKey = await getOrCreateMasterHmacKeyHex();
     const sig = await hmacSHA256Hex(payloadStr, macKey);
-    const token = `${toHex(new TextEncoder().encode(payloadStr))}.${sig}`; // hex(payload).hex(sig)
+    const token = `${toHex(new TextEncoder().encode(payloadStr).buffer as ArrayBuffer)}.${sig}`; // hex(payload).hex(sig)
 
     const id = `link-${issuedAt}`;
     const url = `https://aurebix.com/collab/${token}`;
