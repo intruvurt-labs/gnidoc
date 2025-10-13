@@ -1,6 +1,9 @@
+// AppBuilderContext.tsx
 import createContextHook from '@nkzw/create-context-hook';
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+/** ───────────────────────── Types ───────────────────────── **/
 
 export interface GeneratedApp {
   id: string;
@@ -101,9 +104,71 @@ export interface AppGenerationConfig {
   enableCaching: boolean;
 }
 
+/** ───────────────────────── Constants ───────────────────────── **/
+
 const STORAGE_KEY = 'gnidoc-generated-apps';
 const CACHE_KEY = 'gnidoc-generation-cache';
 const RECOMMENDATIONS_KEY = 'gnidoc-model-recommendations';
+const CURRENT_APP_KEY = 'gnidoc-current-app-id';
+
+/** ───────────────────────── Utils ───────────────────────── **/
+
+const logger = {
+  info: (...args: any[]) => { if (typeof __DEV__ === 'undefined' || __DEV__) console.log(...args); },
+  warn: (...args: any[]) => { if (typeof __DEV__ === 'undefined' || __DEV__) console.warn(...args); },
+  error: (...args: any[]) => console.error(...args),
+};
+
+function debounceSaver(delayMs = 250) {
+  let t: any = null;
+  return async (key: string, valueFactory: () => any) => {
+    if (t) clearTimeout(t);
+    return new Promise<void>((resolve) => {
+      t = setTimeout(async () => {
+        try {
+          await AsyncStorage.setItem(key, JSON.stringify(valueFactory()));
+        } catch (e) {
+          logger.error('[AppBuilder] Persist failed:', key, e);
+        } finally {
+          resolve();
+        }
+      }, delayMs);
+    });
+  };
+}
+const debouncedSet = debounceSaver(250);
+
+function iso<T extends Record<string, any>>(obj: T) {
+  return JSON.parse(JSON.stringify(obj, (_k, v) => v instanceof Date ? v.toISOString() : v));
+}
+
+function stripFences(s: string): string {
+  if (!s) return s;
+  let out = s.trim();
+  if (out.startsWith('```')) {
+    const m = out.match(/```(?:[\w-]+)?\s*\n([\s\S]*?)```/m);
+    if (m && m[1]) return m[1].trim();
+    out = out.replace(/^```[\w-]*\s*\n?/m, '').replace(/\n?```$/m, '').trim();
+  }
+  return out;
+}
+
+function extractJSON(s: string): any | null {
+  try {
+    const fenceStripped = stripFences(s);
+    const match = fenceStripped.match(/\{[\s\S]*\}$/m);
+    if (match) return JSON.parse(match[0]);
+    return JSON.parse(fenceStripped);
+  } catch {
+    return null;
+  }
+}
+
+function uuid(prefix = '') {
+  return `${prefix}${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/** ───────────────────────── Context ───────────────────────── **/
 
 export const [AppBuilderProvider, useAppBuilder] = createContextHook(() => {
   const [generatedApps, setGeneratedApps] = useState<GeneratedApp[]>([]);
@@ -115,26 +180,38 @@ export const [AppBuilderProvider, useAppBuilder] = createContextHook(() => {
   const [currentAnalysis, setCurrentAnalysis] = useState<ConsensusAnalysis | null>(null);
   const [modelRecommendations, setModelRecommendations] = useState<Map<string, SmartModelRecommendation>>(new Map());
 
+  /** ───────── Load persisted state ───────── **/
+
   const loadGeneratedApps = useCallback(async () => {
     try {
-      const stored = await AsyncStorage.getItem(STORAGE_KEY);
+      const [stored, cachedData, recsData, lastId] = await Promise.all([
+        AsyncStorage.getItem(STORAGE_KEY),
+        AsyncStorage.getItem(CACHE_KEY),
+        AsyncStorage.getItem(RECOMMENDATIONS_KEY),
+        AsyncStorage.getItem(CURRENT_APP_KEY),
+      ]);
+
       if (stored) {
-        const parsedApps = JSON.parse(stored).map((app: any) => ({
+        const raw = JSON.parse(stored);
+        const parsedApps: GeneratedApp[] = (Array.isArray(raw) ? raw : []).map((app: any) => ({
           ...app,
           createdAt: new Date(app.createdAt),
           updatedAt: new Date(app.updatedAt),
-          buildLogs: app.buildLogs.map((log: any) => ({
-            ...log,
-            timestamp: new Date(log.timestamp),
-          })),
+          buildLogs: (app.buildLogs || []).map((log: any) => ({ ...log, timestamp: new Date(log.timestamp) })),
+          files: (app.files || []).map((f: any) => ({ ...f })),
+          errors: (app.errors || []).map((e: any) => ({ ...e })),
         }));
         setGeneratedApps(parsedApps);
-        console.log(`[AppBuilder] Loaded ${parsedApps.length} generated apps`);
+        if (parsedApps.length) {
+          const found = parsedApps.find(a => a.id === lastId);
+          setCurrentApp(found || parsedApps[parsedApps.length - 1]);
+        }
+        logger.info(`[AppBuilder] Loaded ${parsedApps.length} generated apps`);
       }
 
-      const cachedData = await AsyncStorage.getItem(CACHE_KEY);
       if (cachedData) {
-        const parsed = JSON.parse(cachedData).map((item: any) => ({
+        const rawCache = JSON.parse(cachedData);
+        const parsedCache: CachedGeneration[] = (Array.isArray(rawCache) ? rawCache : []).map((item: any) => ({
           ...item,
           timestamp: new Date(item.timestamp),
           result: {
@@ -143,30 +220,46 @@ export const [AppBuilderProvider, useAppBuilder] = createContextHook(() => {
             updatedAt: new Date(item.result.updatedAt),
           },
         }));
-        setCachedGenerations(parsed);
-        console.log(`[AppBuilder] Loaded ${parsed.length} cached generations`);
+        setCachedGenerations(parsedCache);
+        logger.info(`[AppBuilder] Loaded ${parsedCache.length} cached generations`);
       }
 
-      const recsData = await AsyncStorage.getItem(RECOMMENDATIONS_KEY);
       if (recsData) {
         const parsed = JSON.parse(recsData);
         setModelRecommendations(new Map(Object.entries(parsed)));
-        console.log(`[AppBuilder] Loaded ${Object.keys(parsed).length} model recommendations`);
+        logger.info(`[AppBuilder] Loaded ${Object.keys(parsed).length} model recommendations`);
       }
     } catch (error) {
-      console.error('[AppBuilder] Failed to load data:', error);
+      logger.error('[AppBuilder] Failed to load data:', error);
     }
   }, []);
 
+  useEffect(() => {
+    loadGeneratedApps();
+  }, [loadGeneratedApps]);
+
+  /** ───────── Save helpers ───────── **/
+
   const saveGeneratedApps = useCallback(async (apps: GeneratedApp[]) => {
     try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(apps));
       setGeneratedApps(apps);
-      console.log(`[AppBuilder] Saved ${apps.length} generated apps`);
+      await debouncedSet(STORAGE_KEY, () => iso(apps));
+      logger.info(`[AppBuilder] Saved ${apps.length} generated apps`);
     } catch (error) {
-      console.error('[AppBuilder] Failed to save generated apps:', error);
+      logger.error('[AppBuilder] Failed to save generated apps:', error);
     }
   }, []);
+
+  const persistCurrentAppId = useCallback(async (id: string | null) => {
+    try {
+      if (id) await AsyncStorage.setItem(CURRENT_APP_KEY, id);
+      else await AsyncStorage.removeItem(CURRENT_APP_KEY);
+    } catch (e) {
+      logger.error('[AppBuilder] Failed to persist current app id:', e);
+    }
+  }, []);
+
+  /** ───────── Core: Generate App ───────── **/
 
   const generateApp = useCallback(async (
     prompt: string,
@@ -175,8 +268,9 @@ export const [AppBuilderProvider, useAppBuilder] = createContextHook(() => {
     setIsGenerating(true);
     setGenerationProgress(0);
 
-    const newApp: GeneratedApp = {
-      id: `app-${Date.now()}`,
+    const appId = `app-${Date.now()}`;
+    let app: GeneratedApp = {
+      id: appId,
       name: extractAppName(prompt),
       description: prompt,
       prompt,
@@ -191,24 +285,28 @@ export const [AppBuilderProvider, useAppBuilder] = createContextHook(() => {
       updatedAt: new Date(),
     };
 
-    setCurrentApp(newApp);
-    const updatedApps = [...generatedApps, newApp];
-    await saveGeneratedApps(updatedApps);
+    // optimistic save
+    await saveGeneratedApps([...generatedApps, app]);
+    setCurrentApp(app);
+    await persistCurrentAppId(app.id);
+
+    const pushLog = (level: BuildLog['level'], message: string, phase: BuildLog['phase']) => {
+      const log: BuildLog = { id: uuid('log-'), timestamp: new Date(), level, message, phase };
+      app = { ...app, buildLogs: [...app.buildLogs, log], updatedAt: new Date() };
+      setGeneratedApps(prev => prev.map(a => (a.id === app.id ? app : a)));
+    };
 
     try {
-      console.log(`[AppBuilder] Starting app generation: ${newApp.name}`);
-      
-      newApp.buildLogs.push({
-        id: `log-${Date.now()}`,
-        timestamp: new Date(),
-        level: 'info',
-        message: 'Starting app generation...',
-        phase: 'generation',
-      });
-
+      logger.info(`[AppBuilder] Starting app generation: ${app.name}`);
+      pushLog('info', 'Starting app generation...', 'generation');
       setGenerationProgress(10);
 
-      const { generateText } = await import('@rork/toolkit-sdk');
+      let generateText: any;
+      try {
+        ({ generateText } = await import('@rork/toolkit-sdk'));
+      } catch (e) {
+        throw new Error('Missing @rork/toolkit-sdk or unsupported runtime. Install/provide it before generation.');
+      }
 
       const systemPrompt = `You are an expert full-stack developer with 25+ years of experience building production-ready applications.
 
@@ -221,7 +319,7 @@ CRITICAL REQUIREMENTS:
 4. Follow React Native and Expo best practices
 5. Ensure web compatibility (avoid native-only APIs without Platform checks)
 6. Use StyleSheet for styling (never inline styles)
-7. Include proper TypeScript types and interfaces
+7. ${config.useTypeScript ? 'Include proper TypeScript types and interfaces' : 'Use modern ES2020+ features'}
 8. Add comprehensive error boundaries
 9. Implement proper data validation
 10. Use the cyan (#00FFFF) and red (#FF0040) color scheme
@@ -237,11 +335,7 @@ OUTPUT FORMAT:
 Return a JSON object with this structure:
 {
   "files": [
-    {
-      "path": "app/index.tsx",
-      "content": "// Complete file content here",
-      "language": "typescript"
-    }
+    { "path": "app/index.${config.useTypeScript ? 'tsx' : 'jsx'}", "content": "// Complete file content here", "language": "${config.useTypeScript ? 'typescript' : 'javascript'}" }
   ],
   "dependencies": ["expo", "react-native", ...],
   "instructions": "Setup and run instructions"
@@ -249,59 +343,24 @@ Return a JSON object with this structure:
 
 Generate a COMPLETE, PRODUCTION-READY application. No placeholders, no TODOs, no incomplete features.`;
 
-      newApp.buildLogs.push({
-        id: `log-${Date.now()}`,
-        timestamp: new Date(),
-        level: 'info',
-        message: `Using AI model: ${config.aiModel}`,
-        phase: 'generation',
-      });
-
+      pushLog('info', `Using AI model: ${config.aiModel}`, 'generation');
       setGenerationProgress(20);
 
-      let generatedContent: string;
-
       const modelConfigs: Record<string, { models: string[]; description: string }> = {
-        'dual-claude-gemini': {
-          models: ['claude', 'gemini'],
-          description: 'Dual-model orchestration (Claude + Gemini)'
-        },
-        'tri-model': {
-          models: ['claude', 'gemini', 'gpt-4'],
-          description: 'Tri-model orchestration (Claude + Gemini + GPT-4)'
-        },
-        'quad-model': {
-          models: ['claude', 'gemini', 'gpt-4', 'gpt-4'],
-          description: '4-model orchestration (Claude + Gemini + GPT-4 x2)'
-        },
-        'orchestrated': {
-          models: ['claude', 'gemini', 'gpt-4', 'gpt-4'],
-          description: '4-model orchestration for maximum quality'
-        },
+        'dual-claude-gemini': { models: ['claude', 'gemini'], description: 'Dual-model orchestration (Claude + Gemini)' },
+        'tri-model': { models: ['claude', 'gemini', 'gpt-4'], description: 'Tri-model orchestration (Claude + Gemini + GPT-4)' },
+        'quad-model': { models: ['claude', 'gemini', 'gpt-4', 'gpt-4'], description: '4-model orchestration (Claude + Gemini + GPT-4 x2)' },
+        'orchestrated': { models: ['claude', 'gemini', 'gpt-4', 'gpt-4'], description: '4-model orchestration for maximum quality' },
       };
-
       const selectedConfig = modelConfigs[config.aiModel] || modelConfigs['dual-claude-gemini'];
       const models = selectedConfig.models;
 
-      newApp.buildLogs.push({
-        id: `log-${Date.now()}`,
-        timestamp: new Date(),
-        level: 'info',
-        message: `Using ${selectedConfig.description}...`,
-        phase: 'generation',
-      });
+      pushLog('info', `Using ${selectedConfig.description}...`, 'generation');
 
-      const results: string[] = [];
-
+      const partials: string[] = [];
       for (let i = 0; i < models.length; i++) {
         const model = models[i];
-        newApp.buildLogs.push({
-          id: `log-${Date.now()}-${i}`,
-          timestamp: new Date(),
-          level: 'info',
-          message: `Generating with ${model}... (${i + 1}/${models.length})`,
-          phase: 'generation',
-        });
+        pushLog('info', `Generating with ${model}... (${i + 1}/${models.length})`, 'generation');
 
         const result = await generateText({
           messages: [
@@ -309,152 +368,119 @@ Generate a COMPLETE, PRODUCTION-READY application. No placeholders, no TODOs, no
           ]
         });
 
-        results.push(result);
-        setGenerationProgress(20 + (i + 1) * (60 / models.length));
+        partials.push(stripFences(String(result || '')));
+        setGenerationProgress(20 + Math.round(((i + 1) * 60) / models.length));
       }
 
-      newApp.buildLogs.push({
-        id: `log-${Date.now()}`,
-        timestamp: new Date(),
-        level: 'info',
-        message: `Synthesizing results from ${models.length} models...`,
-        phase: 'generation',
-      });
+      pushLog('info', `Synthesizing results from ${models.length} models...`, 'generation');
 
-      generatedContent = await generateText({
+      const synthesized = await generateText({
         messages: [
           {
             role: 'user',
-            content: `You are a master synthesizer. Combine these ${models.length} AI-generated app implementations into the BEST possible version, taking the strongest parts from each:\n\n${results.map((r, i) => `=== ${models[i].toUpperCase()} Output ===\n${r}\n\n`).join('')}\n\nReturn the synthesized result in the same JSON format.`
+            content:
+`You are a master synthesizer. Combine these ${models.length} AI-generated app implementations into the BEST possible version, taking the strongest parts from each. Return strict JSON as specified earlier.
+
+${partials.map((r, i) => `=== ${models[i].toUpperCase()} Output ===\n${r}\n\n`).join('')}`
           }
         ]
       });
 
       setGenerationProgress(80);
+      pushLog('info', 'Parsing generated code...', 'generation');
 
-      newApp.buildLogs.push({
-        id: `log-${Date.now()}`,
-        timestamp: new Date(),
-        level: 'info',
-        message: 'Parsing generated code...',
-        phase: 'generation',
-      });
-
-      let parsedResult: any;
-      try {
-        const jsonMatch = generatedContent.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          parsedResult = JSON.parse(jsonMatch[0]);
-        } else {
-          throw new Error('No JSON found in response');
-        }
-      } catch (parseError) {
-        console.error('[AppBuilder] Failed to parse JSON, creating default structure');
-        parsedResult = {
+      let parsed = extractJSON(String(synthesized || ''));
+      if (!parsed) {
+        logger.warn('[AppBuilder] No valid JSON found in synth response; falling back to single-file packaging');
+        parsed = {
           files: [
             {
-              path: 'app/index.tsx',
-              content: generatedContent,
-              language: 'typescript',
-            }
+              path: `app/index.${config.useTypeScript ? 'tsx' : 'jsx'}`,
+              content: stripFences(String(synthesized || '')),
+              language: config.useTypeScript ? 'typescript' : 'javascript',
+            },
           ],
           dependencies: ['expo', 'react-native', 'expo-router'],
-          instructions: 'Run: bun install && bunx expo start',
+          instructions: `${config.useTypeScript ? 'pnpm' : 'npm'} install && npx expo start`,
         };
       }
 
-      newApp.files = parsedResult.files.map((file: any, index: number) => ({
-        id: `file-${Date.now()}-${index}`,
-        path: file.path,
-        name: file.path.split('/').pop() || 'unknown',
-        content: file.content,
-        language: file.language || 'typescript',
-        size: file.content.length,
+      const files: GeneratedFile[] = (parsed.files || []).map((file: any, index: number) => ({
+        id: uuid('file-'),
+        path: String(file.path),
+        name: String(file.path).split('/').pop() || `file-${index}`,
+        content: String(file.content || ''),
+        language: String(file.language || (config.useTypeScript ? 'typescript' : 'javascript')),
+        size: String(file.content || '').length,
       }));
 
-      newApp.dependencies = parsedResult.dependencies || [];
-
+      app = {
+        ...app,
+        files,
+        dependencies: Array.isArray(parsed.dependencies) ? parsed.dependencies.map(String) : [],
+        status: 'compiling',
+        progress: 90,
+        updatedAt: new Date(),
+      };
+      setGeneratedApps(prev => prev.map(a => (a.id === app.id ? app : a)));
       setGenerationProgress(90);
+      pushLog('info', 'Compiling application...', 'compilation');
 
-      newApp.buildLogs.push({
-        id: `log-${Date.now()}`,
-        timestamp: new Date(),
-        level: 'info',
-        message: 'Compiling application...',
-        phase: 'compilation',
-      });
+      const compilationResult = await compileApp(app);
+      app = {
+        ...app,
+        errors: compilationResult.errors,
+        status: compilationResult.success ? 'ready' : 'error',
+        progress: 100,
+        updatedAt: new Date(),
+      };
 
-      const compilationResult = await compileApp(newApp);
-      newApp.errors = compilationResult.errors;
-
-      if (compilationResult.success) {
-        newApp.status = 'ready';
-        newApp.buildLogs.push({
-          id: `log-${Date.now()}`,
-          timestamp: new Date(),
-          level: 'success',
-          message: `✓ App generated successfully! ${newApp.files.length} files created.`,
-          phase: 'compilation',
-        });
-      } else {
-        newApp.status = 'error';
-        newApp.buildLogs.push({
-          id: `log-${Date.now()}`,
-          timestamp: new Date(),
-          level: 'error',
-          message: `Compilation failed with ${compilationResult.errors.length} errors`,
-          phase: 'compilation',
-        });
-      }
+      pushLog(compilationResult.success ? 'success' : 'error',
+        compilationResult.success
+          ? `✓ App generated successfully! ${app.files.length} files created.`
+          : `Compilation failed with ${compilationResult.errors.length} issues`,
+        'compilation'
+      );
 
       setGenerationProgress(100);
-      newApp.progress = 100;
-      newApp.updatedAt = new Date();
-
-      const finalApps = generatedApps.map(app =>
-        app.id === newApp.id ? newApp : app
-      );
-      if (!finalApps.find(app => app.id === newApp.id)) {
-        finalApps.push(newApp);
-      }
-      await saveGeneratedApps(finalApps);
-
-      console.log(`[AppBuilder] App generation completed: ${newApp.name}`);
-      return newApp;
+      await saveGeneratedApps(prevMerge(generatedApps, app));
+      logger.info(`[AppBuilder] App generation completed: ${app.name}`);
+      return app;
     } catch (error) {
-      console.error('[AppBuilder] App generation failed:', error);
-      
-      newApp.status = 'error';
-      newApp.buildLogs.push({
-        id: `log-${Date.now()}`,
-        timestamp: new Date(),
-        level: 'error',
-        message: `Generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        phase: 'generation',
-      });
-
-      const finalApps = generatedApps.map(app =>
-        app.id === newApp.id ? newApp : app
-      );
-      await saveGeneratedApps(finalApps);
-
+      logger.error('[AppBuilder] App generation failed:', error);
+      // Capture failure in logs/status
+      app = {
+        ...app,
+        status: 'error',
+        updatedAt: new Date(),
+        buildLogs: [
+          ...app.buildLogs,
+          { id: uuid('log-'), timestamp: new Date(), level: 'error', message: `Generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`, phase: 'generation' },
+        ],
+      };
+      await saveGeneratedApps(prevMerge(generatedApps, app));
       throw error;
     } finally {
       setIsGenerating(false);
       setGenerationProgress(0);
+      setCurrentApp(app);
+      await persistCurrentAppId(app?.id ?? null);
     }
-  }, [generatedApps, saveGeneratedApps]);
+  }, [generatedApps, saveGeneratedApps, persistCurrentAppId]);
+
+  /** ───────── CRUD ───────── **/
 
   const deleteApp = useCallback(async (appId: string) => {
     const updatedApps = generatedApps.filter(app => app.id !== appId);
     await saveGeneratedApps(updatedApps);
-    
+
     if (currentApp?.id === appId) {
-      setCurrentApp(null);
+      setCurrentApp(updatedApps[updatedApps.length - 1] || null);
+      await persistCurrentAppId(updatedApps[updatedApps.length - 1]?.id || null);
     }
-    
-    console.log(`[AppBuilder] Deleted app: ${appId}`);
-  }, [generatedApps, currentApp, saveGeneratedApps]);
+
+    logger.info(`[AppBuilder] Deleted app: ${appId}`);
+  }, [generatedApps, currentApp, saveGeneratedApps, persistCurrentAppId]);
 
   const updateApp = useCallback(async (appId: string, updates: Partial<GeneratedApp>) => {
     const updatedApps = generatedApps.map(app =>
@@ -463,55 +489,61 @@ Generate a COMPLETE, PRODUCTION-READY application. No placeholders, no TODOs, no
         : app
     );
     await saveGeneratedApps(updatedApps);
-    
+
     if (currentApp?.id === appId) {
-      setCurrentApp(updatedApps.find(app => app.id === appId) || null);
+      const updated = updatedApps.find(app => app.id === appId) || null;
+      setCurrentApp(updated);
+      await persistCurrentAppId(updated?.id || null);
     }
-    
-    console.log(`[AppBuilder] Updated app: ${appId}`);
-  }, [generatedApps, currentApp, saveGeneratedApps]);
+
+    logger.info(`[AppBuilder] Updated app: ${appId}`);
+  }, [generatedApps, currentApp, saveGeneratedApps, persistCurrentAppId]);
+
+  /** ───────── Consensus Mode ───────── **/
 
   const runConsensusMode = useCallback(async (
     prompt: string,
     models: string[] = ['claude', 'gemini', 'gpt-4']
   ): Promise<ConsensusAnalysis> => {
-    console.log(`[AppBuilder] Running consensus mode with ${models.length} models`);
+    logger.info(`[AppBuilder] Running consensus mode with ${models.length} models`);
     setCurrentConsensus([]);
-    
-    const { generateText } = await import('@rork/toolkit-sdk');
+
+    let generateText: any;
+    try {
+      ({ generateText } = await import('@rork/toolkit-sdk'));
+    } catch (e) {
+      throw new Error('Missing @rork/toolkit-sdk or unsupported runtime. Install/provide it before consensus.');
+    }
+
     const consensusResults: ModelConsensus[] = [];
 
     for (const modelId of models) {
-      const startTime = Date.now();
+      const start = Date.now();
       try {
-        const response = await generateText({
-          messages: [{ role: 'user', content: prompt }]
-        });
-
-        const confidence = calculateConfidence(response);
-        const tokensUsed = Math.ceil(response.length / 4);
+        const response = String(await generateText({ messages: [{ role: 'user', content: prompt }] }) || '');
+        const clean = stripFences(response);
+        const confidence = calculateConfidence(clean);
+        const tokensUsed = Math.ceil(clean.length / 4);
         const cost = (tokensUsed / 1000) * 0.02;
 
         consensusResults.push({
           modelId,
           modelName: modelId.toUpperCase(),
-          response,
+          response: clean,
           confidence,
-          responseTime: Date.now() - startTime,
+          responseTime: Date.now() - start,
           tokensUsed,
           cost,
         });
       } catch (error) {
-        console.error(`[AppBuilder] Model ${modelId} failed:`, error);
+        logger.error(`[AppBuilder] Model ${modelId} failed:`, error);
       }
     }
 
     setCurrentConsensus(consensusResults);
-
     const analysis = await analyzeConsensus(consensusResults, prompt);
     setCurrentAnalysis(analysis);
-
-    console.log(`[AppBuilder] Consensus analysis complete: ${analysis.consensusScore}% agreement`);
+    logger.info(`[AppBuilder] Consensus analysis complete: ${analysis.consensusScore}% agreement`);
     return analysis;
   }, []);
 
@@ -519,7 +551,12 @@ Generate a COMPLETE, PRODUCTION-READY application. No placeholders, no TODOs, no
     consensus: ModelConsensus[],
     originalPrompt: string
   ): Promise<ConsensusAnalysis> => {
-    const { generateText } = await import('@rork/toolkit-sdk');
+    let generateText: any;
+    try {
+      ({ generateText } = await import('@rork/toolkit-sdk'));
+    } catch (e) {
+      throw new Error('Missing @rork/toolkit-sdk or unsupported runtime.');
+    }
 
     const analysisPrompt = `Analyze these ${consensus.length} AI model responses to the same prompt and identify:
 1. Key agreements (what all models agree on)
@@ -539,50 +576,45 @@ Return JSON:
   "recommendedModel": "claude"
 }`;
 
-    const analysisResult = await generateText({
-      messages: [{ role: 'user', content: analysisPrompt }]
-    });
+    const analysisResult = String(await generateText({ messages: [{ role: 'user', content: analysisPrompt }] }) || '');
+    const parsed = extractJSON(analysisResult);
 
-    try {
-      const jsonMatch = analysisResult.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[0]);
-        return {
-          agreements: parsed.agreements || [],
-          conflicts: (parsed.conflicts || []).map((c: any, i: number) => ({
-            id: `conflict-${i}`,
-            aspect: c.aspect,
-            models: c.models,
-            resolution: c.resolution,
-          })),
-          mergedResult: parsed.mergedResult || consensus[0].response,
-          consensusScore: parsed.consensusScore || 70,
-          recommendedModel: parsed.recommendedModel || consensus[0].modelId,
-        };
-      }
-    } catch (error) {
-      console.error('[AppBuilder] Failed to parse consensus analysis:', error);
+    if (parsed) {
+      return {
+        agreements: (parsed.agreements || []).map(String),
+        conflicts: (parsed.conflicts || []).map((c: any, i: number) => ({
+          id: `conflict-${i}`,
+          aspect: String(c.aspect || `aspect-${i}`),
+          models: (c.models || []).map((m: any) => ({ modelId: String(m.modelId), suggestion: String(m.suggestion) })),
+          resolution: String(c.resolution || ''),
+        })),
+        mergedResult: String(parsed.mergedResult || (consensus[0]?.response || '')),
+        consensusScore: Number.isFinite(parsed.consensusScore) ? parsed.consensusScore : 70,
+        recommendedModel: String(parsed.recommendedModel || (consensus[0]?.modelId || 'claude')),
+      };
     }
 
+    logger.warn('[AppBuilder] Failed to parse consensus JSON, returning fallback');
     return {
       agreements: ['All models provided valid responses'],
       conflicts: [],
-      mergedResult: consensus[0].response,
+      mergedResult: consensus[0]?.response || '',
       consensusScore: 70,
-      recommendedModel: consensus[0].modelId,
+      recommendedModel: consensus[0]?.modelId || 'claude',
     };
   };
+
+  /** ───────── Smart Model Selection ───────── **/
 
   const getSmartModelRecommendation = useCallback(async (
     taskDescription: string
   ): Promise<SmartModelRecommendation> => {
-    console.log('[AppBuilder] Getting smart model recommendation');
+    logger.info('[AppBuilder] Getting smart model recommendation');
 
     const taskType = detectTaskType(taskDescription);
     const cachedRec = modelRecommendations.get(taskType);
-
     if (cachedRec && cachedRec.confidence > 80) {
-      console.log(`[AppBuilder] Using cached recommendation for ${taskType}`);
+      logger.info(`[AppBuilder] Using cached recommendation for ${taskType}`);
       return cachedRec;
     }
 
@@ -600,7 +632,7 @@ Return JSON:
     const reasoning: Record<string, string> = {
       ui: 'GPT-4 Vision excels at UI/UX design, Claude for component architecture, Gemini for responsive layouts',
       code: 'Claude leads in code quality, GPT-4 for complex logic, Gemini for optimization',
-      image: 'GPT-4 Vision and Gemini Pro both excel at image understanding and generation',
+      image: 'GPT-4 Vision and Gemini Pro excel at image understanding/generation',
       data: 'GPT-4 and Claude are best for data analysis and transformation',
       legal: 'Claude excels at legal text, GPT-4 for comprehensive analysis',
       backend: 'Claude for API design, GPT-4 for business logic, Gemini for performance',
@@ -615,60 +647,57 @@ Return JSON:
       confidence: 90,
     };
 
-    const updatedRecs = new Map(modelRecommendations);
-    updatedRecs.set(taskType, recommendation);
-    setModelRecommendations(updatedRecs);
+    const updated = new Map(modelRecommendations);
+    updated.set(taskType, recommendation);
+    setModelRecommendations(updated);
+    await AsyncStorage.setItem(RECOMMENDATIONS_KEY, JSON.stringify(Object.fromEntries(updated)));
 
-    await AsyncStorage.setItem(
-      RECOMMENDATIONS_KEY,
-      JSON.stringify(Object.fromEntries(updatedRecs))
-    );
-
-    console.log(`[AppBuilder] Recommended ${recommendation.recommendedModels.length} models for ${taskType}`);
+    logger.info(`[AppBuilder] Recommended ${recommendation.recommendedModels.length} models for ${taskType}`);
     return recommendation;
   }, [modelRecommendations]);
+
+  /** ───────── Cache ───────── **/
 
   const getCachedGeneration = useCallback((prompt: string, config: AppGenerationConfig): CachedGeneration | null => {
     const cached = cachedGenerations.find(
       c => c.prompt === prompt && JSON.stringify(c.config) === JSON.stringify(config)
     );
-
     if (cached) {
-      const ageInHours = (Date.now() - cached.timestamp.getTime()) / (1000 * 60 * 60);
-      if (ageInHours < 24) {
-        console.log('[AppBuilder] Found cached generation (age: ' + ageInHours.toFixed(1) + 'h)');
+      const ageH = (Date.now() - cached.timestamp.getTime()) / 3_600_000;
+      if (ageH < 24) {
+        logger.info('[AppBuilder] Found cached generation (age: ' + ageH.toFixed(1) + 'h)');
         return cached;
       }
     }
-
     return null;
   }, [cachedGenerations]);
 
   const replayGeneration = useCallback(async (cachedId: string): Promise<GeneratedApp> => {
-    console.log(`[AppBuilder] Replaying cached generation: ${cachedId}`);
-    
+    logger.info(`[AppBuilder] Replaying cached generation: ${cachedId}`);
+
     const cached = cachedGenerations.find(c => c.id === cachedId);
-    if (!cached) {
-      throw new Error('Cached generation not found');
-    }
+    if (!cached) throw new Error('Cached generation not found');
 
     setCurrentConsensus(cached.consensus);
     setCurrentAnalysis(cached.analysis);
 
-    const replayedApp: GeneratedApp = {
+    const replayed: GeneratedApp = {
       ...cached.result,
       id: `app-${Date.now()}`,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
-    const updatedApps = [...generatedApps, replayedApp];
+    const updatedApps = [...generatedApps, replayed];
     await saveGeneratedApps(updatedApps);
-    setCurrentApp(replayedApp);
+    setCurrentApp(replayed);
+    await persistCurrentAppId(replayed.id);
 
-    console.log('[AppBuilder] Generation replayed successfully');
-    return replayedApp;
-  }, [cachedGenerations, generatedApps, saveGeneratedApps]);
+    logger.info('[AppBuilder] Generation replayed successfully');
+    return replayed;
+  }, [cachedGenerations, generatedApps, saveGeneratedApps, persistCurrentAppId]);
+
+  /** ───────── Exposed API ───────── **/
 
   return useMemo(() => ({
     generatedApps,
@@ -682,7 +711,10 @@ Return JSON:
     generateApp,
     deleteApp,
     updateApp,
-    setCurrentApp,
+    setCurrentApp: async (app: GeneratedApp | null) => {
+      setCurrentApp(app);
+      await persistCurrentAppId(app?.id || null);
+    },
     runConsensusMode,
     getSmartModelRecommendation,
     getCachedGeneration,
@@ -703,95 +735,81 @@ Return JSON:
     getSmartModelRecommendation,
     getCachedGeneration,
     replayGeneration,
+    persistCurrentAppId,
   ]);
 });
 
+/** ───────────────────────── Helpers ───────────────────────── **/
+
 function extractAppName(prompt: string): string {
-  const words = prompt.split(' ').slice(0, 5).join(' ');
-  return words.charAt(0).toUpperCase() + words.slice(1);
+  const words = prompt.trim().split(/\s+/).slice(0, 5).join(' ');
+  return words ? words[0].toUpperCase() + words.slice(1) : 'Generated App';
 }
 
 function calculateConfidence(response: string): number {
   let confidence = 70;
-
-  if (response.length > 500) confidence += 10;
-  if (response.includes('import') && response.includes('export')) confidence += 5;
-  if (response.includes('interface') || response.includes('type')) confidence += 5;
-  if (response.includes('try') && response.includes('catch')) confidence += 5;
-  if (!response.includes('TODO') && !response.includes('FIXME')) confidence += 5;
-
+  const r = response || '';
+  if (r.length > 500) confidence += 10;
+  if (r.includes('import') && r.includes('export')) confidence += 5;
+  if (/\b(interface|type)\b/.test(r)) confidence += 5;
+  if (/\btry\b[\s\S]*\bcatch\b/.test(r)) confidence += 5;
+  if (!/TODO|FIXME/.test(r)) confidence += 5;
   return Math.min(100, confidence);
 }
 
 function detectTaskType(description: string): SmartModelRecommendation['taskType'] {
-  const lower = description.toLowerCase();
-
-  if (lower.includes('ui') || lower.includes('design') || lower.includes('interface') || lower.includes('layout')) {
-    return 'ui';
-  }
-  if (lower.includes('image') || lower.includes('photo') || lower.includes('visual')) {
-    return 'image';
-  }
-  if (lower.includes('data') || lower.includes('analytics') || lower.includes('database')) {
-    return 'data';
-  }
-  if (lower.includes('legal') || lower.includes('terms') || lower.includes('policy')) {
-    return 'legal';
-  }
-  if (lower.includes('backend') || lower.includes('api') || lower.includes('server')) {
-    return 'backend';
-  }
-  if (lower.includes('frontend') || lower.includes('react') || lower.includes('component')) {
-    return 'frontend';
-  }
-  if (lower.includes('fullstack') || lower.includes('full stack') || lower.includes('complete app')) {
-    return 'fullstack';
-  }
-
+  const lower = (description || '').toLowerCase();
+  if (/(ui|design|interface|layout)/.test(lower)) return 'ui';
+  if (/(image|photo|visual)/.test(lower)) return 'image';
+  if (/(data|analytics|database)/.test(lower)) return 'data';
+  if (/(legal|terms|policy)/.test(lower)) return 'legal';
+  if (/(backend|api|server)/.test(lower)) return 'backend';
+  if (/(frontend|react|component)/.test(lower)) return 'frontend';
+  if (/(fullstack|full stack|complete app)/.test(lower)) return 'fullstack';
   return 'code';
 }
 
+function prevMerge(list: GeneratedApp[], updated: GeneratedApp): GeneratedApp[] {
+  const idx = list.findIndex(a => a.id === updated.id);
+  if (idx === -1) return [...list, updated];
+  const copy = [...list];
+  copy[idx] = updated;
+  return copy;
+}
+
 async function compileApp(app: GeneratedApp): Promise<{ success: boolean; errors: CompilationError[] }> {
-  console.log(`[AppBuilder] Compiling app: ${app.name}`);
-  
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  logger.info(`[AppBuilder] Compiling app: ${app.name}`);
+  // Simulate compilation
+  await new Promise(r => setTimeout(r, 800));
 
   const errors: CompilationError[] = [];
-
-  app.files.forEach(file => {
+  for (const file of app.files) {
     const lines = file.content.split('\n');
-    
-    lines.forEach((line, index) => {
-      if (line.includes('any') && file.language === 'typescript') {
+    lines.forEach((line, i) => {
+      const isCommentOrString = /^\s*\/\//.test(line) || /^\s*\*/.test(line) || /(['"`]).*?\1/.test(line);
+      if (!isCommentOrString && file.language === 'typescript' && /\bany\b/.test(line)) {
         errors.push({
-          id: `error-${Date.now()}-${Math.random()}`,
+          id: uuid('err-'),
           file: file.path,
-          line: index + 1,
-          column: line.indexOf('any'),
+          line: i + 1,
+          column: Math.max(0, line.indexOf('any')),
           message: 'Avoid using "any" type',
           severity: 'warning',
         });
       }
-
-      if (line.includes('console.log') && !line.includes('//')) {
+      if (!isCommentOrString && /console\.log/.test(line)) {
         errors.push({
-          id: `error-${Date.now()}-${Math.random()}`,
+          id: uuid('err-'),
           file: file.path,
-          line: index + 1,
-          column: line.indexOf('console.log'),
+          line: i + 1,
+          column: Math.max(0, line.indexOf('console.log')),
           message: 'Remove console.log in production',
           severity: 'warning',
         });
       }
     });
-  });
-
+  }
   const hasErrors = errors.some(e => e.severity === 'error');
-  
-  console.log(`[AppBuilder] Compilation ${hasErrors ? 'failed' : 'succeeded'} with ${errors.length} issues`);
-  
-  return {
-    success: !hasErrors,
-    errors,
-  };
+  logger.info(`[AppBuilder] Compilation ${hasErrors ? 'failed' : 'succeeded'} with ${errors.length} issues`);
+  return { success: !hasErrors, errors };
 }
