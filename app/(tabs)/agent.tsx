@@ -102,7 +102,14 @@ function getAgentRole(toolName?: string): AgentRole {
 
 export default function AgentScreen() {
   const [input, setInput] = useState<string>('');
-  const { currentProject, analyzeProject, generateCode, isAnalyzing, isGenerating } = useAgent();
+  const agentContext = useAgent();
+  const { currentProject, analyzeProject, generateCode, isAnalyzing, isGenerating } = agentContext || {
+    currentProject: null,
+    analyzeProject: async () => {},
+    generateCode: async () => '',
+    isAnalyzing: false,
+    isGenerating: false,
+  };
   const insets = useSafeAreaInsets();
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
