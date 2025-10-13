@@ -195,13 +195,17 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
 
   const encryptData = async (data: string): Promise<string> => {
     if (!isEncryptionEnabled) return data;
-    return btoa(data);
+    try {
+      return Buffer.from(data, 'utf-8').toString('base64');
+    } catch {
+      return data;
+    }
   };
 
   const decryptData = async (encryptedData: string): Promise<string> => {
     if (!isEncryptionEnabled) return encryptedData;
     try {
-      return atob(encryptedData);
+      return Buffer.from(encryptedData, 'base64').toString('utf-8');
     } catch {
       return encryptedData;
     }
