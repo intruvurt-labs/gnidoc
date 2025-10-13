@@ -22,6 +22,10 @@ import { orchestrateGenerationProcedure } from "./routes/orchestration/generate/
 import { compareModelsProcedure } from "./routes/orchestration/compare/route";
 import { getOrchestrationHistoryProcedure, deleteOrchestrationHistoryProcedure } from "./routes/orchestration/history/route";
 import { getModelStatsProcedure } from "./routes/orchestration/stats/route";
+import { createProjectProcedure } from "./routes/projects/create/route";
+import { gitInitProcedure } from "./routes/projects/git-init/route";
+import { exportZipProcedure } from "./routes/projects/export-zip/route";
+import { getFileUrlProcedure } from "./routes/files/get-url/route";
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -59,6 +63,18 @@ export const appRouter = createTRPCRouter({
     history: getOrchestrationHistoryProcedure,
     deleteHistory: deleteOrchestrationHistoryProcedure,
     stats: getModelStatsProcedure,
+  }),
+  projects: createTRPCRouter({
+    create: createProjectProcedure,
+    git: createTRPCRouter({
+      init: gitInitProcedure,
+    }),
+    export: createTRPCRouter({
+      zip: exportZipProcedure,
+    }),
+  }),
+  files: createTRPCRouter({
+    getUrl: getFileUrlProcedure,
   }),
 });
 

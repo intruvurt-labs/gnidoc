@@ -10,7 +10,13 @@ import {
   Switch,
   Dimensions,
   Alert,
+  Platform,
+  ActivityIndicator,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import * as WebBrowser from 'expo-web-browser';
 import {
   X,
   Plus,
@@ -163,12 +169,89 @@ const DEFAULT_ADVANCED_SETTINGS: AdvancedSettings = {
   },
 };
 
+const PROJECT_STORAGE_KEY = 'logo-menu:last-project-id';
+
 export default function LogoMenu({ onPress, onLongPress }: LogoMenuProps) {
   const [showQuickMenu, setShowQuickMenu] = useState<boolean>(false);
   const [showAdvancedMenu, setShowAdvancedMenu] = useState<boolean>(false);
   const [advancedSettings, setAdvancedSettings] = useState<AdvancedSettings>(DEFAULT_ADVANCED_SETTINGS);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [loadingMessage, setLoadingMessage] = useState<string>('');
   const router = useRouter();
   const { settings, updateSettings } = useSettings();
+
+  const withAuth = async () => {
+    const token = await AsyncStorage.getItem('auth-token');
+    if (!token) throw new Error('Authentication required');
+    return token;
+  };
+
+  const getTrpc = async () => {
+    const { trpcClient } = await import('@/lib/trpc');
+    return trpcClient;
+  };
+
+  const createProject = async (projectType: 'react-native' | 'web' | 'api') => {
+    await withAuth();
+    const trpc = await getTrpc();
+    const res = await trpc.projects.create.mutate({
+      type: projectType,
+      name: advancedSettings.project.name,
+      slug: advancedSettings.project.slug,
+      template: projectType,
+      settings: advancedSettings,
+    });
+    if (!res?.projectId) throw new Error('Backend did not return projectId');
+    await AsyncStorage.setItem(PROJECT_STORAGE_KEY, res.projectId);
+    return res.projectId as string;
+  };
+
+  const initGitRepo = async (projectId: string) => {
+    await withAuth();
+    const trpc = await getTrpc();
+    const res = await trpc.projects.git.init.mutate({ projectId });
+    if (!res?.initialized) throw new Error(res?.message || 'Git init failed');
+    return true;
+  };
+
+  const requestZipExport = async (projectId: string) => {
+    await withAuth();
+    const trpc = await getTrpc();
+    const res = await trpc.projects.export.zip.mutate({ projectId });
+    if (!res?.url && !res?.fileId) throw new Error('No export artifact returned');
+    return res;
+  };
+
+  const getDownloadUrlForFile = async (fileId: string) => {
+    const trpc = await getTrpc();
+    const res = await trpc.files.getUrl.query({ fileId });
+    if (!res?.url) throw new Error('Failed to resolve download URL');
+    return res.url as string;
+  };
+
+  const downloadZip = async (url: string, filename: string) => {
+    if (Platform.OS === 'web') {
+      try {
+        await WebBrowser.openBrowserAsync(url);
+      } catch {
+        if (typeof window !== 'undefined') {
+          window.open(url, '_blank');
+        }
+      }
+      return;
+    }
+
+    const target = FileSystem.cacheDirectory + filename;
+    const { uri, status } = await FileSystem.downloadAsync(url, target);
+    if (status !== 200) throw new Error('Download failed');
+
+    const canShare = await Sharing.isAvailableAsync();
+    if (canShare) {
+      await Sharing.shareAsync(uri, { mimeType: 'application/zip', dialogTitle: filename });
+    } else {
+      Alert.alert('Downloaded', `Saved to: ${uri}`);
+    }
+  };
 
   const handleQuickPress = () => {
     if (onPress) onPress();
@@ -187,9 +270,51 @@ export default function LogoMenu({ onPress, onLongPress }: LogoMenuProps) {
       'Choose project type:',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'React Native', onPress: () => console.log('Creating React Native project') },
-        { text: 'Web App', onPress: () => console.log('Creating Web App') },
-        { text: 'API Service', onPress: () => console.log('Creating API Service') },
+        { 
+          text: 'React Native', 
+          onPress: async () => {
+            try {
+              setIsLoading(true);
+              setLoadingMessage('Creating React Native project...');
+              const projectId = await createProject('react-native');
+              setIsLoading(false);
+              Alert.alert('Success', `Project created: ${projectId}`);
+            } catch (error: any) {
+              setIsLoading(false);
+              Alert.alert('Error', error.message || 'Failed to create project');
+            }
+          }
+        },
+        { 
+          text: 'Web App', 
+          onPress: async () => {
+            try {
+              setIsLoading(true);
+              setLoadingMessage('Creating Web App project...');
+              const projectId = await createProject('web');
+              setIsLoading(false);
+              Alert.alert('Success', `Project created: ${projectId}`);
+            } catch (error: any) {
+              setIsLoading(false);
+              Alert.alert('Error', error.message || 'Failed to create project');
+            }
+          }
+        },
+        { 
+          text: 'API Service', 
+          onPress: async () => {
+            try {
+              setIsLoading(true);
+              setLoadingMessage('Creating API Service project...');
+              const projectId = await createProject('api');
+              setIsLoading(false);
+              Alert.alert('Success', `Project created: ${projectId}`);
+            } catch (error: any) {
+              setIsLoading(false);
+              Alert.alert('Error', error.message || 'Failed to create project');
+            }
+          }
+        },
       ]
     );
   };
@@ -209,16 +334,63 @@ export default function LogoMenu({ onPress, onLongPress }: LogoMenuProps) {
     Alert.alert('Preview', 'Opening preview in web/native...');
   };
 
-  const handleSaveExport = () => {
+  const handleSaveExport = async () => {
     setShowQuickMenu(false);
+    
+    const projectId = await AsyncStorage.getItem(PROJECT_STORAGE_KEY);
+    if (!projectId) {
+      Alert.alert('No Project', 'Please create a project first.');
+      return;
+    }
+
     Alert.alert(
       'Save/Export',
       'Choose export format:',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Export as ZIP', onPress: () => console.log('Exporting as ZIP') },
-        { text: 'Initialize Git Repo', onPress: () => console.log('Initializing Git') },
-        { text: 'Save to Cloud', onPress: () => console.log('Saving to cloud') },
+        { 
+          text: 'Export as ZIP', 
+          onPress: async () => {
+            try {
+              setIsLoading(true);
+              setLoadingMessage('Preparing export...');
+              const exportRes = await requestZipExport(projectId);
+              
+              let downloadUrl = exportRes.url;
+              if (!downloadUrl && exportRes.fileId) {
+                setLoadingMessage('Getting download URL...');
+                downloadUrl = await getDownloadUrlForFile(exportRes.fileId);
+              }
+              
+              if (downloadUrl) {
+                setLoadingMessage('Downloading...');
+                await downloadZip(downloadUrl, `${advancedSettings.project.slug}.zip`);
+              }
+              
+              setIsLoading(false);
+              Alert.alert('Success', 'Project exported successfully!');
+            } catch (error: any) {
+              setIsLoading(false);
+              Alert.alert('Error', error.message || 'Failed to export project');
+            }
+          }
+        },
+        { 
+          text: 'Initialize Git Repo', 
+          onPress: async () => {
+            try {
+              setIsLoading(true);
+              setLoadingMessage('Initializing Git repository...');
+              await initGitRepo(projectId);
+              setIsLoading(false);
+              Alert.alert('Success', 'Git repository initialized!');
+            } catch (error: any) {
+              setIsLoading(false);
+              Alert.alert('Error', error.message || 'Failed to initialize Git');
+            }
+          }
+        },
+        { text: 'Save to Cloud', onPress: () => Alert.alert('Coming Soon', 'Cloud save feature coming soon!') },
       ]
     );
   };
@@ -277,15 +449,34 @@ export default function LogoMenu({ onPress, onLongPress }: LogoMenuProps) {
         onLongPress={handleLongPress}
         style={styles.logoButton}
         activeOpacity={0.7}
+        disabled={isLoading}
       >
         <View style={styles.logoCircle}>
-          <Image
-            source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/3m84a7w7p2uwori7ld5pn' }}
-            style={styles.logoSymbol}
-            resizeMode="contain"
-          />
+          {isLoading ? (
+            <ActivityIndicator size="small" color={Colors.Colors.cyan.primary} />
+          ) : (
+            <Image
+              source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/3m84a7w7p2uwori7ld5pn' }}
+              style={styles.logoSymbol}
+              resizeMode="contain"
+            />
+          )}
         </View>
       </TouchableOpacity>
+
+      {/* Loading Modal */}
+      <Modal
+        visible={isLoading}
+        transparent
+        animationType="fade"
+      >
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.Colors.cyan.primary} />
+            <Text style={styles.loadingText}>{loadingMessage}</Text>
+          </View>
+        </View>
+      </Modal>
 
       {/* Quick Menu Modal */}
       <Modal
@@ -929,5 +1120,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600' as const,
     color: Colors.Colors.text.inverse,
+  },
+  loadingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingContainer: {
+    backgroundColor: Colors.Colors.background.card,
+    borderRadius: 16,
+    padding: 32,
+    alignItems: 'center',
+    gap: 16,
+    borderWidth: 2,
+    borderColor: Colors.Colors.cyan.primary,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: Colors.Colors.text.primary,
+    textAlign: 'center' as const,
   },
 });
