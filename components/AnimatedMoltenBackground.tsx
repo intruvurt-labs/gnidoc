@@ -27,36 +27,55 @@ const AnimatedMoltenBackground: React.FC<AnimatedMoltenBackgroundProps> = React.
   intensity = 0.75,
 }) => {
   const [stage, setStage] = useState<AnimationStage>('subtle');
+
+  // Animated values (stable refs)
   const scale = useRef(new Animated.Value(1)).current;
   const glow = useRef(new Animated.Value(0)).current;
   const wave = useRef(new Animated.Value(0)).current;
   const heat = useRef(new Animated.Value(0)).current;
   const flameIntensity = useRef(new Animated.Value(0)).current;
 
-  const sparks = useMemo(() => new Array(SPARK_COUNT).fill(null).map((_, i) => ({
-    id: `spark-${i}`,
-    x: Math.random() * width,
-    y: Math.random() * height,
-    size: 2 + Math.random() * 5,
-    delay: Math.floor(Math.random() * 5000),
-    duration: 1200 + Math.floor(Math.random() * 3500),
-    color: i % 3 === 0 ? Colors.Colors.cyan.primary : i % 3 === 1 ? Colors.Colors.orange.primary : Colors.Colors.red.primary,
-  })), []);
+  // Keep a ref to stop the wave loop
+  const waveLoopRef = useRef<Animated.CompositeAnimation | null>(null);
 
-  const flames = useMemo(() => new Array(FLAME_COUNT).fill(null).map((_, i) => ({
-    id: `flame-${i}`,
-    x: (width / FLAME_COUNT) * i + Math.random() * (width / FLAME_COUNT),
-    y: height - Math.random() * 200,
-    size: 40 + Math.random() * 80,
-    delay: Math.floor(Math.random() * 2000),
-    duration: 800 + Math.floor(Math.random() * 1200),
-  })), []);
+  const sparks = useMemo(
+    () =>
+      new Array(SPARK_COUNT).fill(null).map((_, i) => ({
+        id: `spark-${i}`,
+        x: Math.random() * width,
+        y: Math.random() * height,
+        size: 2 + Math.random() * 5,
+        delay: Math.floor(Math.random() * 5000),
+        duration: 1200 + Math.floor(Math.random() * 3500),
+        color:
+          i % 3 === 0
+            ? Colors.Colors.cyan.primary
+            : i % 3 === 1
+            ? Colors.Colors.orange.primary
+            : Colors.Colors.red.primary,
+      })),
+    []
+  );
+
+  const flames = useMemo(
+    () =>
+      new Array(FLAME_COUNT).fill(null).map((_, i) => ({
+        id: `flame-${i}`,
+        x: (width / FLAME_COUNT) * i + Math.random() * (width / FLAME_COUNT),
+        y: height - Math.random() * 200,
+        size: 40 + Math.random() * 80,
+        delay: Math.floor(Math.random() * 2000),
+        duration: 800 + Math.floor(Math.random() * 1200),
+      })),
+    []
+  );
 
   const sparkOpacities = useRef(sparks.map(() => new Animated.Value(0))).current;
   const sparkScales = useRef(sparks.map(() => new Animated.Value(0.8))).current;
   const flameOpacities = useRef(flames.map(() => new Animated.Value(0))).current;
   const flameScales = useRef(flames.map(() => new Animated.Value(0.5))).current;
 
+  // Stage progression
   useEffect(() => {
     const stageSequence = setTimeout(() => {
       if (stage === 'subtle') setStage('agitated');
@@ -68,15 +87,28 @@ const AnimatedMoltenBackground: React.FC<AnimatedMoltenBackgroundProps> = React.
     return () => clearTimeout(stageSequence);
   }, [stage]);
 
+  // Core animations
   useEffect(() => {
-    const vibrationIntensity = stage === 'subtle' ? 0.005 : stage === 'agitated' ? 0.015 : stage === 'glowing' ? 0.025 : stage === 'sparking' ? 0.035 : 0.05;
-    const vibrationSpeed = stage === 'subtle' ? 1500 : stage === 'agitated' ? 1000 : stage === 'glowing' ? 700 : stage === 'sparking' ? 500 : 300;
+    const vibrationIntensity =
+      stage === 'subtle' ? 0.005 : stage === 'agitated' ? 0.015 : stage === 'glowing' ? 0.025 : stage === 'sparking' ? 0.035 : 0.05;
+    const vibrationSpeed =
+      stage === 'subtle' ? 1500 : stage === 'agitated' ? 1000 : stage === 'glowing' ? 700 : stage === 'sparking' ? 500 : 300;
 
     const vibration = Animated.loop(
       Animated.sequence([
-        Animated.timing(scale, { toValue: 1 + vibrationIntensity * intensity, duration: vibrationSpeed, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        Animated.timing(scale, { toValue: 1 - vibrationIntensity * intensity, duration: vibrationSpeed, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-      ]),
+        Animated.timing(scale, {
+          toValue: 1 + vibrationIntensity * intensity,
+          duration: vibrationSpeed,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(scale, {
+          toValue: 1 - vibrationIntensity * intensity,
+          duration: vibrationSpeed,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ])
     );
 
     const glowTarget = stage === 'subtle' ? 0.2 : stage === 'agitated' ? 0.4 : stage === 'glowing' ? 0.7 : stage === 'sparking' ? 0.85 : 1;
@@ -84,9 +116,19 @@ const AnimatedMoltenBackground: React.FC<AnimatedMoltenBackgroundProps> = React.
 
     const glowUp = Animated.loop(
       Animated.sequence([
-        Animated.timing(glow, { toValue: glowTarget, duration: glowSpeed, easing: Easing.inOut(Easing.cubic), useNativeDriver: false }),
-        Animated.timing(glow, { toValue: glowTarget * 0.3, duration: glowSpeed, easing: Easing.inOut(Easing.cubic), useNativeDriver: false }),
-      ]),
+        Animated.timing(glow, {
+          toValue: glowTarget,
+          duration: glowSpeed,
+          easing: Easing.inOut(Easing.cubic),
+          useNativeDriver: false, // opacity value interpolation
+        }),
+        Animated.timing(glow, {
+          toValue: glowTarget * 0.3,
+          duration: glowSpeed,
+          easing: Easing.inOut(Easing.cubic),
+          useNativeDriver: false,
+        }),
+      ])
     );
 
     const heatAnim = Animated.timing(heat, {
@@ -103,63 +145,112 @@ const AnimatedMoltenBackground: React.FC<AnimatedMoltenBackgroundProps> = React.
       useNativeDriver: false,
     });
 
-    const waveAnim = Animated.loop(
+    const waveLoop = Animated.loop(
       Animated.timing(wave, { toValue: 1, duration: 6000, easing: Easing.linear, useNativeDriver: false })
     );
+    waveLoopRef.current = waveLoop;
 
-    const sparkAnims = (stage === 'sparking' || stage === 'molten') ? sparks.map((_, i) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(sparks[i].delay),
-          Animated.parallel([
-            Animated.timing(sparkOpacities[i], { toValue: 1, duration: 150, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-            Animated.timing(sparkScales[i], { toValue: 2.2, duration: 250, easing: Easing.out(Easing.back(2)), useNativeDriver: true }),
-          ]),
-          Animated.timing(sparkOpacities[i], { toValue: 0, duration: sparks[i].duration, easing: Easing.in(Easing.quad), useNativeDriver: true }),
-          Animated.timing(sparkScales[i], { toValue: 0.6, duration: 400, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        ]),
-      )
-    ) : [];
+    const sparkAnims =
+      stage === 'sparking' || stage === 'molten'
+        ? sparks.map((_, i) =>
+            Animated.loop(
+              Animated.sequence([
+                Animated.delay(sparks[i].delay),
+                Animated.parallel([
+                  Animated.timing(sparkOpacities[i], {
+                    toValue: 1,
+                    duration: 150,
+                    easing: Easing.out(Easing.quad),
+                    useNativeDriver: true,
+                  }),
+                  Animated.timing(sparkScales[i], {
+                    toValue: 2.2,
+                    duration: 250,
+                    easing: Easing.out(Easing.back(2)),
+                    useNativeDriver: true,
+                  }),
+                ]),
+                Animated.timing(sparkOpacities[i], {
+                  toValue: 0,
+                  duration: sparks[i].duration,
+                  easing: Easing.in(Easing.quad),
+                  useNativeDriver: true,
+                }),
+                Animated.timing(sparkScales[i], {
+                  toValue: 0.6,
+                  duration: 400,
+                  easing: Easing.inOut(Easing.quad),
+                  useNativeDriver: true,
+                }),
+              ])
+            )
+          )
+        : [];
 
-    const flameAnims = stage === 'molten' ? flames.map((_, i) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(flames[i].delay),
-          Animated.parallel([
-            Animated.timing(flameOpacities[i], { toValue: 0.8, duration: 300, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-            Animated.timing(flameScales[i], { toValue: 1.5, duration: flames[i].duration, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-          ]),
-          Animated.parallel([
-            Animated.timing(flameOpacities[i], { toValue: 0, duration: 500, easing: Easing.in(Easing.quad), useNativeDriver: true }),
-            Animated.timing(flameScales[i], { toValue: 0.5, duration: 300, easing: Easing.in(Easing.quad), useNativeDriver: true }),
-          ]),
-        ]),
-      )
-    ) : [];
+    const flameAnims =
+      stage === 'molten'
+        ? flames.map((_, i) =>
+            Animated.loop(
+              Animated.sequence([
+                Animated.delay(flames[i].delay),
+                Animated.parallel([
+                  Animated.timing(flameOpacities[i], {
+                    toValue: 0.8,
+                    duration: 300,
+                    easing: Easing.out(Easing.quad),
+                    useNativeDriver: true,
+                  }),
+                  Animated.timing(flameScales[i], {
+                    toValue: 1.5,
+                    duration: flames[i].duration,
+                    easing: Easing.out(Easing.cubic),
+                    useNativeDriver: true,
+                  }),
+                ]),
+                Animated.parallel([
+                  Animated.timing(flameOpacities[i], {
+                    toValue: 0,
+                    duration: 500,
+                    easing: Easing.in(Easing.quad),
+                    useNativeDriver: true,
+                  }),
+                  Animated.timing(flameScales[i], {
+                    toValue: 0.5,
+                    duration: 300,
+                    easing: Easing.in(Easing.quad),
+                    useNativeDriver: true,
+                  }),
+                ]),
+              ])
+            )
+          )
+        : [];
 
+    // Start animations
     vibration.start();
     glowUp.start();
     heatAnim.start();
     flameAnim.start();
-    waveAnim.start(() => wave.setValue(0));
-    sparkAnims.forEach(a => a.start());
-    flameAnims.forEach(a => a.start());
+    waveLoop.start(() => wave.setValue(0));
+    sparkAnims.forEach((a) => a.start());
+    flameAnims.forEach((a) => a.start());
 
+    // Cleanup
     return () => {
       vibration.stop();
       glowUp.stop();
-      sparkAnims.forEach(a => a.stop());
-      flameAnims.forEach(a => a.stop());
+      sparkAnims.forEach((a) => a.stop());
+      flameAnims.forEach((a) => a.stop());
+      waveLoopRef.current?.stop();
     };
-  }, [glow, intensity, scale, sparkOpacities, sparkScales, sparks, wave, stage, heat, flameIntensity, flames, flameOpacities, flameScales]);
+  }, [intensity, stage, flames, flameOpacities, flameScales, sparks, sparkOpacities, sparkScales, scale, glow, heat, flameIntensity, wave]);
 
+  // Color refs
   const heatCyan = Colors.Colors.cyan.primary;
   const heatOrange = Colors.Colors.orange.primary;
   const heatRed = Colors.Colors.red.primary;
-  const glowCyan = Colors.Colors.cyan.glow;
-  const glowRed = Colors.Colors.red.glow;
-  const glowOrange = Colors.Colors.orange.glow;
 
+  // Interpolations
   const glowInterpolate = glow.interpolate({
     inputRange: [0, 1],
     outputRange: [0.1, 0.8],
@@ -174,7 +265,7 @@ const AnimatedMoltenBackground: React.FC<AnimatedMoltenBackgroundProps> = React.
 
   return (
     <View style={styles.container} pointerEvents="none" testID="animated-molten-bg">
-      <Animated.View style={[styles.gradientWrap, { transform: [{ scale }] }]}>        
+      <Animated.View style={[styles.gradientWrap, { transform: [{ scale }] }]}>
         <LinearGradient
           colors={[heatCyan, heatOrange, heatRed]}
           start={{ x: 0, y: 0 }}
@@ -211,48 +302,54 @@ const AnimatedMoltenBackground: React.FC<AnimatedMoltenBackgroundProps> = React.
         />
       )}
 
-      {(stage === 'sparking' || stage === 'molten') && sparks.map((s, i) => (
-        <Animated.View
-          key={s.id}
-          style={[
-            styles.spark,
-            {
-              left: (s.x + (i % 3 === 0 ? waveShift as unknown as number : 0)) as number,
-              top: s.y,
-              width: s.size,
-              height: s.size,
-              opacity: sparkOpacities[i],
-              transform: [{ scale: sparkScales[i] }],
-              backgroundColor: s.color,
-              shadowColor: s.color,
-            },
-          ]}
-        />
-      ))}
-
-      {stage === 'molten' && flames.map((f, i) => (
-        <Animated.View
-          key={f.id}
-          style={[
-            styles.flame,
-            {
-              left: f.x,
-              bottom: 0,
-              width: f.size,
-              height: f.size * 2,
-              opacity: flameOpacities[i],
-              transform: [{ scale: flameScales[i] }, { translateY: -50 }],
-            },
-          ]}
-        >
-          <LinearGradient
-            colors={[heatRed, heatOrange, heatCyan, 'transparent']}
-            start={{ x: 0.5, y: 1 }}
-            end={{ x: 0.5, y: 0 }}
-            style={styles.flameGradient}
+      {(stage === 'sparking' || stage === 'molten') &&
+        sparks.map((s, i) => (
+          <Animated.View
+            key={s.id}
+            style={[
+              styles.spark,
+              {
+                left: s.x,
+                top: s.y,
+                width: s.size,
+                height: s.size,
+                opacity: sparkOpacities[i],
+                transform: [
+                  { scale: sparkScales[i] },
+                  ...(i % 3 === 0 ? [{ translateX: waveShift }] : []), // drift a subset with the wave
+                ],
+                backgroundColor: s.color,
+                shadowColor: s.color,
+                ...(Platform.OS === 'web' ? { boxShadow: `0 0 12px ${s.color}` } : {}),
+              },
+            ]}
           />
-        </Animated.View>
-      ))}
+        ))}
+
+      {stage === 'molten' &&
+        flames.map((f, i) => (
+          <Animated.View
+            key={f.id}
+            style={[
+              styles.flame,
+              {
+                left: f.x,
+                bottom: 0,
+                width: f.size,
+                height: f.size * 2,
+                opacity: flameOpacities[i],
+                transform: [{ scale: flameScales[i] }, { translateY: -50 }],
+              },
+            ]}
+          >
+            <LinearGradient
+              colors={[Colors.Colors.red.primary, Colors.Colors.orange.primary, Colors.Colors.cyan.primary, 'transparent']}
+              start={{ x: 0.5, y: 1 }}
+              end={{ x: 0.5, y: 0 }}
+              style={styles.flameGradient}
+            />
+          </Animated.View>
+        ))}
 
       <Animated.View style={[styles.heatOverlay, { opacity: heatOpacity }]} />
       <View style={styles.mask} />
