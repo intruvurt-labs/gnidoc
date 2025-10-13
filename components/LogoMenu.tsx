@@ -448,7 +448,7 @@ export default function LogoMenu({ onPress, onLongPress }: LogoMenuProps) {
                   <View style={styles.segmentedControl}>
                     {[2, 3, 4, 6].map((num) => (
                       <TouchableOpacity
-                        key={num}
+                        key={`orchestration-${num}`}
                         style={[
                           styles.segmentButton,
                           advancedSettings.generator.models.orchestration === num && styles.segmentButtonActive,
@@ -473,7 +473,7 @@ export default function LogoMenu({ onPress, onLongPress }: LogoMenuProps) {
                   <View style={styles.segmentedControl}>
                     {['low', 'medium', 'high'].map((depth) => (
                       <TouchableOpacity
-                        key={depth}
+                        key={`planner-${depth}`}
                         style={[
                           styles.segmentButton,
                           advancedSettings.generator.plannerDepth === depth && styles.segmentButtonActive,
@@ -517,7 +517,7 @@ export default function LogoMenu({ onPress, onLongPress }: LogoMenuProps) {
                   <View style={styles.segmentedControl}>
                     {['Expo', 'Next.js', 'Tauri'].map((fw) => (
                       <TouchableOpacity
-                        key={fw}
+                        key={`framework-${fw}`}
                         style={[
                           styles.segmentButton,
                           advancedSettings.output.framework === fw && styles.segmentButtonActive,
@@ -542,7 +542,7 @@ export default function LogoMenu({ onPress, onLongPress }: LogoMenuProps) {
                   <View style={styles.segmentedControl}>
                     {['ts', 'js'].map((lang) => (
                       <TouchableOpacity
-                        key={lang}
+                        key={`language-${lang}`}
                         style={[
                           styles.segmentButton,
                           advancedSettings.output.language === lang && styles.segmentButtonActive,
