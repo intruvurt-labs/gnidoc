@@ -1,13 +1,14 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, lazy, Suspense } from "react";
+import React, { useEffect, lazy, Suspense, useState } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StatusBar } from "expo-status-bar";
 import { View, ActivityIndicator } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useFonts } from "expo-font";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Colors from "@/constants/colors";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
@@ -15,6 +16,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import { trpc, trpcClient } from "@/lib/trpc";
 import AISupportChat from "@/components/AISupportChat";
 import UniversalFooter from "@/components/UniversalFooter";
+import OnboardingTour from "@/components/OnboardingTour";
 
 const AgentProvider = lazy(() => import("@/contexts/AgentContext").then(m => ({ default: m.AgentProvider })));
 const DatabaseProvider = lazy(() => import("@/contexts/DatabaseContext").then(m => ({ default: m.DatabaseProvider })));
@@ -193,6 +195,53 @@ function FloatingAISupport() {
   return <AISupportChat userTier={mapped} />;
 }
 
+function OnboardingWrapper() {
+  const [showTour, setShowTour] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const done = await AsyncStorage.getItem('onboarding_completed');
+        setShowTour(!done);
+      } catch (error) {
+        console.error('Failed to check onboarding status:', error);
+      }
+    })();
+  }, []);
+
+  const handleComplete = async () => {
+    try {
+      await AsyncStorage.setItem('onboarding_completed', 'true');
+      setShowTour(false);
+    } catch (error) {
+      console.error('Failed to save onboarding completion:', error);
+      setShowTour(false);
+    }
+  };
+
+  const handleSkip = async () => {
+    try {
+      await AsyncStorage.setItem('onboarding_completed', 'true');
+      setShowTour(false);
+    } catch (error) {
+      console.error('Failed to save onboarding skip:', error);
+      setShowTour(false);
+    }
+  };
+
+  return (
+    <OnboardingTour
+      visible={showTour}
+      onComplete={handleComplete}
+      onSkip={handleSkip}
+      onStepChange={(index, step) => {
+        console.log(`Onboarding step ${index}:`, step.title);
+      }}
+      persistProgress
+    />
+  );
+}
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     ...Ionicons.font,
@@ -235,6 +284,7 @@ export default function RootLayout() {
                                       <RootLayoutNav />
                                       <UniversalFooter />
                                       <FloatingAISupport />
+                                      <OnboardingWrapper />
                                     </View>
                                     </ResearchProvider>
                                   </IntegrationsProvider>
