@@ -373,12 +373,12 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
             testID="ai-support-fab"
           >
             <Image
-              source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/ayjdxbzel62rlgsqamitb' }}
+              source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/ken0crpsd66fnl9p3xtc3' }}
               style={styles.fabImage}
               resizeMode="contain"
             />
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>AI</Text>
+              <Text style={styles.badgeText}>SUPPORT</Text>
             </View>
           </TouchableOpacity>
         </Animated.View>
@@ -492,20 +492,20 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
 }
 
 const styles = StyleSheet.create({
-  floatingButton: { position: 'absolute', bottom: 20, right: 20, zIndex: 1000, elevation: 10 },
+  floatingButton: { position: 'absolute', bottom: 100, right: 20, zIndex: 1000, elevation: 10 },
   floatingButtonInner: {
-    width: 64, height: 64, borderRadius: 32, backgroundColor: Colors.Colors.background.card,
+    width: 70, height: 70, borderRadius: 35, backgroundColor: Colors.Colors.background.card,
     justifyContent: 'center', alignItems: 'center', shadowColor: Colors.Colors.cyan.primary,
-    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.6, shadowRadius: 12, elevation: 10, overflow: 'hidden',
+    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.8, shadowRadius: 16, elevation: 12, overflow: 'hidden',
     borderWidth: 3, borderColor: Colors.Colors.cyan.primary,
   },
   badge: {
-    position: 'absolute', top: -2, right: -2, backgroundColor: Colors.Colors.red.primary, borderRadius: 12,
-    paddingHorizontal: 8, paddingVertical: 3, borderWidth: 2, borderColor: Colors.Colors.background.primary,
+    position: 'absolute', bottom: -4, backgroundColor: Colors.Colors.red.primary, borderRadius: 12,
+    paddingHorizontal: 6, paddingVertical: 2, borderWidth: 2, borderColor: Colors.Colors.background.primary,
     shadowColor: Colors.Colors.red.primary, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.8,
     shadowRadius: 6, elevation: 8,
   },
-  badgeText: { color: Colors.Colors.text.inverse, fontSize: 10, fontWeight: 'bold' },
+  badgeText: { color: Colors.Colors.text.inverse, fontSize: 8, fontWeight: 'bold', letterSpacing: 0.5 },
   chatContainer: {
     position: 'absolute', bottom: 0, left: 0, right: 0, height: height * 0.75,
     backgroundColor: Colors.Colors.background.primary, borderTopLeftRadius: 20, borderTopRightRadius: 20,
@@ -575,5 +575,5 @@ const styles = StyleSheet.create({
   },
   sendButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.Colors.cyan.primary, justifyContent: 'center', alignItems: 'center' },
   sendButtonDisabled: { backgroundColor: Colors.Colors.background.secondary },
-  fabImage: { width: 64, height: 64 },
+  fabImage: { width: 60, height: 60 },
 });

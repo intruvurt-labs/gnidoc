@@ -14,6 +14,7 @@ import { SettingsProvider } from "@/contexts/SettingsContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { trpc, trpcClient } from "@/lib/trpc";
 import AISupportChat from "@/components/AISupportChat";
+import UniversalFooter from "@/components/UniversalFooter";
 
 const AgentProvider = lazy(() => import("@/contexts/AgentContext").then(m => ({ default: m.AgentProvider })));
 const DatabaseProvider = lazy(() => import("@/contexts/DatabaseContext").then(m => ({ default: m.DatabaseProvider })));
@@ -232,6 +233,7 @@ export default function RootLayout() {
                                     <StatusBar style="light" backgroundColor={Colors.Colors.background.primary} />
                                     <View style={{ flex: 1, backgroundColor: Colors.Colors.background.primary }}>
                                       <RootLayoutNav />
+                                      <UniversalFooter />
                                       <FloatingAISupport />
                                     </View>
                                     </ResearchProvider>
