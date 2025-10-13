@@ -1,8 +1,10 @@
+// GamificationContext.tsx
 import createContextHook from '@nkzw/create-context-hook';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
 
+/** ───────────────────────── Types ───────────────────────── **/
 export interface Achievement {
   id: string;
   title: string;
@@ -43,70 +45,80 @@ interface GamificationState {
   referralCode: string;
   iterationStats: IterationStats;
   streak: number;
-  lastActiveDate: string;
+  lastActiveDate: string; // ISO
 }
 
+/** ───────────────────────── Constants ───────────────────────── **/
 const STORAGE_KEY = 'gamification-state';
+const SAVE_DEBOUNCE_MS = 150;
 
 const initialAchievements: Achievement[] = [
-  {
-    id: 'first-build',
-    title: 'First Build',
-    description: 'Generate your first app',
-    icon: '🎯',
-    points: 100,
-    progress: 0,
-    maxProgress: 1,
-  },
-  {
-    id: 'power-user',
-    title: 'Power User',
-    description: 'Generate 10 apps',
-    icon: '⚡',
-    points: 500,
-    progress: 0,
-    maxProgress: 10,
-  },
-  {
-    id: 'referral-master',
-    title: 'Referral Master',
-    description: 'Refer 5 friends',
-    icon: '🤝',
-    points: 1000,
-    progress: 0,
-    maxProgress: 5,
-  },
-  {
-    id: 'streak-warrior',
-    title: 'Streak Warrior',
-    description: 'Maintain a 7-day streak',
-    icon: '🔥',
-    points: 750,
-    progress: 0,
-    maxProgress: 7,
-  },
-  {
-    id: 'code-master',
-    title: 'Code Master',
-    description: 'Generate 100 apps',
-    icon: '👑',
-    points: 5000,
-    progress: 0,
-    maxProgress: 100,
-  },
+  { id: 'first-build',    title: 'First Build',    description: 'Generate your first app', icon: '🎯', points: 100,  progress: 0, maxProgress: 1 },
+  { id: 'power-user',     title: 'Power User',     description: 'Generate 10 apps',        icon: '⚡', points: 500,  progress: 0, maxProgress: 10 },
+  { id: 'referral-master',title: 'Referral Master',description: 'Refer 5 friends',         icon: '🤝', points: 1000, progress: 0, maxProgress: 5 },
+  { id: 'streak-warrior', title: 'Streak Warrior', description: 'Maintain a 7-day streak', icon: '🔥', points: 750,  progress: 0, maxProgress: 7 },
+  { id: 'code-master',    title: 'Code Master',    description: 'Generate 100 apps',       icon: '👑', points: 5000, progress: 0, maxProgress: 100 },
 ];
 
+/** ───────────────────────── Utils ───────────────────────── **/
+const logger = {
+  info: (...a: any[]) => { if (typeof __DEV__ === 'undefined' || __DEV__) console.log(...a); },
+  warn: (...a: any[]) => { if (typeof __DEV__ === 'undefined' || __DEV__) console.warn(...a); },
+  error: (...a: any[]) => console.error(...a),
+};
+
+function safeJSON<T>(raw: any, fallback: T): T {
+  try { return typeof raw === 'string' ? JSON.parse(raw) as T : (raw ?? fallback); }
+  catch { return fallback; }
+}
+
+function debounce<T extends (...args: any[]) => void>(fn: T, ms = 200) {
+  let t: any; return (...args: Parameters<T>) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
+function calculateXPForLevel(level: number): number {
+  return Math.floor(1000 * Math.pow(1.5, level - 1));
+}
+
+function seedReferralCode(seed: string | undefined): string {
+  // deterministic 8-char code based on user id/email, fallback to random
+  if (!seed) return randomReferralCode();
+  let h = 2166136261; // FNV-1a
+  for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 8; i++) { code += chars[(h >>> (i * 4)) & 31 % chars.length]; }
+  return code;
+}
+
+function randomReferralCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = ''; for (let i = 0; i < 8; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+// Calendar-day diff (local)
+function diffInCalendarDays(aISO: string, bISO: string): number {
+  const a = new Date(aISO); a.setHours(0,0,0,0);
+  const b = new Date(bISO); b.setHours(0,0,0,0);
+  const ms = a.getTime() - b.getTime();
+  return Math.round(ms / (1000 * 60 * 60 * 24));
+}
+
+function clamp(n: number, min: number, max: number) { return Math.max(min, Math.min(max, n)); }
+
+/** ───────────────────────── Context ───────────────────────── **/
 export const [GamificationProvider, useGamification] = createContextHook(() => {
   const { user, updateCredits } = useAuth();
-  
-  const [state, setState] = useState<GamificationState>({
-    credits: user?.credits || 100,
+
+  const [state, setState] = useState<GamificationState>(() => ({
+    credits: user?.credits ?? 100,
     level: 1,
     xp: 0,
     xpToNextLevel: 1000,
     achievements: initialAchievements,
     referrals: [],
-    referralCode: generateReferralCode(),
+    referralCode: seedReferralCode(user?.id || user?.email),
     iterationStats: {
       totalIterations: 0,
       successfulBuilds: 0,
@@ -116,136 +128,154 @@ export const [GamificationProvider, useGamification] = createContextHook(() => {
     },
     streak: 0,
     lastActiveDate: new Date().toISOString(),
-  });
+  }));
 
-  useEffect(() => {
-    loadState();
-  }, []);
+  // Avoid concurrent saves
+  const saveQueued = useRef(false);
 
-  useEffect(() => {
-    saveState();
-  }, [state]);
+  /** ───────── Debounced save ───────── **/
+  const persist = useCallback(
+    debounce(async (s: GamificationState) => {
+      try {
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+      } catch (e) { logger.error('[Gamification] Save failed:', e); }
+      finally { saveQueued.current = false; }
+    }, SAVE_DEBOUNCE_MS),
+    []
+  );
 
-  useEffect(() => {
-    if (user?.credits !== undefined && user.credits !== state.credits) {
-      setState(prev => ({ ...prev, credits: user.credits }));
-    }
-  }, [user?.credits]);
-
-  const loadState = async () => {
+  /** ───────── Load on mount ───────── **/
+  const loadState = useCallback(async () => {
     try {
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setState(prev => ({
-          ...prev,
-          ...parsed,
-          credits: user?.credits || parsed.credits,
-        }));
-        console.log('[Gamification] State loaded');
-      }
-    } catch (error) {
-      console.error('[Gamification] Failed to load state:', error);
-    }
-  };
+      if (!stored) return;
 
-  const saveState = async () => {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch (error) {
-      console.error('[Gamification] Failed to save state:', error);
-    }
-  };
+      const parsed = safeJSON<GamificationState>(stored, state);
 
+      // Merge with defaults to keep future compatibility
+      setState(prev => ({
+        credits: user?.credits ?? parsed.credits ?? prev.credits,
+        level: parsed.level ?? prev.level,
+        xp: parsed.xp ?? prev.xp,
+        xpToNextLevel: parsed.xpToNextLevel ?? prev.xpToNextLevel,
+        achievements: mergeAchievements(parsed.achievements ?? prev.achievements),
+        referrals: parsed.referrals ?? prev.referrals,
+        referralCode: parsed.referralCode || seedReferralCode(user?.id || user?.email) || prev.referralCode,
+        iterationStats: {
+          totalIterations: parsed.iterationStats?.totalIterations ?? 0,
+          successfulBuilds: parsed.iterationStats?.successfulBuilds ?? 0,
+          failedBuilds: parsed.iterationStats?.failedBuilds ?? 0,
+          totalCreditsSpent: parsed.iterationStats?.totalCreditsSpent ?? 0,
+          averageBuildTime: parsed.iterationStats?.averageBuildTime ?? 0,
+          lastBuildDate: parsed.iterationStats?.lastBuildDate,
+        },
+        streak: parsed.streak ?? prev.streak,
+        lastActiveDate: parsed.lastActiveDate ?? prev.lastActiveDate,
+      }));
+
+      logger.info('[Gamification] State loaded');
+    } catch (error) {
+      logger.error('[Gamification] Failed to load state:', error);
+    }
+  }, [state, user?.credits, user?.id, user?.email]);
+
+  useEffect(() => { loadState(); }, [loadState]);
+
+  /** ───────── Auto-save on change (debounced) ───────── **/
+  useEffect(() => {
+    if (saveQueued.current) return;
+    saveQueued.current = true;
+    persist(state);
+  }, [state, persist]);
+
+  /** ───────── Sync credits from Auth (one-way) ───────── **/
+  useEffect(() => {
+    if (typeof user?.credits === 'number' && user.credits !== state.credits) {
+      setState(prev => ({ ...prev, credits: user.credits as number }));
+    }
+  }, [user?.credits, state.credits]);
+
+  /** ───────── Core helpers ───────── **/
   const addCredits = useCallback(async (amount: number, reason: string) => {
-    const newCredits = state.credits + amount;
-    setState(prev => ({ ...prev, credits: newCredits }));
-    
-    if (updateCredits) {
-      await updateCredits(amount);
-    }
-    
-    console.log(`[Gamification] Added ${amount} credits: ${reason}`);
-    return newCredits;
+    if (!Number.isFinite(amount)) return state.credits;
+    setState(prev => ({ ...prev, credits: Math.max(0, prev.credits + amount) }));
+    if (updateCredits) { try { await updateCredits(amount); } catch {} }
+    logger.info(`[Gamification] +${amount} credits (${reason})`);
+    return state.credits + amount;
   }, [state.credits, updateCredits]);
 
   const spendCredits = useCallback(async (amount: number, reason: string) => {
-    if (state.credits < amount) {
-      throw new Error('Insufficient credits');
-    }
-    
-    const newCredits = state.credits - amount;
-    setState(prev => ({ ...prev, credits: newCredits }));
-    
-    if (updateCredits) {
-      await updateCredits(-amount);
-    }
-    
-    console.log(`[Gamification] Spent ${amount} credits: ${reason}`);
-    return newCredits;
+    if (amount < 0) amount = Math.abs(amount);
+    let allowed = true;
+    setState(prev => {
+      if (prev.credits < amount) { allowed = false; return prev; }
+      return { ...prev, credits: prev.credits - amount };
+    });
+    if (!allowed) throw new Error('Insufficient credits');
+    if (updateCredits) { try { await updateCredits(-amount); } catch {} }
+    logger.info(`[Gamification] -${amount} credits (${reason})`);
+    return state.credits - amount;
   }, [state.credits, updateCredits]);
 
   const addXP = useCallback((amount: number, reason: string) => {
-    let newXP = state.xp + amount;
-    let newLevel = state.level;
-    let xpToNext = state.xpToNextLevel;
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    setState(prev => {
+      let xp = prev.xp + amount;
+      let level = prev.level;
+      let xpToNext = prev.xpToNextLevel;
 
-    while (newXP >= xpToNext) {
-      newXP -= xpToNext;
-      newLevel += 1;
-      xpToNext = calculateXPForLevel(newLevel + 1);
-      
-      const levelUpBonus = newLevel * 50;
-      addCredits(levelUpBonus, `Level ${newLevel} bonus`);
-      
-      console.log(`[Gamification] Level up! Now level ${newLevel}`);
-    }
+      const logs: Array<() => void> = []; // delayed credit grants
 
-    setState(prev => ({
-      ...prev,
-      xp: newXP,
-      level: newLevel,
-      xpToNextLevel: xpToNext,
-    }));
+      while (xp >= xpToNext) {
+        xp -= xpToNext;
+        level += 1;
+        xpToNext = calculateXPForLevel(level + 1);
 
-    console.log(`[Gamification] Added ${amount} XP: ${reason}`);
-  }, [state.xp, state.level, state.xpToNextLevel, addCredits]);
+        const levelBonus = level * 50;
+        logs.push(() => addCredits(levelBonus, `Level ${level} bonus`));
+        logger.info(`[Gamification] Level up → ${level}`);
+      }
+
+      // Execute bonuses out of setState to avoid nested setState warnings
+      setTimeout(() => logs.forEach(fn => fn()), 0);
+
+      logger.info(`[Gamification] +${amount} XP (${reason})`);
+      return { ...prev, xp, level, xpToNextLevel: xpToNext };
+    });
+  }, [addCredits]);
 
   const unlockAchievement = useCallback((achievementId: string) => {
     setState(prev => {
-      const achievements = prev.achievements.map(ach => {
-        if (ach.id === achievementId && !ach.unlockedAt) {
-          addXP(ach.points, `Achievement: ${ach.title}`);
-          addCredits(ach.points / 2, `Achievement: ${ach.title}`);
-          
-          return {
-            ...ach,
-            unlockedAt: new Date().toISOString(),
-            progress: ach.maxProgress,
-          };
-        }
-        return ach;
-      });
+      const idx = prev.achievements.findIndex(a => a.id === achievementId);
+      if (idx < 0) return prev;
+      const ach = prev.achievements[idx];
+      if (ach.unlockedAt) return prev; // idempotent
 
+      // reward outside of setState (credits/xp functions handle their own state)
+      setTimeout(() => {
+        addXP(ach.points, `Achievement: ${ach.title}`);
+        addCredits(Math.floor(ach.points / 2), `Achievement: ${ach.title}`);
+      }, 0);
+
+      const achievements = prev.achievements.slice();
+      achievements[idx] = { ...ach, unlockedAt: new Date().toISOString(), progress: ach.maxProgress };
       return { ...prev, achievements };
     });
   }, [addXP, addCredits]);
 
   const updateAchievementProgress = useCallback((achievementId: string, progress: number) => {
     setState(prev => {
-      const achievements = prev.achievements.map(ach => {
-        if (ach.id === achievementId) {
-          const newProgress = Math.min(progress, ach.maxProgress);
-          
-          if (newProgress >= ach.maxProgress && !ach.unlockedAt) {
-            unlockAchievement(achievementId);
-          }
-          
-          return { ...ach, progress: newProgress };
-        }
-        return ach;
-      });
+      const idx = prev.achievements.findIndex(a => a.id === achievementId);
+      if (idx < 0) return prev;
+      const ach = prev.achievements[idx];
+      const newProgress = clamp(progress, 0, ach.maxProgress);
+      const achievements = prev.achievements.slice();
+      achievements[idx] = { ...ach, progress: newProgress };
 
+      // auto-unlock on completion (idempotent guard in unlockAchievement)
+      if (newProgress >= ach.maxProgress && !ach.unlockedAt) {
+        setTimeout(() => unlockAchievement(achievementId), 0);
+      }
       return { ...prev, achievements };
     });
   }, [unlockAchievement]);
@@ -260,52 +290,44 @@ export const [GamificationProvider, useGamification] = createContextHook(() => {
       status: 'pending',
       createdAt: new Date().toISOString(),
     };
-
-    setState(prev => ({
-      ...prev,
-      referrals: [...prev.referrals, referral],
-    }));
-
-    console.log('[Gamification] Referral added:', email);
+    setState(prev => ({ ...prev, referrals: [...prev.referrals, referral] }));
+    logger.info('[Gamification] Referral added:', email);
     return referral;
   }, [state.referralCode]);
 
   const completeReferral = useCallback(async (referralId: string) => {
-    const referralBonus = 500;
-    
+    const bonus = 500;
     setState(prev => {
-      const referrals = prev.referrals.map(ref => {
-        if (ref.id === referralId && ref.status === 'pending') {
-          return {
-            ...ref,
-            status: 'completed' as const,
-            creditsEarned: referralBonus,
-          };
-        }
-        return ref;
-      });
-
+      const referrals = prev.referrals.map(r => r.id === referralId && r.status === 'pending'
+        ? { ...r, status: 'completed' as const, creditsEarned: bonus }
+        : r
+      );
       return { ...prev, referrals };
     });
 
-    await addCredits(referralBonus, 'Referral bonus');
+    await addCredits(bonus, 'Referral bonus');
     addXP(250, 'Referral completed');
-    
-    const completedReferrals = state.referrals.filter(r => r.status === 'completed').length + 1;
-    updateAchievementProgress('referral-master', completedReferrals);
 
-    console.log('[Gamification] Referral completed:', referralId);
-  }, [state.referrals, addCredits, addXP, updateAchievementProgress]);
+    // compute completed count after state mutation—use functional read
+    setTimeout(() => {
+      setState(prev => {
+        const completed = prev.referrals.filter(r => r.status === 'completed').length;
+        setTimeout(() => updateAchievementProgress('referral-master', completed), 0);
+        return prev;
+      });
+    }, 0);
+
+    logger.info('[Gamification] Referral completed:', referralId);
+  }, [addCredits, addXP, updateAchievementProgress]);
 
   const recordIteration = useCallback((success: boolean, buildTime: number, creditsSpent: number) => {
     setState(prev => {
-      const stats = prev.iterationStats;
-      const totalIterations = stats.totalIterations + 1;
-      const successfulBuilds = success ? stats.successfulBuilds + 1 : stats.successfulBuilds;
-      const failedBuilds = success ? stats.failedBuilds : stats.failedBuilds + 1;
-      const totalCreditsSpent = stats.totalCreditsSpent + creditsSpent;
-      const averageBuildTime = 
-        (stats.averageBuildTime * stats.totalIterations + buildTime) / totalIterations;
+      const s = prev.iterationStats;
+      const totalIterations = s.totalIterations + 1;
+      const successfulBuilds = success ? s.successfulBuilds + 1 : s.successfulBuilds;
+      const failedBuilds = success ? s.failedBuilds : s.failedBuilds + 1;
+      const totalCreditsSpent = s.totalCreditsSpent + (Number.isFinite(creditsSpent) ? creditsSpent : 0);
+      const averageBuildTime = Number(((s.averageBuildTime * s.totalIterations + (buildTime || 0)) / totalIterations).toFixed(2));
 
       return {
         ...prev,
@@ -322,47 +344,80 @@ export const [GamificationProvider, useGamification] = createContextHook(() => {
 
     if (success) {
       addXP(50, 'Successful build');
-      updateAchievementProgress('first-build', 1);
-      updateAchievementProgress('power-user', state.iterationStats.totalIterations + 1);
-      updateAchievementProgress('code-master', state.iterationStats.totalIterations + 1);
+      setTimeout(() => {
+        setState(prev => {
+          const nextTotal = prev.iterationStats.totalIterations; // already incremented
+          setTimeout(() => {
+            updateAchievementProgress('first-build', Math.min(1, nextTotal));
+            updateAchievementProgress('power-user', nextTotal);
+            updateAchievementProgress('code-master', nextTotal);
+          }, 0);
+          return prev;
+        });
+      }, 0);
     }
 
-    console.log('[Gamification] Iteration recorded:', { success, buildTime, creditsSpent });
-  }, [state.iterationStats, addXP, updateAchievementProgress]);
+    logger.info('[Gamification] Iteration recorded:', { success, buildTime, creditsSpent });
+  }, [addXP, updateAchievementProgress]);
 
   const updateStreak = useCallback(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const lastActive = new Date(state.lastActiveDate).toISOString().split('T')[0];
-    
-    const daysDiff = Math.floor(
-      (new Date(today).getTime() - new Date(lastActive).getTime()) / (1000 * 60 * 60 * 24)
-    );
+    const nowISO = new Date().toISOString();
+    setState(prev => {
+      const delta = diffInCalendarDays(nowISO, prev.lastActiveDate);
+      if (delta === 0) return prev; // already active today
+      let newStreak = prev.streak;
+      if (delta === 1) {
+        newStreak += 1;
+        setTimeout(() => {
+          addXP(25, `${newStreak} day streak!`);
+          updateAchievementProgress('streak-warrior', newStreak);
+        }, 0);
+      } else {
+        // reset streak; count today as day 1
+        newStreak = 1;
+      }
+      return { ...prev, streak: newStreak, lastActiveDate: nowISO };
+    });
+  }, [addXP, updateAchievementProgress]);
 
-    let newStreak = state.streak;
-    
-    if (daysDiff === 0) {
-      return;
-    } else if (daysDiff === 1) {
-      newStreak += 1;
-      addXP(25, `${newStreak} day streak!`);
-      updateAchievementProgress('streak-warrior', newStreak);
-    } else {
-      newStreak = 1;
+  // Run once on mount
+  useEffect(() => { updateStreak(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+
+  /** ───────── Import/Export & Reset (DX helpers) ───────── **/
+  const exportState = useCallback(() => JSON.stringify(state, null, 2), [state]);
+
+  const importState = useCallback(async (json: string) => {
+    try {
+      const parsed = safeJSON<GamificationState>(json, state);
+      // keep current user credits in sync, override parsed credits if auth present
+      parsed.credits = typeof user?.credits === 'number' ? user.credits : parsed.credits;
+      setState(mergeStateDefaults(parsed));
+      logger.info('[Gamification] State imported.');
+      return { success: true };
+    } catch (e) {
+      logger.error('[Gamification] Import failed:', e);
+      return { success: false, error: e instanceof Error ? e.message : 'Invalid JSON' };
     }
+  }, [state, user?.credits]);
 
-    setState(prev => ({
-      ...prev,
-      streak: newStreak,
+  const resetState = useCallback(async () => {
+    const fresh: GamificationState = {
+      credits: user?.credits ?? 100,
+      level: 1,
+      xp: 0,
+      xpToNextLevel: 1000,
+      achievements: initialAchievements.map(a => ({ ...a, progress: 0, unlockedAt: undefined })),
+      referrals: [],
+      referralCode: seedReferralCode(user?.id || user?.email),
+      iterationStats: { totalIterations: 0, successfulBuilds: 0, failedBuilds: 0, totalCreditsSpent: 0, averageBuildTime: 0 },
+      streak: 0,
       lastActiveDate: new Date().toISOString(),
-    }));
+    };
+    setState(fresh);
+    logger.warn('[Gamification] State reset.');
+  }, [user?.credits, user?.id, user?.email]);
 
-    console.log('[Gamification] Streak updated:', newStreak);
-  }, [state.streak, state.lastActiveDate, addXP, updateAchievementProgress]);
-
-  useEffect(() => {
-    updateStreak();
-  }, []);
-
+  /** ───────── Exposed API ───────── **/
   return useMemo(() => ({
     ...state,
     addCredits,
@@ -374,6 +429,9 @@ export const [GamificationProvider, useGamification] = createContextHook(() => {
     completeReferral,
     recordIteration,
     updateStreak,
+    exportState,
+    importState,
+    resetState,
   }), [
     state,
     addCredits,
@@ -385,18 +443,41 @@ export const [GamificationProvider, useGamification] = createContextHook(() => {
     completeReferral,
     recordIteration,
     updateStreak,
+    exportState,
+    importState,
+    resetState,
   ]);
 });
 
-function generateReferralCode(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let code = '';
-  for (let i = 0; i < 8; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
+/** ───────────────────────── Merge helpers ───────────────────────── **/
+function mergeAchievements(incoming?: Achievement[]): Achievement[] {
+  const base = new Map(initialAchievements.map(a => [a.id, a]));
+  (incoming || []).forEach(a => {
+    const def = base.get(a.id);
+    if (!def) base.set(a.id, a);
+    else base.set(a.id, { ...def, ...a, progress: clamp(a.progress ?? 0, 0, def.maxProgress) });
+  });
+  return Array.from(base.values());
 }
 
-function calculateXPForLevel(level: number): number {
-  return Math.floor(1000 * Math.pow(1.5, level - 1));
+function mergeStateDefaults(s: GamificationState): GamificationState {
+  return {
+    credits: s.credits ?? 100,
+    level: s.level ?? 1,
+    xp: s.xp ?? 0,
+    xpToNextLevel: s.xpToNextLevel ?? 1000,
+    achievements: mergeAchievements(s.achievements),
+    referrals: s.referrals ?? [],
+    referralCode: s.referralCode || randomReferralCode(),
+    iterationStats: {
+      totalIterations: s.iterationStats?.totalIterations ?? 0,
+      successfulBuilds: s.iterationStats?.successfulBuilds ?? 0,
+      failedBuilds: s.iterationStats?.failedBuilds ?? 0,
+      totalCreditsSpent: s.iterationStats?.totalCreditsSpent ?? 0,
+      averageBuildTime: s.iterationStats?.averageBuildTime ?? 0,
+      lastBuildDate: s.iterationStats?.lastBuildDate,
+    },
+    streak: s.streak ?? 0,
+    lastActiveDate: s.lastActiveDate ?? new Date().toISOString(),
+  };
 }
