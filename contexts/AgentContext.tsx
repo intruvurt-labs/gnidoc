@@ -1,3 +1,4 @@
+// AgentContext.tsx
 import createContextHook from '@nkzw/create-context-hook';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -6,6 +7,7 @@ import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
 import { SUPPORTED_LANGUAGES, formatCode } from '@/lib/languages';
 
+/** ───────────────────────── Types ───────────────────────── **/
 
 export interface Project {
   id: string;
@@ -61,8 +63,6 @@ export interface CodeIssue {
   suggestedFix?: string;
 }
 
-
-
 interface ConversationMemory {
   projectId: string;
   context: string;
@@ -70,6 +70,37 @@ interface ConversationMemory {
   generatedFiles: string[];
   timestamp: Date;
 }
+
+/** ───────────────────────── Utils ───────────────────────── **/
+
+// Quiet logs in production, keep errors.
+const logger = {
+  info: (...args: any[]) => { if (__DEV__) console.log(...args); },
+  warn: (...args: any[]) => { if (__DEV__) console.warn(...args); },
+  error: (...args: any[]) => console.error(...args),
+};
+
+// Debounced saver factory to reduce AsyncStorage churn.
+function createDebouncedSaver(delayMs = 250) {
+  let timeout: any = null;
+  return async (key: string, valueFactory: () => any) => {
+    if (timeout) clearTimeout(timeout);
+    return new Promise<void>((resolve) => {
+      timeout = setTimeout(async () => {
+        try {
+          await AsyncStorage.setItem(key, JSON.stringify(valueFactory()));
+        } catch (e) {
+          logger.error(`[AgentContext] Failed to persist ${key}:`, e);
+        } finally {
+          resolve();
+        }
+      }, delayMs);
+    });
+  };
+}
+const debouncedSave = createDebouncedSaver(250);
+
+/** ───────────────────────── Context ───────────────────────── **/
 
 export const [AgentProvider, useAgent] = createContextHook(() => {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -79,22 +110,30 @@ export const [AgentProvider, useAgent] = createContextHook(() => {
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [conversationMemory, setConversationMemory] = useState<Map<string, ConversationMemory>>(new Map());
 
+  /** ───────── Conversation Memory (load/save/update) ───────── **/
+
   const loadConversationMemory = useCallback(async () => {
     try {
       const stored = await AsyncStorage.getItem('agent-conversation-memory');
       if (stored) {
         const memoryArray = JSON.parse(stored);
         const memoryMap = new Map<string, ConversationMemory>(
-          memoryArray.map((item: any) => [
+          (Array.isArray(memoryArray) ? memoryArray : []).map((item: any) => [
             item.projectId,
-            { ...item, timestamp: new Date(item.timestamp) }
+            {
+              projectId: String(item.projectId),
+              context: String(item.context || ''),
+              lastPrompts: Array.isArray(item.lastPrompts) ? item.lastPrompts.map(String) : [],
+              generatedFiles: Array.isArray(item.generatedFiles) ? item.generatedFiles.map(String) : [],
+              timestamp: item.timestamp ? new Date(item.timestamp) : new Date(),
+            },
           ])
         );
         setConversationMemory(memoryMap);
-        console.log('[AgentContext] Loaded conversation memory for', memoryMap.size, 'projects');
+        logger.info('[AgentContext] Loaded conversation memory for', memoryMap.size, 'projects');
       }
     } catch (error) {
-      console.error('[AgentContext] Failed to load conversation memory:', error);
+      logger.error('[AgentContext] Failed to load conversation memory:', error);
     }
   }, []);
 
@@ -105,12 +144,12 @@ export const [AgentProvider, useAgent] = createContextHook(() => {
         context: data.context,
         lastPrompts: data.lastPrompts,
         generatedFiles: data.generatedFiles,
-        timestamp: data.timestamp
+        timestamp: data.timestamp.toISOString?.() || data.timestamp,
       }));
       await AsyncStorage.setItem('agent-conversation-memory', JSON.stringify(memoryArray));
-      console.log('[AgentContext] Saved conversation memory for', memory.size, 'projects');
+      logger.info('[AgentContext] Saved conversation memory for', memory.size, 'projects');
     } catch (error) {
-      console.error('[AgentContext] Failed to save conversation memory:', error);
+      logger.error('[AgentContext] Failed to save conversation memory:', error);
     }
   }, []);
 
@@ -122,31 +161,63 @@ export const [AgentProvider, useAgent] = createContextHook(() => {
         context: '',
         lastPrompts: [],
         generatedFiles: [],
-        timestamp: new Date()
+        timestamp: new Date(),
       };
-      
+
       newMemory.set(projectId, {
         ...existing,
         ...updates,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
-      
+
+      // Persist after state is computed
       saveConversationMemory(newMemory);
       return newMemory;
     });
   }, [saveConversationMemory]);
 
+  /** ───────── Projects (load/save/create/update/delete) ───────── **/
+
+  const saveProjects = useCallback((async (updatedProjects: Project[]) => {
+    try {
+      // Update in-memory immediately for responsive UI
+      setProjects(updatedProjects);
+
+      // Serialize Dates to ISO before storing
+      await debouncedSave('gnidoc-projects', () =>
+        updatedProjects.map(p => ({
+          ...p,
+          lastModified: p.lastModified?.toISOString?.() || p.lastModified,
+          files: p.files.map(f => ({
+            ...f,
+            lastModified: f.lastModified?.toISOString?.() || f.lastModified,
+          })),
+        }))
+      );
+    } catch (error) {
+      logger.error('Failed to save projects:', error);
+    }
+  }) as (updated: Project[]) => Promise<void>, []);
+
   const loadProjects = useCallback(async () => {
     try {
       const stored = await AsyncStorage.getItem('gnidoc-projects');
+      const lastId = await AsyncStorage.getItem('gnidoc-current-project-id');
+
       if (stored) {
-        const parsedProjects = JSON.parse(stored).map((p: any) => ({
+        const parsedRaw = JSON.parse(stored);
+        const parsedProjects: Project[] = (Array.isArray(parsedRaw) ? parsedRaw : []).map((p: any) => ({
           ...p,
-          lastModified: new Date(p.lastModified)
+          lastModified: p?.lastModified ? new Date(p.lastModified) : new Date(),
+          files: Array.isArray(p?.files) ? p.files.map((f: any) => ({
+            ...f,
+            lastModified: f?.lastModified ? new Date(f.lastModified) : undefined,
+          })) : [],
         }));
         setProjects(parsedProjects);
         if (parsedProjects.length > 0 && !currentProject) {
-          setCurrentProject(parsedProjects[0]);
+          const found = parsedProjects.find((p) => p.id === lastId);
+          setCurrentProject(found || parsedProjects[0]);
         }
       } else {
         // Initialize with sample project for demonstration
@@ -193,16 +264,22 @@ const styles = StyleSheet.create({
   },
 });`,
               language: 'typescript',
-              size: 512
-            }
-          ]
+              size: 512,
+              lastModified: new Date(),
+            },
+          ],
         };
         setProjects([sampleProject]);
         setCurrentProject(sampleProject);
-        await AsyncStorage.setItem('gnidoc-projects', JSON.stringify([sampleProject]));
+        await AsyncStorage.setItem('gnidoc-projects', JSON.stringify([{
+          ...sampleProject,
+          lastModified: sampleProject.lastModified.toISOString(),
+          files: sampleProject.files.map(f => ({ ...f, lastModified: f.lastModified?.toISOString?.() || f.lastModified })),
+        }]));
+        await AsyncStorage.setItem('gnidoc-current-project-id', sampleProject.id);
       }
     } catch (error) {
-      console.error('Failed to load projects:', error);
+      logger.error('Failed to load projects:', error);
     }
   }, [currentProject]);
 
@@ -210,17 +287,6 @@ const styles = StyleSheet.create({
     loadProjects();
     loadConversationMemory();
   }, [loadProjects, loadConversationMemory]);
-
-
-
-  const saveProjects = useCallback(async (updatedProjects: Project[]) => {
-    try {
-      await AsyncStorage.setItem('gnidoc-projects', JSON.stringify(updatedProjects));
-      setProjects(updatedProjects);
-    } catch (error) {
-      console.error('Failed to save projects:', error);
-    }
-  }, []);
 
   const createProject = useCallback(async (name: string, type: Project['type']) => {
     const newProject: Project = {
@@ -230,12 +296,13 @@ const styles = StyleSheet.create({
       status: 'active',
       progress: 0,
       lastModified: new Date(),
-      files: []
+      files: [],
     };
 
     const updatedProjects = [...projects, newProject];
     await saveProjects(updatedProjects);
     setCurrentProject(newProject);
+    await AsyncStorage.setItem('gnidoc-current-project-id', newProject.id);
     return newProject;
   }, [projects, saveProjects]);
 
@@ -246,25 +313,38 @@ const styles = StyleSheet.create({
         : project
     );
     await saveProjects(updatedProjects);
-    
+
     if (currentProject?.id === projectId) {
       setCurrentProject(updatedProjects.find(p => p.id === projectId) || null);
     }
+    await AsyncStorage.setItem('gnidoc-current-project-id', projectId);
   }, [projects, currentProject, saveProjects]);
 
   const deleteProject = useCallback(async (projectId: string) => {
     const updatedProjects = projects.filter(project => project.id !== projectId);
     await saveProjects(updatedProjects);
-    
+
     if (currentProject?.id === projectId) {
-      setCurrentProject(updatedProjects[0] || null);
+      const next = updatedProjects[0] || null;
+      setCurrentProject(next);
+      if (next) {
+        await AsyncStorage.setItem('gnidoc-current-project-id', next.id);
+      } else {
+        await AsyncStorage.removeItem('gnidoc-current-project-id');
+      }
     }
   }, [projects, currentProject, saveProjects]);
 
+  /** ───────── Analysis ───────── **/
+
   const analyzeProject = useCallback(async (projectId: string) => {
     setIsAnalyzing(true);
-    console.log(`[AgentContext] Starting project analysis for: ${projectId}`);
-    
+    logger.info(`[AgentContext] Starting project analysis for: ${projectId}`);
+
+    let canceled = false;
+    const cancel = () => { canceled = true; };
+    (analyzeProject as any)._cancel = cancel;
+
     try {
       const project = projects.find(p => p.id === projectId);
       if (!project) {
@@ -275,18 +355,22 @@ const styles = StyleSheet.create({
       const totalFiles = project.files.length;
       const hasTests = project.files.some(file => file.name.includes('.test.') || file.name.includes('.spec.'));
       const hasTypeScript = project.files.some(file => file.language === 'typescript');
-      const hasErrorHandling = project.files.some(file => file.content.includes('try') && file.content.includes('catch'));
-      
+      const hasErrorHandling = project.files.some(file => /try\s*{[\s\S]*}[\s\n]*catch\s*\(/.test(file.content));
+
       const issues: CodeIssue[] = [];
       let securityIssues = 0;
       let performanceIssues = 0;
       let qualityIssues = 0;
-      
+
       project.files.forEach(file => {
         const lines = file.content.split('\n');
-        
+
+        // Simple comment guards to reduce false positives
+        const isCommentOrString = (line: string) =>
+          /^\s*\/\//.test(line) || /^\s*\*/.test(line) || /(['"`]).*\1/.test(line);
+
         lines.forEach((line, index) => {
-          if (line.includes('console.log') && !line.includes('//') && !line.includes('/*')) {
+          if (!isCommentOrString(line) && line.includes('console.log')) {
             issues.push({
               id: `${file.id}-${index}-console`,
               type: 'warning',
@@ -296,12 +380,12 @@ const styles = StyleSheet.create({
               severity: 'low',
               category: 'best-practice',
               fixable: true,
-              suggestedFix: 'Remove or replace with proper logging'
+              suggestedFix: 'Remove or replace with proper logging',
             });
             qualityIssues++;
           }
-          
-          if (line.includes('any') && file.language === 'typescript') {
+
+          if (!isCommentOrString(line) && line.includes('any') && file.language === 'typescript') {
             issues.push({
               id: `${file.id}-${index}-any`,
               type: 'warning',
@@ -310,12 +394,12 @@ const styles = StyleSheet.create({
               message: 'Avoid using "any" type, use specific types instead',
               severity: 'medium',
               category: 'style',
-              fixable: false
+              fixable: false,
             });
             qualityIssues++;
           }
-          
-          if (line.includes('eval(') || line.includes('dangerouslySetInnerHTML')) {
+
+          if (!isCommentOrString(line) && (line.includes('eval(') || line.includes('dangerouslySetInnerHTML'))) {
             issues.push({
               id: `${file.id}-${index}-security`,
               type: 'error',
@@ -324,12 +408,12 @@ const styles = StyleSheet.create({
               message: 'Security risk: Avoid using eval() or dangerouslySetInnerHTML',
               severity: 'critical',
               category: 'security',
-              fixable: false
+              fixable: false,
             });
             securityIssues++;
           }
-          
-          if (line.includes('setState') && (line.includes('for') || line.includes('while'))) {
+
+          if (!isCommentOrString(line) && /setState\s*\(.*\)/.test(line) && (/\bfor\b|\bwhile\b/.test(line))) {
             issues.push({
               id: `${file.id}-${index}-perf`,
               type: 'warning',
@@ -338,12 +422,12 @@ const styles = StyleSheet.create({
               message: 'Performance: Avoid calling setState in loops',
               severity: 'medium',
               category: 'performance',
-              fixable: false
+              fixable: false,
             });
             performanceIssues++;
           }
-          
-          if (line.includes('require(') && !line.includes('//')) {
+
+          if (!isCommentOrString(line) && /(^|[^.])\brequire\s*\(/.test(line)) {
             issues.push({
               id: `${file.id}-${index}-import`,
               type: 'suggestion',
@@ -353,27 +437,27 @@ const styles = StyleSheet.create({
               severity: 'low',
               category: 'style',
               fixable: true,
-              suggestedFix: 'Convert to ES6 import statement'
+              suggestedFix: 'Convert to ES6 import statement',
             });
           }
         });
       });
-      
+
       const qualityScore = Math.max(50, 100 - (qualityIssues * 2) - (!hasTypeScript ? 10 : 0) - (!hasErrorHandling ? 5 : 0));
       const coverageScore = hasTests ? Math.min(95, 60 + (totalFiles * 5)) : Math.min(50, totalFiles * 3);
       const performanceScore = Math.max(60, 100 - (performanceIssues * 5) - (totalLines > 2000 ? 10 : 0));
       const securityScore = Math.max(70, 100 - (securityIssues * 15));
       const maintainabilityScore = Math.max(60, 100 - (totalLines / 100) - (totalFiles > 50 ? 10 : 0));
       const complexityScore = Math.max(50, 100 - (totalLines / 50));
-      
-      const functionsCount = project.files.reduce((acc, file) => 
+
+      const functionsCount = project.files.reduce((acc, file) =>
         acc + (file.content.match(/function\s+\w+|const\s+\w+\s*=\s*\(/g) || []).length, 0
       );
-      const classesCount = project.files.reduce((acc, file) => 
+      const classesCount = project.files.reduce((acc, file) =>
         acc + (file.content.match(/class\s+\w+/g) || []).length, 0
       );
-      
-      const analysis: CodeAnalysis = {
+
+      const result: CodeAnalysis = {
         quality: Math.round(qualityScore),
         coverage: Math.round(coverageScore),
         performance: Math.round(performanceScore),
@@ -386,34 +470,50 @@ const styles = StyleSheet.create({
           !hasTypeScript && 'Consider migrating to TypeScript for better type safety',
           !hasErrorHandling && 'Implement comprehensive error handling',
           totalLines > 2000 && 'Consider breaking down large files into smaller modules',
-          qualityIssues > 10 && 'Address code quality issues to improve maintainability'
+          issues.length > 10 && 'Address code quality issues to improve maintainability',
         ].filter(Boolean) as string[],
         metrics: {
           linesOfCode: totalLines,
           filesCount: totalFiles,
           functionsCount,
-          classesCount
-        }
+          classesCount,
+        },
       };
-      
-      console.log(`[AgentContext] Analysis completed. Found ${issues.length} issues. Quality: ${analysis.quality}%, Coverage: ${analysis.coverage}%, Performance: ${analysis.performance}%, Security: ${analysis.security}%`);
-      setAnalysis(analysis);
+
+      logger.info(`[AgentContext] Analysis: issues=${issues.length}, Quality=${result.quality} Coverage=${result.coverage} Performance=${result.performance} Security=${result.security}`);
+      if (!canceled) setAnalysis(result);
     } catch (error) {
-      console.error('[AgentContext] Analysis failed:', error);
+      logger.error('[AgentContext] Analysis failed:', error);
       throw new Error(`Failed to analyze project: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
-      setIsAnalyzing(false);
+      if (!(analyzeProject as any)._cancelled && !((analyzeProject as any)._canceled)) {
+        if (!canceled) setIsAnalyzing(false);
+      }
     }
   }, [projects]);
 
+  useEffect(() => {
+    return () => {
+      (analyzeProject as any)._cancel?.();
+    };
+  }, [analyzeProject]);
+
+  /** ───────── Code Generation ───────── **/
+
   const generateCode = useCallback(async (prompt: string, language: string = 'typescript', context?: string) => {
     setIsGenerating(true);
-    console.log(`[AgentContext] Starting ${language} code generation for: ${prompt.substring(0, 50)}...`);
-    
+    logger.info(`[AgentContext] Starting ${language} code generation for: ${prompt.substring(0, 50)}...`);
+
     try {
-      const { generateText } = await import('@rork/toolkit-sdk');
+      let generateText: any;
+      try {
+        ({ generateText } = await import('@rork/toolkit-sdk'));
+      } catch (e) {
+        throw new Error('Missing @rork/toolkit-sdk or unsupported in this runtime. Please install or polyfill.');
+      }
+
       const langConfig = SUPPORTED_LANGUAGES[language] || SUPPORTED_LANGUAGES.typescript;
-      
+
       const languageSpecificGuidelines: Record<string, string> = {
         typescript: `- Use TypeScript with strict typing and interfaces
 - Follow React Native/React best practices
@@ -485,7 +585,7 @@ const styles = StyleSheet.create({
 - Include proper constraints
 - Write efficient queries`,
       };
-      
+
       const systemPrompt = `You are a world-class ${langConfig.displayName} developer with 25+ years of experience. Generate clean, production-ready, idiomatic ${langConfig.displayName} code based on the user's request.
 
 Language: ${langConfig.displayName}
@@ -506,45 +606,56 @@ General guidelines:
 ${context ? `\nAdditional Context:\n${context}` : ''}
 
 IMPORTANT: Generate ONLY valid ${langConfig.displayName} code without any markdown formatting, code blocks, or explanations. Return pure code that can be directly executed.`;
-      
+
       let generatedCode = await generateText({
         messages: [
           { role: 'user', content: `${systemPrompt}\n\nTask: ${prompt}` }
         ]
       });
-      
+
       if (!generatedCode || typeof generatedCode !== 'string') {
         throw new Error('Invalid response from AI: No code generated');
       }
-      
+
       generatedCode = generatedCode.trim();
-      
+
+      // Strip markdown fences if present
       if (generatedCode.startsWith('```')) {
-        const codeBlockMatch = generatedCode.match(/```(?:[a-z]+)?\n([\s\S]*?)```/);
+        const codeBlockMatch = generatedCode.match(/```(?:[\w-]+)?\s*?\n([\s\S]*?)```/m);
         if (codeBlockMatch && codeBlockMatch[1]) {
           generatedCode = codeBlockMatch[1].trim();
         } else {
-          generatedCode = generatedCode.replace(/^```[a-z]*\n?/gm, '').replace(/\n?```$/gm, '').trim();
-        }
-      }
-      
-      if (generatedCode.startsWith('{') || generatedCode.startsWith('[')) {
-        try {
-          JSON.parse(generatedCode);
-          console.warn('[AgentContext] AI returned JSON instead of code. Extracting code from JSON...');
-          const jsonData = JSON.parse(generatedCode);
-          if (jsonData.code) {
-            generatedCode = jsonData.code;
-          } else if (jsonData.content) {
-            generatedCode = jsonData.content;
-          }
-        } catch {
-          console.log('[AgentContext] Not valid JSON, treating as code');
+          generatedCode = generatedCode
+            .replace(/^```[\w-]*\s*\n?/m, '')
+            .replace(/\n?```$/m, '')
+            .trim();
         }
       }
 
-      const formattedCode = formatCode(generatedCode, language);
-      
+      // Sometimes models return JSON envelopes; try to unwrap
+      if (generatedCode.startsWith('{') || generatedCode.startsWith('[')) {
+        try {
+          const jsonData = JSON.parse(generatedCode);
+          if (typeof jsonData?.code === 'string') {
+            generatedCode = jsonData.code;
+          } else if (typeof jsonData?.content === 'string') {
+            generatedCode = jsonData.content;
+          }
+        } catch {
+          // treat as raw code
+        }
+      }
+
+      // Format if possible; fall back to raw code if formatter throws
+      let formattedCode: string;
+      try {
+        formattedCode = formatCode(generatedCode, language);
+      } catch (e) {
+        logger.warn('[AgentContext] formatCode failed, returning raw code:', e);
+        formattedCode = generatedCode;
+      }
+
+      // Store prompt in memory
       if (currentProject) {
         const projectMemory = conversationMemory.get(currentProject.id);
         updateConversationMemory(currentProject.id, {
@@ -552,62 +663,69 @@ IMPORTANT: Generate ONLY valid ${langConfig.displayName} code without any markdo
           lastPrompts: [...(projectMemory?.lastPrompts || []), prompt].slice(-10),
         });
       }
-      
-      console.log(`[AgentContext] ${language} code generation completed. Generated ${formattedCode.length} characters`);
+
+      // Track JSX presence for downstream file extension decisions
+      const hasJSX = /<\w+[\s>]/.test(formattedCode);
+      (generateCode as any)._lastWasJSX = hasJSX;
+
+      logger.info(`[AgentContext] ${language} code generation completed. Generated ${formattedCode.length} characters`);
       return formattedCode;
     } catch (error) {
-      console.error('[AgentContext] Code generation failed:', error);
+      logger.error('[AgentContext] Code generation failed:', error);
       throw new Error(`Failed to generate code: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsGenerating(false);
     }
   }, [currentProject, conversationMemory, updateConversationMemory]);
 
+  /** ───────── Files (add/upload/delete) ───────── **/
+
   const addFileToProject = useCallback(async (projectId: string, file: Omit<ProjectFile, 'id'>) => {
-    console.log(`[AgentContext] Adding file ${file.name} to project ${projectId}`);
-    
+    logger.info(`[AgentContext] Adding file ${file.name} to project ${projectId}`);
+
     try {
       const project = projects.find(p => p.id === projectId);
-      if (!project) {
-        throw new Error('Project not found');
-      }
-      
+      if (!project) throw new Error('Project not found');
+
       const existingFile = project.files.find(f => f.path === file.path);
       if (existingFile) {
-        console.log(`[AgentContext] File ${file.name} already exists, updating...`);
+        logger.info(`[AgentContext] File ${file.name} already exists, updating...`);
         const updatedProjects = projects.map(p =>
           p.id === projectId
             ? {
                 ...p,
-                files: p.files.map(f => f.path === file.path ? { ...file, id: f.id } : f),
-                lastModified: new Date()
+                files: p.files.map(f =>
+                  f.path === file.path ? { ...file, id: f.id, lastModified: new Date() } : f
+                ),
+                lastModified: new Date(),
               }
             : p
         );
         await saveProjects(updatedProjects);
-        
-        if (currentProject?.id === projectId) {
-          setCurrentProject(updatedProjects.find(p => p.id === projectId) || null);
-        }
-        
-        return existingFile;
+
+        const updatedProject = updatedProjects.find(p => p.id === projectId)!;
+        if (currentProject?.id === projectId) setCurrentProject(updatedProject);
+        const returned = updatedProject.files.find(f => f.path === file.path)!;
+        return returned;
       }
-      
+
       const newFile: ProjectFile = {
         ...file,
         id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        lastModified: new Date(),
       };
 
-      const updatedProjects = projects.map(project =>
-        project.id === projectId
-          ? { ...project, files: [...project.files, newFile], lastModified: new Date() }
-          : project
+      const updatedProjects = projects.map(p =>
+        p.id === projectId
+          ? { ...p, files: [...p.files, newFile], lastModified: new Date() }
+          : p
       );
 
       await saveProjects(updatedProjects);
-      
+
       if (currentProject?.id === projectId) {
-        setCurrentProject(updatedProjects.find(p => p.id === projectId) || null);
+        const updatedProject = updatedProjects.find(p => p.id === projectId) || null;
+        setCurrentProject(updatedProject);
       }
 
       if (currentProject) {
@@ -617,17 +735,17 @@ IMPORTANT: Generate ONLY valid ${langConfig.displayName} code without any markdo
         });
       }
 
-      console.log(`[AgentContext] File ${file.name} added successfully`);
+      logger.info(`[AgentContext] File ${file.name} added successfully`);
       return newFile;
     } catch (error) {
-      console.error('[AgentContext] Failed to add file:', error);
+      logger.error('[AgentContext] Failed to add file:', error);
       throw new Error(`Failed to add file: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }, [projects, currentProject, saveProjects, conversationMemory, updateConversationMemory]);
 
   const uploadFileToProject = useCallback(async (projectId: string) => {
-    console.log(`[AgentContext] Starting file upload for project ${projectId}`);
-    
+    logger.info(`[AgentContext] Starting file upload for project ${projectId}`);
+
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: ['*/*'],
@@ -636,20 +754,24 @@ IMPORTANT: Generate ONLY valid ${langConfig.displayName} code without any markdo
       });
 
       if (result.canceled) {
-        console.log('[AgentContext] File upload cancelled');
+        logger.info('[AgentContext] File upload cancelled');
         return null;
       }
 
       const asset = result.assets[0];
-      if (!asset) {
-        throw new Error('No file selected');
-      }
+      if (!asset) throw new Error('No file selected');
 
-      console.log(`[AgentContext] File selected: ${asset.name}, size: ${asset.size} bytes`);
+      logger.info(`[AgentContext] File selected: ${asset.name}, size: ${asset.size} bytes`);
+
+      // 25MB guard to avoid memory blowups on mobile
+      const MAX_BYTES = 25 * 1024 * 1024;
+      if (asset.size && asset.size > MAX_BYTES) {
+        throw new Error(`File too large (>25MB): ${asset.name}`);
+      }
 
       let content = '';
       const isTextFile = /\.(txt|js|jsx|ts|tsx|json|md|css|html|xml|yaml|yml|toml|env|gitignore|sh|py|java|c|cpp|h|hpp|cs|go|rs|rb|php|swift|kt|sql)$/i.test(asset.name);
-      
+
       if (isTextFile && asset.uri) {
         try {
           if (Platform.OS === 'web') {
@@ -660,16 +782,16 @@ IMPORTANT: Generate ONLY valid ${langConfig.displayName} code without any markdo
               encoding: FileSystem.EncodingType.UTF8,
             });
           }
-          console.log(`[AgentContext] File content read successfully: ${content.length} characters`);
+          logger.info(`[AgentContext] File content read successfully: ${content.length} characters`);
         } catch (readError) {
-          console.warn('[AgentContext] Could not read file content, treating as binary:', readError);
+          logger.warn('[AgentContext] Could not read file content, treating as binary:', readError);
           content = `// Binary file: ${asset.name}\n// Size: ${asset.size} bytes\n// Type: ${asset.mimeType || 'unknown'}`;
         }
       } else {
         content = `// Binary file: ${asset.name}\n// Size: ${asset.size} bytes\n// Type: ${asset.mimeType || 'unknown'}`;
       }
 
-      const language = getLanguageFromFileName(asset.name);
+      const language = getLanguageFromFileName(asset.name, asset.mimeType);
       const path = `/uploaded/${asset.name}`;
 
       const newFile = await addFileToProject(projectId, {
@@ -680,17 +802,17 @@ IMPORTANT: Generate ONLY valid ${langConfig.displayName} code without any markdo
         size: asset.size || content.length,
       });
 
-      console.log(`[AgentContext] File uploaded successfully: ${asset.name}`);
+      logger.info(`[AgentContext] File uploaded successfully: ${asset.name}`);
       return newFile;
     } catch (error) {
-      console.error('[AgentContext] File upload failed:', error);
+      logger.error('[AgentContext] File upload failed:', error);
       throw new Error(`Failed to upload file: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }, [addFileToProject]);
 
   const uploadMultipleFiles = useCallback(async (projectId: string) => {
-    console.log(`[AgentContext] Starting multiple file upload for project ${projectId}`);
-    
+    logger.info(`[AgentContext] Starting multiple file upload for project ${projectId}`);
+
     try {
       const result = await DocumentPicker.getDocumentAsync({
         type: ['*/*'],
@@ -699,7 +821,7 @@ IMPORTANT: Generate ONLY valid ${langConfig.displayName} code without any markdo
       });
 
       if (result.canceled) {
-        console.log('[AgentContext] Multiple file upload cancelled');
+        logger.info('[AgentContext] Multiple file upload cancelled');
         return [];
       }
 
@@ -707,9 +829,16 @@ IMPORTANT: Generate ONLY valid ${langConfig.displayName} code without any markdo
 
       for (const asset of result.assets) {
         try {
+          // 25MB guard
+          const MAX_BYTES = 25 * 1024 * 1024;
+          if (asset.size && asset.size > MAX_BYTES) {
+            logger.warn(`[AgentContext] Skipping large file (>25MB): ${asset.name}`);
+            continue;
+          }
+
           let content = '';
           const isTextFile = /\.(txt|js|jsx|ts|tsx|json|md|css|html|xml|yaml|yml|toml|env|gitignore|sh|py|java|c|cpp|h|hpp|cs|go|rs|rb|php|swift|kt|sql)$/i.test(asset.name);
-          
+
           if (isTextFile && asset.uri) {
             try {
               if (Platform.OS === 'web') {
@@ -721,14 +850,14 @@ IMPORTANT: Generate ONLY valid ${langConfig.displayName} code without any markdo
                 });
               }
             } catch (readError) {
-              console.warn(`[AgentContext] Could not read ${asset.name}, treating as binary:`, readError);
+              logger.warn(`[AgentContext] Could not read ${asset.name}, treating as binary:`, readError);
               content = `// Binary file: ${asset.name}\n// Size: ${asset.size} bytes\n// Type: ${asset.mimeType || 'unknown'}`;
             }
           } else {
             content = `// Binary file: ${asset.name}\n// Size: ${asset.size} bytes\n// Type: ${asset.mimeType || 'unknown'}`;
           }
 
-          const language = getLanguageFromFileName(asset.name);
+          const language = getLanguageFromFileName(asset.name, asset.mimeType);
           const path = `/uploaded/${asset.name}`;
 
           const newFile = await addFileToProject(projectId, {
@@ -740,51 +869,51 @@ IMPORTANT: Generate ONLY valid ${langConfig.displayName} code without any markdo
           });
 
           uploadedFiles.push(newFile);
-          console.log(`[AgentContext] File uploaded: ${asset.name}`);
+          logger.info(`[AgentContext] File uploaded: ${asset.name}`);
         } catch (fileError) {
-          console.error(`[AgentContext] Failed to upload ${asset.name}:`, fileError);
+          logger.error(`[AgentContext] Failed to upload ${asset.name}:`, fileError);
         }
       }
 
-      console.log(`[AgentContext] Multiple file upload completed: ${uploadedFiles.length} files`);
+      logger.info(`[AgentContext] Multiple file upload completed: ${uploadedFiles.length} files`);
       return uploadedFiles;
     } catch (error) {
-      console.error('[AgentContext] Multiple file upload failed:', error);
+      logger.error('[AgentContext] Multiple file upload failed:', error);
       throw new Error(`Failed to upload files: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }, [addFileToProject]);
 
   const deleteFileFromProject = useCallback(async (projectId: string, fileId: string) => {
-    console.log(`[AgentContext] Deleting file ${fileId} from project ${projectId}`);
-    
+    logger.info(`[AgentContext] Deleting file ${fileId} from project ${projectId}`);
+
     try {
       const project = projects.find(p => p.id === projectId);
-      if (!project) {
-        throw new Error('Project not found');
-      }
+      if (!project) throw new Error('Project not found');
 
       const updatedProjects = projects.map(p =>
         p.id === projectId
           ? {
               ...p,
               files: p.files.filter(f => f.id !== fileId),
-              lastModified: new Date()
+              lastModified: new Date(),
             }
           : p
       );
 
       await saveProjects(updatedProjects);
-      
+
       if (currentProject?.id === projectId) {
         setCurrentProject(updatedProjects.find(p => p.id === projectId) || null);
       }
 
-      console.log(`[AgentContext] File deleted successfully`);
+      logger.info(`[AgentContext] File deleted successfully`);
     } catch (error) {
-      console.error('[AgentContext] Failed to delete file:', error);
+      logger.error('[AgentContext] Failed to delete file:', error);
       throw new Error(`Failed to delete file: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }, [projects, currentProject, saveProjects]);
+
+  /** ───────── Exposed API ───────── **/
 
   return useMemo(() => ({
     projects,
@@ -826,9 +955,11 @@ IMPORTANT: Generate ONLY valid ${langConfig.displayName} code without any markdo
   ]);
 });
 
+/** ───────────────────────── Hooks ───────────────────────── **/
+
 export function useProjectAnalysis() {
   const { analysis, analyzeProject, isAnalyzing, currentProject } = useAgent();
-  
+
   const runAnalysis = () => {
     if (currentProject) {
       analyzeProject(currentProject.id);
@@ -844,13 +975,14 @@ export function useProjectAnalysis() {
 
 export function useCodeGeneration() {
   const { generateCode, isGenerating, addFileToProject, currentProject } = useAgent();
-  
+
   const generateAndSave = async (prompt: string, language: string = 'typescript') => {
     try {
       const code = await generateCode(prompt, language);
-      
+
       if (currentProject) {
-        const fileName = `generated_${Date.now()}.${language === 'typescript' ? 'tsx' : 'js'}`;
+        const lastWasJSX = (generateCode as any)._lastWasJSX === true;
+        const fileName = `generated_${Date.now()}.${language === 'typescript' ? (lastWasJSX ? 'tsx' : 'ts') : (lastWasJSX ? 'jsx' : 'js')}`;
         await addFileToProject(currentProject.id, {
           name: fileName,
           path: `/src/generated/${fileName}`,
@@ -859,10 +991,10 @@ export function useCodeGeneration() {
           size: code.length,
         });
       }
-      
+
       return code;
     } catch (error) {
-      console.error('Failed to generate and save code:', error);
+      logger.error('Failed to generate and save code:', error);
       throw error;
     }
   };
@@ -874,9 +1006,11 @@ export function useCodeGeneration() {
   };
 }
 
-function getLanguageFromFileName(fileName: string): string {
+/** ───────────────────────── Language Inference ───────────────────────── **/
+
+function getLanguageFromFileName(fileName: string, mimeType?: string): string {
   const ext = fileName.split('.').pop()?.toLowerCase();
-  
+
   const languageMap: Record<string, string> = {
     'js': 'javascript',
     'jsx': 'javascript',
@@ -907,6 +1041,12 @@ function getLanguageFromFileName(fileName: string): string {
     'sql': 'sql',
     'sh': 'shell',
   };
-  
-  return languageMap[ext || ''] || 'text';
+
+  if (ext && languageMap[ext]) return languageMap[ext];
+  if (mimeType?.includes('json')) return 'json';
+  if (mimeType?.includes('xml')) return 'xml';
+  if (mimeType?.includes('javascript')) return 'javascript';
+  if (mimeType?.includes('typescript')) return 'typescript';
+  if (mimeType?.startsWith('text/')) return 'text';
+  return 'text';
 }
