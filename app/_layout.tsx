@@ -57,7 +57,7 @@ const queryClient = new QueryClient({
 function RootLayoutNav() {
   return (
     <Stack 
-      initialRouteName="app-generator"
+      initialRouteName="splash"
       screenOptions={{ 
         headerBackTitle: "Back",
         headerStyle: {
@@ -72,6 +72,12 @@ function RootLayoutNav() {
         options={{ 
           presentation: "modal",
           headerTitle: "Settings",
+        }} 
+      />
+      <Stack.Screen 
+        name="splash" 
+        options={{ 
+          headerShown: false,
         }} 
       />
       <Stack.Screen 

@@ -25,8 +25,8 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
     return options.href !== null;
   });
 
-  const mainTabs = visibleRoutes.slice(0, 3);
-  const overflowTabs = visibleRoutes.slice(3);
+  const mainTabs = visibleRoutes.slice(0, 4);
+  const overflowTabs = visibleRoutes.slice(4);
 
   return (
     <>

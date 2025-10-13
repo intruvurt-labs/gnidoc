@@ -1,12 +1,11 @@
-// gnidoC Terces - Professional Coding Agent Color Scheme
 const Colors = {
-  // Primary Colors
   cyan: {
     primary: '#00FFFF',
     secondary: '#00E6E6',
     tertiary: '#00CCCC',
     dark: '#008B8B',
     glow: '#00FFFF80',
+    deepCyan: '#00B3FF',
   },
   red: {
     primary: '#FF0040',
@@ -14,13 +13,25 @@ const Colors = {
     tertiary: '#CC0033',
     dark: '#990026',
     glow: '#FF004080',
+    redPrimary: '#FF004C',
   },
-  orange: {
-    primary: '#BFFF00',
-    secondary: '#D4FF33',
-    tertiary: '#E6FF66',
+  lime: {
+    primary: '#B3FF00',
+    secondary: '#BFFF00',
+    tertiary: '#D4FF33',
+    light: '#E6FF66',
     dark: '#99CC00',
-    glow: '#BFFF0080',
+    glow: '#B3FF0080',
+  },
+  yellow: {
+    primary: '#FFD93B',
+    secondary: '#FFAA00',
+    glow: '#FFD93B80',
+  },
+  magenta: {
+    primary: '#FF33CC',
+    secondary: '#FF0080',
+    glow: '#FF33CC80',
   },
   cyanRed: {
     primary: '#FF0080',
@@ -36,20 +47,32 @@ const Colors = {
     dark: '#A3CC00',
     glow: '#CCFF0080',
   },
+  purple: {
+    primary: '#A200FF',
+    secondary: '#8800CC',
+    glow: '#A200FF80',
+  },
   black: {
     primary: '#000000',
+    ink: '#0A0F12',
+    panel: '#0F1720',
     secondary: '#0A0A0A',
     tertiary: '#1A1A1A',
     quaternary: '#2A2A2A',
     surface: '#0F0F0F',
   },
-  // UI Colors
+  white: {
+    primary: '#FFFFFF',
+  },
   background: {
     primary: '#000000',
     secondary: '#0A0A0A',
     card: '#1A1A1A',
     modal: '#0F0F0F',
     overlay: 'rgba(0, 0, 0, 0.9)',
+    ink: '#0A0F12',
+    panel: '#0F1720',
+    gridGlow: '#141a20',
   },
   text: {
     primary: '#00FFFF',
@@ -63,22 +86,65 @@ const Colors = {
     secondary: '#FF0040',
     muted: '#333333',
   },
-  // Status Colors
   success: '#00FF88',
   warning: '#FFAA00',
   error: '#FF0040',
   info: '#00FFFF',
-  // IDE Specific Colors
   ide: {
-    keyword: '#BFFF00',      // Lime for keywords
-    string: '#00FFFF',       // Cyan for strings
-    comment: '#808080',      // Gray for comments
-    function: '#FF0040',     // Red for functions
-    variable: '#E6FF66',     // Light lime for variables
-    number: '#00E6E6',       // Cyan secondary for numbers
-    operator: '#D4FF33',     // Lime-yellow for operators
-    type: '#FF4757',         // Red-pink for types
+    keyword: '#BFFF00',
+    string: '#00FFFF',
+    comment: '#808080',
+    function: '#FF0040',
+    variable: '#E6FF66',
+    number: '#00E6E6',
+    operator: '#D4FF33',
+    type: '#FF4757',
   },
+};
+
+export const Shadows = {
+  glowCyan: {
+    shadowColor: '#00FFFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 18,
+    elevation: 8,
+  },
+  glowLime: {
+    shadowColor: '#B3FF00',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 18,
+    elevation: 8,
+  },
+  glowMagenta: {
+    shadowColor: '#FF33CC',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 18,
+    elevation: 8,
+  },
+  shadowBlack: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 30,
+    elevation: 12,
+  },
+};
+
+export const Typography = {
+  headline: {
+    fontFamily: 'System',
+    fontWeight: '700' as const,
+    letterSpacing: 1.5,
+  },
+  body: {
+    fontFamily: 'System',
+    fontWeight: '400' as const,
+    fontSize: 14,
+  },
+  minBodySizePt: 13.5,
 };
 
 export default {

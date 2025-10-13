@@ -1,190 +1,39 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  TextInput,
-  Alert,
-  Modal,
-  Platform,
   Dimensions,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  Code,
-  Play,
-  Download,
-  Eye,
-  Settings,
-  X,
-  CheckCircle,
-  AlertCircle,
-  Loader,
-  FileText,
-  Package,
-  Zap,
-  Layers,
-  Menu,
-} from 'lucide-react-native';
-import { Image } from 'react-native';
 import Colors from '@/constants/colors';
-import { limeWithOutline } from '@/constants/textStyles';
-import { useAppBuilder, AppGenerationConfig } from '@/contexts/AppBuilderContext';
-import * as Haptics from 'expo-haptics';
 import BrandedHeader from '@/components/BrandedHeader';
-import ScreenBackground from '@/components/ScreenBackground';
 import TypewriterEffect from '@/components/TypewriterEffect';
+import NeuroCanvas from '@/components/NeuroCanvas';
+import CardRow from '@/components/CardRow';
+import FeatureStrip from '@/components/FeatureStrip';
+import MatrixGridBackground from '@/components/MatrixGridBackground';
 
 const { width } = Dimensions.get('window');
 
-export default function AppGeneratorScreen() {
+export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const {
-    generatedApps,
-    currentApp,
-    isGenerating,
-    generationProgress,
-    generateApp,
-    setCurrentApp,
-  } = useAppBuilder();
-
-  const [prompt, setPrompt] = useState<string>('');
-  const [showConfig, setShowConfig] = useState<boolean>(false);
-  const [showPreview, setShowPreview] = useState<boolean>(false);
-  const [selectedFile, setSelectedFile] = useState<string | null>(null);
-  const [showQuickMenu, setShowQuickMenu] = useState<boolean>(false);
-
-  const [config, setConfig] = useState<AppGenerationConfig>({
-    useTypeScript: true,
-    includeTests: true,
-    includeDocumentation: true,
-    styleFramework: 'stylesheet',
-    stateManagement: 'context',
-    routing: 'expo-router',
-    aiModel: 'dual-claude-gemini',
-    enableConsensusMode: false,
-    enableSmartSelector: true,
-    enableCaching: true,
-  });
-
-  const handleGenerate = async () => {
-    if (!prompt.trim()) {
-      Alert.alert('Error', 'Please enter a description of the app you want to build');
-      return;
-    }
-
-    if (Platform.OS !== 'web') {
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    }
-
-    try {
-      console.log('[AppGenerator] Starting app generation...');
-      const app = await generateApp(prompt, config);
-      
-      Alert.alert(
-        '✓ App Generated!',
-        `"${app.name}" has been generated successfully!\n\n${app.files.length} files created\n${app.dependencies.length} dependencies\n\nStatus: ${app.status}`,
-        [
-          { text: 'View Code', onPress: () => setShowPreview(true) },
-          { text: 'OK' },
-        ]
-      );
-      
-      setPrompt('');
-    } catch (error) {
-      Alert.alert(
-        'Generation Failed',
-        error instanceof Error ? error.message : 'Failed to generate app'
-      );
-      console.error('[AppGenerator] Generation error:', error);
-    }
-  };
-
-  const quickMenuActions = [
-    { id: 'terminal', title: 'Terminal', icon: '💻', route: '/terminal' },
-    { id: 'analysis', title: 'Analysis', icon: '📊', route: '/analysis' },
-    { id: 'database', title: 'Database', icon: '🗄️', route: '/database' },
-    { id: 'integrations', title: 'Integrations', icon: '🔌', route: '/integrations' },
-    { id: 'research', title: 'Research', icon: '🔍', route: '/research' },
-    { id: 'deploy', title: 'Deploy', icon: '🚀', route: '/deploy' },
-  ];
-
-  const renderConfigOption = (
-    label: string,
-    value: boolean,
-    onToggle: () => void
-  ) => (
-    <TouchableOpacity style={styles.configOption} onPress={onToggle}>
-      <Text style={styles.configLabel}>{label}</Text>
-      <View style={[styles.configToggle, value && styles.configToggleActive]}>
-        {value && <CheckCircle color={Colors.Colors.text.inverse} size={16} />}
-      </View>
-    </TouchableOpacity>
-  );
-
-  const renderSelectOption = (
-    label: string,
-    options: string[],
-    value: string,
-    onSelect: (value: string) => void
-  ) => (
-    <View style={styles.selectOption}>
-      <Text style={styles.configLabel}>{label}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {options.map(option => (
-          <TouchableOpacity
-            key={option}
-            style={[
-              styles.selectButton,
-              value === option && styles.selectButtonActive,
-            ]}
-            onPress={() => onSelect(option)}
-          >
-            <Text
-              style={[
-                styles.selectButtonText,
-                value === option && styles.selectButtonTextActive,
-              ]}
-            >
-              {option}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
-  );
 
   return (
-    <ScreenBackground variant="default" showPattern>
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <Stack.Screen
-          options={{
-            headerShown: false,
-          }}
-        />
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <Stack.Screen
+        options={{
+          headerShown: false,
+        }}
+      />
 
-        <BrandedHeader
-          rightAction={
-            <View style={styles.headerActions}>
-              <TouchableOpacity 
-                style={styles.menuButton}
-                onPress={() => setShowQuickMenu(true)}
-              >
-                <Menu color={Colors.Colors.cyan.primary} size={24} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.configButton}
-                onPress={() => setShowConfig(true)}
-              >
-                <Settings color={Colors.Colors.cyan.primary} size={24} />
-              </TouchableOpacity>
-            </View>
-          }
-        />
+      <MatrixGridBackground parallax tint={Colors.Colors.background.gridGlow} />
+
+      <BrandedHeader />
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.heroSection}>
@@ -207,374 +56,69 @@ export default function AppGeneratorScreen() {
           </Text>
         </View>
 
-        <View style={styles.promptSection}>
-          <View style={styles.sectionTitleContainer}>
-            <Text style={styles.sectionTitle}>What do you want to build?</Text>
-            <View style={styles.underline} />
-          </View>
-          <TextInput
-            style={styles.promptInput}
-            placeholder="E.g., A fitness tracking app with workout plans, progress charts, and social features..."
-            placeholderTextColor={Colors.Colors.text.muted}
-            value={prompt}
-            onChangeText={setPrompt}
-            multiline
-            numberOfLines={6}
-            textAlignVertical="top"
+        <View style={styles.canvasSection}>
+          <NeuroCanvas
+            placeholder="Describe your app…"
+            assistChips={['Claude+Gemini', 'TypeScript', 'expo-router']}
+            cta={{
+              label: 'Generate App',
+              style: 'primary',
+              onPress: () => router.push('/app-generator' as any),
+            }}
           />
-
-          <View style={styles.configSummary}>
-            <View style={styles.configBadge}>
-              <Layers color={Colors.Colors.cyan.primary} size={14} />
-              <Text style={styles.configBadgeText}>
-                {config.aiModel === 'dual-claude-gemini' ? 'Dual Model (Claude+Gemini)' :
-                 config.aiModel === 'tri-model' ? 'Tri-Model' :
-                 config.aiModel === 'quad-model' ? 'Quad-Model' :
-                 '4-Model Orchestration'}
-              </Text>
-            </View>
-            <View style={styles.configBadge}>
-              <Code color={Colors.Colors.success} size={14} />
-              <Text style={styles.configBadgeText}>
-                {config.useTypeScript ? 'TypeScript' : 'JavaScript'}
-              </Text>
-            </View>
-            <View style={styles.configBadge}>
-              <Package color={Colors.Colors.warning} size={14} />
-              <Text style={styles.configBadgeText}>{config.routing}</Text>
-            </View>
-          </View>
-
-          <TouchableOpacity
-            style={[styles.generateButton, isGenerating && styles.generateButtonDisabled]}
-            onPress={handleGenerate}
-            disabled={isGenerating}
-          >
-            {isGenerating ? (
-              <>
-                <Loader color={Colors.Colors.text.inverse} size={24} />
-                <Text style={styles.generateButtonText}>
-                  Generating... {Math.round(generationProgress)}%
-                </Text>
-              </>
-            ) : (
-              <>
-                <Image
-                  source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/k95rc9dv5sso3otf9ckgb' }}
-                  style={styles.generateButtonIcon}
-                  resizeMode="contain"
-                />
-                <Text style={styles.generateButtonText}>Generate App</Text>
-              </>
-            )}
-          </TouchableOpacity>
         </View>
 
-        {isGenerating && currentApp && (
-          <View style={styles.progressSection}>
-            <View style={styles.progressBar}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { width: `${generationProgress}%` },
-                ]}
-              />
-            </View>
-            <Text style={styles.progressText}>
-              {currentApp.buildLogs.length > 0
-                ? currentApp.buildLogs[currentApp.buildLogs.length - 1].message
-                : 'Initializing...'}
-            </Text>
-          </View>
-        )}
+        <CardRow
+          cards={[
+            { title: 'Preview Live', style: 'lime_shadow', route: '/app-generator' },
+            { title: 'Deploy', style: 'magenta_red', route: '/deploy' },
+          ]}
+        />
 
-        {generatedApps.length > 0 && (
-          <View style={styles.appsSection}>
-            <Text style={styles.sectionTitle}>Generated Apps</Text>
-            {generatedApps.map(app => (
-              <TouchableOpacity
-                key={app.id}
-                style={styles.appCard}
-                onPress={() => {
-                  setCurrentApp(app);
-                  setShowPreview(true);
-                }}
-              >
-                <View style={styles.appCardHeader}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.appCardTitle}>{app.name}</Text>
-                    <Text style={styles.appCardDescription} numberOfLines={2}>
-                      {app.description}
-                    </Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.appStatusBadge,
-                      { backgroundColor: getStatusColor(app.status) },
-                    ]}
-                  >
-                    <Text style={styles.appStatusText}>{app.status}</Text>
-                  </View>
-                </View>
-                <View style={styles.appCardStats}>
-                  <View style={styles.appStat}>
-                    <FileText color={Colors.Colors.text.muted} size={14} />
-                    <Text style={styles.appStatText}>{app.files.length} files</Text>
-                  </View>
-                  <View style={styles.appStat}>
-                    <Package color={Colors.Colors.text.muted} size={14} />
-                    <Text style={styles.appStatText}>
-                      {app.dependencies.length} deps
-                    </Text>
-                  </View>
-                  <View style={styles.appStat}>
-                    <AlertCircle color={Colors.Colors.text.muted} size={14} />
-                    <Text style={styles.appStatText}>{app.errors.length} issues</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
+        <FeatureStrip
+          items={[
+            { icon: 'bolt', title: 'Dual-Model AI' },
+            { icon: 'shield', title: 'Security Scan' },
+            { icon: 'panel', title: 'Production-Ready' },
+          ]}
+        />
 
-        <View style={styles.featuresSection}>
-          <Text style={styles.sectionTitle}>Features</Text>
-          <View style={styles.featureGrid}>
-            <View style={styles.featureCard}>
-              <Zap color={Colors.Colors.cyan.primary} size={32} />
-              <Text style={styles.featureTitle}>Dual-Model AI</Text>
-              <Text style={styles.featureDescription}>
-                Claude + Gemini working together for superior code quality
-              </Text>
-            </View>
-            <View style={styles.featureCard}>
-              <Code color={Colors.Colors.success} size={32} />
-              <Text style={styles.featureTitle}>Production Ready</Text>
-              <Text style={styles.featureDescription}>
-                Complete, error-free code with proper architecture
-              </Text>
-            </View>
-            <View style={styles.featureCard}>
-              <Play color={Colors.Colors.warning} size={32} />
-              <Text style={styles.featureTitle}>Live Preview</Text>
-              <Text style={styles.featureDescription}>
-                Instant compilation and preview of generated apps
-              </Text>
-            </View>
-            <View style={styles.featureCard}>
-              <Eye color={Colors.Colors.red.primary} size={32} />
-              <Text style={styles.featureTitle}>Full IDE</Text>
-              <Text style={styles.featureDescription}>
-                Edit, debug, and deploy directly from the app
-              </Text>
-            </View>
+        <View style={styles.quickActionsSection}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.quickActionsGrid}>
+            <TouchableOpacity
+              style={styles.quickActionCard}
+              onPress={() => router.push('/(tabs)/orchestration' as any)}
+            >
+              <Text style={styles.quickActionIcon}>🎯</Text>
+              <Text style={styles.quickActionTitle}>Orchestrate</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickActionCard}
+              onPress={() => router.push('/deploy' as any)}
+            >
+              <Text style={styles.quickActionIcon}>🚀</Text>
+              <Text style={styles.quickActionTitle}>Deploy</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickActionCard}
+              onPress={() => router.push('/(tabs)/agent' as any)}
+            >
+              <Text style={styles.quickActionIcon}>🤖</Text>
+              <Text style={styles.quickActionTitle}>AI Agent</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.quickActionCard}
+              onPress={() => router.push('/(tabs)/code' as any)}
+            >
+              <Text style={styles.quickActionIcon}>💻</Text>
+              <Text style={styles.quickActionTitle}>Dashboard</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
-
-      <Modal visible={showQuickMenu} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.quickMenuContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Quick Access</Text>
-              <TouchableOpacity onPress={() => setShowQuickMenu(false)}>
-                <X color={Colors.Colors.text.muted} size={24} />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.quickMenuGrid}>
-              {quickMenuActions.map(action => (
-                <TouchableOpacity
-                  key={action.id}
-                  style={styles.quickMenuItem}
-                  onPress={() => {
-                    setShowQuickMenu(false);
-                    router.push(action.route as any);
-                  }}
-                >
-                  <Text style={styles.quickMenuIcon}>{action.icon}</Text>
-                  <Text style={styles.quickMenuText}>{action.title}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal visible={showConfig} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Generation Config</Text>
-              <TouchableOpacity onPress={() => setShowConfig(false)}>
-                <X color={Colors.Colors.text.muted} size={24} />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.configList}>
-              {renderConfigOption('TypeScript', config.useTypeScript, () =>
-                setConfig({ ...config, useTypeScript: !config.useTypeScript })
-              )}
-              {renderConfigOption('Include Tests', config.includeTests, () =>
-                setConfig({ ...config, includeTests: !config.includeTests })
-              )}
-              {renderConfigOption(
-                'Include Documentation',
-                config.includeDocumentation,
-                () =>
-                  setConfig({
-                    ...config,
-                    includeDocumentation: !config.includeDocumentation,
-                  })
-              )}
-
-              {renderSelectOption(
-                'AI Model Orchestration',
-                ['dual-claude-gemini', 'tri-model', 'quad-model', 'orchestrated'],
-                config.aiModel,
-                value =>
-                  setConfig({ ...config, aiModel: value as AppGenerationConfig['aiModel'] })
-              )}
-
-              {renderSelectOption(
-                'Style Framework',
-                ['stylesheet', 'styled-components', 'tailwind'],
-                config.styleFramework,
-                value =>
-                  setConfig({
-                    ...config,
-                    styleFramework: value as AppGenerationConfig['styleFramework'],
-                  })
-              )}
-
-              {renderSelectOption(
-                'State Management',
-                ['context', 'redux', 'zustand', 'none'],
-                config.stateManagement,
-                value =>
-                  setConfig({
-                    ...config,
-                    stateManagement: value as AppGenerationConfig['stateManagement'],
-                  })
-              )}
-
-              {renderSelectOption(
-                'Routing',
-                ['expo-router', 'react-navigation', 'none'],
-                config.routing,
-                value =>
-                  setConfig({ ...config, routing: value as AppGenerationConfig['routing'] })
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal visible={showPreview} animationType="slide">
-        <View style={[styles.previewContainer, { paddingTop: insets.top }]}>
-          <View style={styles.previewHeader}>
-            <Text style={styles.previewTitle}>{currentApp?.name}</Text>
-            <TouchableOpacity onPress={() => setShowPreview(false)}>
-              <X color={Colors.Colors.text.primary} size={24} />
-            </TouchableOpacity>
-          </View>
-
-          {currentApp && (
-            <>
-              <View style={styles.previewToolbar}>
-                <TouchableOpacity style={styles.previewButton}>
-                  <Play color={Colors.Colors.success} size={18} />
-                  <Text style={styles.previewButtonText}>Run</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.previewButton}>
-                  <Download color={Colors.Colors.cyan.primary} size={18} />
-                  <Text style={styles.previewButtonText}>Export</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.previewButton}>
-                  <Code color={Colors.Colors.warning} size={18} />
-                  <Text style={styles.previewButtonText}>
-                    {currentApp.files.length} Files
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView style={styles.fileList}>
-                {currentApp.files.map(file => (
-                  <TouchableOpacity
-                    key={file.id}
-                    style={[
-                      styles.fileItem,
-                      selectedFile === file.id && styles.fileItemActive,
-                    ]}
-                    onPress={() => setSelectedFile(file.id)}
-                  >
-                    <FileText color={Colors.Colors.cyan.primary} size={16} />
-                    <Text style={styles.fileName}>{file.path}</Text>
-                    <Text style={styles.fileSize}>{formatBytes(file.size)}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              {selectedFile && (
-                <View style={styles.codePreview}>
-                  <ScrollView>
-                    <Text style={styles.codeText}>
-                      {currentApp.files.find(f => f.id === selectedFile)?.content}
-                    </Text>
-                  </ScrollView>
-                </View>
-              )}
-
-              {currentApp.errors.length > 0 && (
-                <View style={styles.errorsSection}>
-                  <Text style={styles.errorsTitle}>
-                    {currentApp.errors.length} Issues Found
-                  </Text>
-                  {currentApp.errors.slice(0, 5).map(error => (
-                    <View key={error.id} style={styles.errorItem}>
-                      <AlertCircle
-                        color={
-                          error.severity === 'error'
-                            ? Colors.Colors.error
-                            : Colors.Colors.warning
-                        }
-                        size={16}
-                      />
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.errorMessage}>{error.message}</Text>
-                        <Text style={styles.errorLocation}>
-                          {error.file}:{error.line}:{error.column}
-                        </Text>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              )}
-            </>
-          )}
-        </View>
-      </Modal>
     </View>
-    </ScreenBackground>
   );
-}
-
-function getStatusColor(status: string): string {
-  switch (status) {
-    case 'ready':
-      return Colors.Colors.success;
-    case 'generating':
-    case 'compiling':
-      return Colors.Colors.warning;
-    case 'error':
-      return Colors.Colors.error;
-    default:
-      return Colors.Colors.text.muted;
-  }
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 const styles = StyleSheet.create({
@@ -597,11 +141,11 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold' as const,
-    ...limeWithOutline,
+    color: Colors.Colors.lime.primary,
   },
   headerSubtitle: {
     fontSize: 12,
-    ...limeWithOutline,
+    color: Colors.Colors.lime.primary,
     marginTop: 2,
   },
   configButton: {
@@ -640,9 +184,13 @@ const styles = StyleSheet.create({
   },
   heroDescription: {
     fontSize: 16,
-    ...limeWithOutline,
+    color: Colors.Colors.lime.primary,
     textAlign: 'center',
     lineHeight: 24,
+  },
+  canvasSection: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
   },
   promptSection: {
     paddingHorizontal: 20,
@@ -654,8 +202,36 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold' as const,
-    ...limeWithOutline,
+    color: Colors.Colors.lime.primary,
     marginBottom: 8,
+  },
+  quickActionsSection: {
+    paddingHorizontal: 20,
+    marginBottom: 32,
+  },
+  quickActionsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  quickActionCard: {
+    width: (width - 52) / 2,
+    backgroundColor: Colors.Colors.background.card,
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: Colors.Colors.cyan.primary,
+  },
+  quickActionIcon: {
+    fontSize: 40,
+    marginBottom: 12,
+  },
+  quickActionTitle: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: Colors.Colors.cyan.primary,
+    textAlign: 'center',
   },
   underline: {
     height: 3,
@@ -667,7 +243,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.Colors.background.card,
     borderRadius: 12,
     padding: 16,
-    ...limeWithOutline,
+    color: Colors.Colors.lime.primary,
     fontSize: 16,
     minHeight: 150,
     borderWidth: 1,
@@ -694,7 +270,7 @@ const styles = StyleSheet.create({
   configBadgeText: {
     fontSize: 12,
     fontWeight: '600' as const,
-    ...limeWithOutline,
+    color: Colors.Colors.lime.primary,
   },
   generateButton: {
     flexDirection: 'row',
@@ -734,7 +310,7 @@ const styles = StyleSheet.create({
   },
   progressText: {
     fontSize: 14,
-    ...limeWithOutline,
+    color: Colors.Colors.lime.primary,
     textAlign: 'center',
   },
   appsSection: {
@@ -763,7 +339,7 @@ const styles = StyleSheet.create({
   },
   appCardDescription: {
     fontSize: 14,
-    ...limeWithOutline,
+    color: Colors.Colors.lime.primary,
   },
   appStatusBadge: {
     paddingHorizontal: 10,
@@ -809,13 +385,13 @@ const styles = StyleSheet.create({
   featureTitle: {
     fontSize: 14,
     fontWeight: 'bold' as const,
-    ...limeWithOutline,
+    color: Colors.Colors.lime.primary,
     marginTop: 12,
     marginBottom: 4,
   },
   featureDescription: {
     fontSize: 12,
-    ...limeWithOutline,
+    color: Colors.Colors.lime.primary,
     lineHeight: 18,
   },
   modalOverlay: {
@@ -887,7 +463,7 @@ const styles = StyleSheet.create({
   },
   configLabel: {
     fontSize: 16,
-    ...limeWithOutline,
+    color: Colors.Colors.lime.primary,
     fontWeight: '500' as const,
   },
   configToggle: {
@@ -921,7 +497,7 @@ const styles = StyleSheet.create({
   },
   selectButtonText: {
     fontSize: 14,
-    ...limeWithOutline,
+    color: Colors.Colors.lime.primary,
     fontWeight: '500' as const,
   },
   selectButtonTextActive: {
@@ -966,7 +542,7 @@ const styles = StyleSheet.create({
   previewButtonText: {
     fontSize: 13,
     fontWeight: '600' as const,
-    ...limeWithOutline,
+    color: Colors.Colors.lime.primary,
   },
   fileList: {
     maxHeight: 200,
@@ -988,7 +564,7 @@ const styles = StyleSheet.create({
   fileName: {
     flex: 1,
     fontSize: 14,
-    ...limeWithOutline,
+    color: Colors.Colors.lime.primary,
   },
   fileSize: {
     fontSize: 12,
@@ -1002,7 +578,7 @@ const styles = StyleSheet.create({
   codeText: {
     fontFamily: 'monospace',
     fontSize: 12,
-    ...limeWithOutline,
+    color: Colors.Colors.lime.primary,
     lineHeight: 18,
   },
   errorsSection: {
@@ -1025,7 +601,7 @@ const styles = StyleSheet.create({
   },
   errorMessage: {
     fontSize: 13,
-    ...limeWithOutline,
+    color: Colors.Colors.lime.primary,
     marginBottom: 2,
   },
   errorLocation: {
