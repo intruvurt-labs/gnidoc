@@ -50,7 +50,7 @@ export default function MatrixGridBackground({
         ).start();
       });
     }
-  }, [parallax, particles]);
+  }, [parallax, particles, animatedValue, particleAnims]);
 
   const translateY = animatedValue.interpolate({
     inputRange: [0, 1],
@@ -65,9 +65,9 @@ export default function MatrixGridBackground({
           parallax && { transform: [{ translateY }] },
         ]}
       >
-        {Array.from({ length: 20 }).map((_, i) => (
+        {Array.from({ length: 20 }, (_, i) => (
           <View
-            key={`v-${i}`}
+            key={`v-line-${i}`}
             style={[
               styles.gridLine,
               styles.verticalLine,
@@ -75,9 +75,9 @@ export default function MatrixGridBackground({
             ]}
           />
         ))}
-        {Array.from({ length: 30 }).map((_, i) => (
+        {Array.from({ length: 30 }, (_, i) => (
           <View
-            key={`h-${i}`}
+            key={`h-line-${i}`}
             style={[
               styles.gridLine,
               styles.horizontalLine,
