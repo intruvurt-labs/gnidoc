@@ -9,7 +9,6 @@ export const gitInitProcedure = protectedProcedure
   )
   .mutation(async ({ input, ctx }) => {
     console.log(`[Git] Initializing git repo for project: ${input.projectId}`);
-    console.log(`[Git] User: ${ctx.user?.email || 'unknown'}`);
 
     await new Promise((resolve) => setTimeout(resolve, 1000));
 

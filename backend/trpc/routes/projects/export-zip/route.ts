@@ -9,7 +9,6 @@ export const exportZipProcedure = protectedProcedure
   )
   .mutation(async ({ input, ctx }) => {
     console.log(`[Export] Generating ZIP export for project: ${input.projectId}`);
-    console.log(`[Export] User: ${ctx.user?.email || 'unknown'}`);
 
     await new Promise((resolve) => setTimeout(resolve, 2000));
 

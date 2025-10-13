@@ -9,7 +9,6 @@ export const getFileUrlProcedure = protectedProcedure
   )
   .query(async ({ input, ctx }) => {
     console.log(`[Files] Getting download URL for file: ${input.fileId}`);
-    console.log(`[Files] User: ${ctx.user?.email || 'unknown'}`);
 
     const mockUrl = `https://example.com/downloads/${input.fileId}.zip`;
 
