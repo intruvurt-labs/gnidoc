@@ -145,6 +145,12 @@ export default function TabLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="ai-models"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

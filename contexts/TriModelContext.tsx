@@ -1,7 +1,8 @@
 import createContextHook from '@nkzw/create-context-hook';
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { z } from 'zod';
+import { getAvailableModels, getProviderSummary } from '@/lib/ai-providers';
 
 /** ───────────────────────── Types ───────────────────────── */
 
@@ -46,44 +47,18 @@ export interface OrchestrationConfig {
 
 /** ───────────────────────── Catalog (business truth) ───────────────────────── */
 
-const AVAILABLE_MODELS: AIModel[] = [
-  {
-    id: 'gpt-4-turbo',
-    name: 'GPT-4 Turbo',
-    provider: 'openai',
-    capabilities: ['code-generation', 'design', 'logic', 'deployment'],
-    costPerRequest: 0.03,
-    avgResponseTime: 3000,
-    qualityScore: 95,
-  },
-  {
-    id: 'claude-3-opus',
-    name: 'Claude 3 Opus',
-    provider: 'anthropic',
-    capabilities: ['code-generation', 'design', 'logic', 'analysis'],
-    costPerRequest: 0.025,
-    avgResponseTime: 2500,
-    qualityScore: 93,
-  },
-  {
-    id: 'gemini-pro',
-    name: 'Gemini Pro',
-    provider: 'google',
-    capabilities: ['code-generation', 'design', 'multimodal'],
-    costPerRequest: 0.02,
-    avgResponseTime: 2000,
-    qualityScore: 90,
-  },
-  {
-    id: 'gpt-4-vision',
-    name: 'GPT-4 Vision',
-    provider: 'openai',
-    capabilities: ['design', 'ui-analysis', 'multimodal'],
-    costPerRequest: 0.04,
-    avgResponseTime: 3500,
-    qualityScore: 92,
-  },
-];
+function getDefaultModels(): AIModel[] {
+  const available = getAvailableModels();
+  return available.map(m => ({
+    id: m.id,
+    name: m.name,
+    provider: m.provider as 'openai' | 'anthropic' | 'google' | 'custom',
+    capabilities: m.capabilities,
+    costPerRequest: m.costPerRequest,
+    avgResponseTime: m.avgResponseTime,
+    qualityScore: m.qualityScore,
+  }));
+}
 
 /** ───────────────────────── Persistence ───────────────────────── */
 
@@ -214,14 +189,35 @@ async function saveHistory(history: OrchestrationResult[]) {
 /** ───────────────────────── Context ───────────────────────── */
 
 export const [TriModelProvider, useTriModel] = createContextHook(() => {
-  const [availableModels] = useState<AIModel[]>(AVAILABLE_MODELS);
+  const [availableModels, setAvailableModels] = useState<AIModel[]>([]);
+  const [providerSummary, setProviderSummary] = useState<ReturnType<typeof getProviderSummary> | null>(null);
   const [config, setConfig] = useState<OrchestrationConfig>({
-    models: ['gpt-4-turbo', 'claude-3-opus', 'gemini-pro'],
+    models: [],
     selectionStrategy: 'balanced',
     minQualityThreshold: 85,
     maxCostPerRequest: 0.1,
     timeout: 30_000,
   });
+
+  useEffect(() => {
+    const models = getDefaultModels();
+    setAvailableModels(models);
+    
+    const summary = getProviderSummary();
+    setProviderSummary(summary);
+    
+    const topModels = models
+      .sort((a, b) => b.qualityScore - a.qualityScore)
+      .slice(0, 3)
+      .map(m => m.id);
+    
+    setConfig(prev => ({
+      ...prev,
+      models: topModels.length > 0 ? topModels : prev.models,
+    }));
+    
+    console.log(`[TriModel] Initialized with ${models.length} models from ${summary.available} providers`);
+  }, []);
   const [orchestrationHistory, setOrchestrationHistory] = useState<OrchestrationResult[]>([]);
   const [isOrchestrating, setIsOrchestrating] = useState<boolean>(false);
   const [currentProgress, setCurrentProgress] = useState<number>(0);
@@ -272,7 +268,7 @@ export const [TriModelProvider, useTriModel] = createContextHook(() => {
 
       // Budget pre-check (client-side guard)
       const plannedCostCeil = config.models.reduce((acc, id) => {
-        const m = AVAILABLE_MODELS.find(mm => mm.id === id);
+        const m = availableModels.find(mm => mm.id === id);
         return acc + (m?.costPerRequest ?? 0);
       }, 0);
       if (plannedCostCeil > config.maxCostPerRequest) {
@@ -304,7 +300,6 @@ export const [TriModelProvider, useTriModel] = createContextHook(() => {
 
       // Build client result with strong typing
       const responses: ModelResponse[] = wire.responses.map(toClientModelResponse);
-      const selected = toClientModelResponse(wire.selectedResponse);
 
       // If backend did not use our threshold/strategy strictly, enforce locally.
       const selectedFinal =
@@ -421,6 +416,7 @@ export const [TriModelProvider, useTriModel] = createContextHook(() => {
   /** Expose API */
   return useMemo(() => ({
     availableModels,
+    providerSummary,
     config,
     orchestrationHistory,
     isOrchestrating,
@@ -433,6 +429,7 @@ export const [TriModelProvider, useTriModel] = createContextHook(() => {
     getModelStats,
   }), [
     availableModels,
+    providerSummary,
     config,
     orchestrationHistory,
     isOrchestrating,

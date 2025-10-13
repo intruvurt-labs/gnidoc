@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure } from "../../../create-context";
 import { generateText } from "@rork/toolkit-sdk";
+import { getAvailableModels } from "../../../../../lib/ai-providers";
 
 const orchestrationRequestSchema = z.object({
   prompt: z.string().min(1).max(5000),
@@ -24,44 +25,9 @@ export const orchestrateGenerationProcedure = protectedProcedure
       throw new Error('EXPO_PUBLIC_TOOLKIT_URL environment variable is not set. Please configure it in your .env file.');
     }
 
-    const availableModels = [
-      {
-        id: 'gpt-4-turbo',
-        name: 'GPT-4 Turbo',
-        provider: 'openai' as const,
-        capabilities: ['code-generation', 'design', 'logic', 'deployment'],
-        costPerRequest: 0.03,
-        avgResponseTime: 3000,
-        qualityScore: 95,
-      },
-      {
-        id: 'claude-3-opus',
-        name: 'Claude 3 Opus',
-        provider: 'anthropic' as const,
-        capabilities: ['code-generation', 'design', 'logic', 'analysis'],
-        costPerRequest: 0.025,
-        avgResponseTime: 2500,
-        qualityScore: 93,
-      },
-      {
-        id: 'gemini-pro',
-        name: 'Gemini Pro',
-        provider: 'google' as const,
-        capabilities: ['code-generation', 'design', 'multimodal'],
-        costPerRequest: 0.02,
-        avgResponseTime: 2000,
-        qualityScore: 90,
-      },
-      {
-        id: 'gpt-4-vision',
-        name: 'GPT-4 Vision',
-        provider: 'openai' as const,
-        capabilities: ['design', 'ui-analysis', 'multimodal'],
-        costPerRequest: 0.04,
-        avgResponseTime: 3500,
-        qualityScore: 92,
-      },
-    ];
+    const availableModels = getAvailableModels();
+    
+    console.log(`[Orchestration] Available models: ${availableModels.length}`);
 
     const selectedModels = availableModels.filter(m => input.models.includes(m.id));
     
