@@ -265,58 +265,42 @@ export default function LogoMenu({ onPress, onLongPress }: LogoMenuProps) {
 
   const handleNewProject = () => {
     setShowQuickMenu(false);
-    Alert.alert(
-      'New Project',
-      'Choose project type:',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'React Native', 
-          onPress: async () => {
-            try {
-              setIsLoading(true);
-              setLoadingMessage('Creating React Native project...');
-              const projectId = await createProject('react-native');
-              setIsLoading(false);
-              Alert.alert('Success', `Project created: ${projectId}`);
-            } catch (error: any) {
-              setIsLoading(false);
-              Alert.alert('Error', error.message || 'Failed to create project');
-            }
+    Alert.alert('New Project', 'Choose project type:', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'React Native',
+        onPress: async () => {
+          try {
+            const id = await createProject('react-native');
+            Alert.alert('Project created', `ID: ${id}`);
+          } catch (e: any) {
+            Alert.alert('Error', e?.message || 'Failed to create project');
           }
         },
-        { 
-          text: 'Web App', 
-          onPress: async () => {
-            try {
-              setIsLoading(true);
-              setLoadingMessage('Creating Web App project...');
-              const projectId = await createProject('web');
-              setIsLoading(false);
-              Alert.alert('Success', `Project created: ${projectId}`);
-            } catch (error: any) {
-              setIsLoading(false);
-              Alert.alert('Error', error.message || 'Failed to create project');
-            }
+      },
+      {
+        text: 'Web App',
+        onPress: async () => {
+          try {
+            const id = await createProject('web');
+            Alert.alert('Project created', `ID: ${id}`);
+          } catch (e: any) {
+            Alert.alert('Error', e?.message || 'Failed to create project');
           }
         },
-        { 
-          text: 'API Service', 
-          onPress: async () => {
-            try {
-              setIsLoading(true);
-              setLoadingMessage('Creating API Service project...');
-              const projectId = await createProject('api');
-              setIsLoading(false);
-              Alert.alert('Success', `Project created: ${projectId}`);
-            } catch (error: any) {
-              setIsLoading(false);
-              Alert.alert('Error', error.message || 'Failed to create project');
-            }
+      },
+      {
+        text: 'API Service',
+        onPress: async () => {
+          try {
+            const id = await createProject('api');
+            Alert.alert('Project created', `ID: ${id}`);
+          } catch (e: any) {
+            Alert.alert('Error', e?.message || 'Failed to create project');
           }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleGenerateApp = () => {
