@@ -225,10 +225,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 12,
     backgroundColor: 'transparent',
-    zIndex: 999,
+    zIndex: 9999,
+    pointerEvents: 'box-none',
   },
   sphereButton: {
     marginBottom: 8,
+    pointerEvents: 'auto',
   },
   sphereContainer: {
     width: 80,
@@ -272,7 +274,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.92)',
-    zIndex: 998,
+    zIndex: 9998,
     justifyContent: 'center',
     alignItems: 'center',
   },

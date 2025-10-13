@@ -492,7 +492,7 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
 }
 
 const styles = StyleSheet.create({
-  floatingButton: { position: 'absolute', bottom: 100, right: 20, zIndex: 1000, elevation: 10 },
+  floatingButton: { position: 'absolute', bottom: 110, right: 20, zIndex: 9997, elevation: 10 },
   floatingButtonInner: {
     width: 70, height: 70, borderRadius: 35, backgroundColor: Colors.Colors.background.card,
     justifyContent: 'center', alignItems: 'center', shadowColor: Colors.Colors.cyan.primary,
@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
   chatContainer: {
     position: 'absolute', bottom: 0, left: 0, right: 0, height: height * 0.75,
     backgroundColor: Colors.Colors.background.primary, borderTopLeftRadius: 20, borderTopRightRadius: 20,
-    shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 20, zIndex: 1001,
+    shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 20, zIndex: 10000,
   },
   chatContent: { flex: 1 },
   chatHeader: {
