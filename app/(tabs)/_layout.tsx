@@ -24,11 +24,16 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
   
   const visibleRoutes = state.routes.filter((route: any) => {
     const { options } = descriptors[route.key];
-    return options.href !== null;
+    return options.href !== null && options.href !== undefined;
   });
 
   const mainTabs = visibleRoutes.slice(0, 4);
   const overflowTabs = visibleRoutes.slice(4);
+
+  console.log('CustomTabBar - Total routes:', state.routes.length);
+  console.log('CustomTabBar - Visible routes:', visibleRoutes.length);
+  console.log('CustomTabBar - Main tabs:', mainTabs.length);
+  console.log('CustomTabBar - Overflow tabs:', overflowTabs.length);
 
   return (
     <>
