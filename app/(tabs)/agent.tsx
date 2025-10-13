@@ -455,6 +455,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.Colors.cyanOrange.primary,
     marginTop: 2,
+    flexShrink: 1,
   },
   statusDot: {
     width: 8,
@@ -472,8 +473,7 @@ const styles = StyleSheet.create({
     padding: 12,
     marginRight: 10,
     alignItems: 'center',
-    minWidth: 85,
-    maxWidth: 100,
+    width: 85,
     borderWidth: 1,
     borderColor: Colors.Colors.border.muted,
   },
@@ -483,7 +483,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 4,
     textAlign: 'center',
-    flexWrap: 'wrap',
+    numberOfLines: 2,
   },
   messagesContainer: {
     flex: 1,
@@ -525,8 +525,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   messageContainer: {
-    maxWidth: '80%',
-    minWidth: 200,
+    maxWidth: '75%',
+    flexShrink: 1,
   },
   userMessage: {
     alignSelf: 'flex-end',
@@ -549,6 +549,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 4,
+    flexWrap: 'wrap',
+    gap: 4,
   },
   messageText: {
     fontSize: 14,
@@ -558,6 +560,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontStyle: 'italic',
     opacity: 0.8,
+    flexShrink: 1,
   },
   userMessageText: {
     color: Colors.Colors.text.inverse,
@@ -636,7 +639,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     marginTop: 4,
-    flexWrap: 'wrap',
   },
   toolContainer: {
     flexDirection: 'row',
