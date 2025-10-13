@@ -28,6 +28,12 @@ const Colors = {
     secondary: '#FFAA00',
     glow: '#FFD93B80',
   },
+  orange: {
+    primary: '#FF8800',
+    secondary: '#FF9933',
+    tertiary: '#FFAA66',
+    glow: '#FF880080',
+  },
   magenta: {
     primary: '#FF33CC',
     secondary: '#FF0080',

@@ -45,7 +45,7 @@ const AGENT_SPECIALIZATIONS = {
   architect: {
     name: 'System Architect',
     expertise: 'System design, scalability, microservices, cloud architecture',
-    color: Colors.Colors.orange.primary,
+    color: Colors.Colors.yellow.primary,
   },
   analyst: {
     name: 'Code Analyst',
