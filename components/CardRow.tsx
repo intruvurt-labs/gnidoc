@@ -40,7 +40,7 @@ export default function CardRow({ cards }: CardRowProps) {
     <View style={styles.container}>
       {cards.map((card, index) => (
         <TouchableOpacity
-          key={`card-${index}`}
+          key={`card-${card.title}-${index}`}
           style={[styles.card, getCardStyle(card.style)]}
           onPress={() => router.push(card.route as any)}
         >

@@ -59,7 +59,7 @@ export default function HoloBrain({ rings }: HoloBrainProps) {
 
           return (
             <View
-              key={`ring-${ring.metric}-${index}`}
+              key={`metric-ring-${ring.metric}-${index}`}
               style={[
                 styles.metricNode,
                 {
@@ -83,7 +83,7 @@ export default function HoloBrain({ rings }: HoloBrainProps) {
 
       <View style={styles.legend}>
         {rings.map((ring, index) => (
-          <View key={`legend-${ring.metric}-${index}`} style={styles.legendItem}>
+          <View key={`legend-item-${ring.metric}-${index}`} style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: ring.color }]} />
             <Text style={styles.legendText}>
               {getLabel(ring.metric)}: {ring.value}%

@@ -29,7 +29,7 @@ export default function FeatureStrip({ items }: FeatureStripProps) {
   return (
     <View style={styles.container}>
       {items.map((item, index) => (
-        <View key={`feature-${index}`} style={styles.featureItem}>
+        <View key={`feature-item-${item.icon}-${index}`} style={styles.featureItem}>
           {getIcon(item.icon)}
           <Text style={styles.featureTitle}>{item.title}</Text>
         </View>

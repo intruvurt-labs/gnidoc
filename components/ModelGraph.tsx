@@ -111,7 +111,7 @@ export default function ModelGraph({
         >
           {strategyChips.map((strategy, index) => (
             <TouchableOpacity
-              key={`strategy-${strategy}-${index}`}
+              key={`strategy-chip-${strategy}-${index}`}
               style={[
                 styles.strategyChip,
                 selectedStrategy === strategy && styles.strategyChipActive,
