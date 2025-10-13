@@ -1,16 +1,18 @@
 import { Tabs } from "expo-router";
 import { 
-  Code, 
-  Brain,
-  Monitor,
+  Home,
+  Sparkles,
   Network,
+  Rocket,
   User,
   Shield,
   BarChart3,
   Trophy,
   Crown,
   Gift,
-  Menu
+  Menu,
+  Brain,
+  Monitor
 } from "lucide-react-native";
 import React, { useState } from "react";
 import { View, TouchableOpacity, Text, StyleSheet, Platform, Modal, ScrollView } from "react-native";
@@ -175,22 +177,15 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Generator",
-          tabBarIcon: ({ color }) => <Code color={color} size={26} />,
+          title: "Home",
+          tabBarIcon: ({ color }) => <Home color={color} size={26} />,
         }}
       />
       <Tabs.Screen
         name="agent"
         options={{
-          title: "Agent",
-          tabBarIcon: ({ color }) => <Brain color={color} size={26} />,
-        }}
-      />
-      <Tabs.Screen
-        name="code"
-        options={{
-          title: "Dashboard",
-          tabBarIcon: ({ color }) => <Monitor color={color} size={26} />,
+          title: "Canvas",
+          tabBarIcon: ({ color }) => <Sparkles color={color} size={26} />,
         }}
       />
       <Tabs.Screen
@@ -198,6 +193,13 @@ export default function TabLayout() {
         options={{
           title: "Orchestrate",
           tabBarIcon: ({ color }) => <Network color={color} size={26} />,
+        }}
+      />
+      <Tabs.Screen
+        name="code"
+        options={{
+          title: "Deploy",
+          tabBarIcon: ({ color }) => <Rocket color={color} size={26} />,
         }}
       />
       <Tabs.Screen
