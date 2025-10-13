@@ -103,6 +103,10 @@ function getAgentRole(toolName?: string): AgentRole {
 export default function AgentScreen() {
   const [input, setInput] = useState<string>('');
   const agentContext = useAgent();
+  const insets = useSafeAreaInsets();
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
   const { currentProject, analyzeProject, generateCode, isAnalyzing, isGenerating } = agentContext || {
     currentProject: null,
     analyzeProject: async () => {},
@@ -110,36 +114,7 @@ export default function AgentScreen() {
     isAnalyzing: false,
     isGenerating: false,
   };
-  const insets = useSafeAreaInsets();
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true,
-    }).start();
-
-    const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1.1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    pulse.start();
-
-    return () => pulse.stop();
-  }, [pulseAnim, fadeAnim]);
-  
   const { messages, error, sendMessage } = useRorkAgent({
     tools: {
       analyzeCode: createRorkTool({
@@ -196,8 +171,33 @@ export default function AgentScreen() {
       }),
     },
   });
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulse.start();
+
+    return () => pulse.stop();
+  }, [pulseAnim, fadeAnim]);
   
-  // Initialize with welcome message if no messages exist
   React.useEffect(() => {
     if (messages.length === 0) {
       setTimeout(() => {
@@ -205,6 +205,14 @@ export default function AgentScreen() {
       }, 100);
     }
   }, [messages.length, sendMessage]);
+
+  if (!agentContext) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ color: Colors.Colors.text.primary }}>Loading Agent...</Text>
+      </View>
+    );
+  }
 
   const handleSend = async () => {
     if (input.trim()) {
