@@ -304,25 +304,27 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   tabBarContainer: {
-    backgroundColor: '#000000',
+    backgroundColor: Colors.Colors.background.card,
     borderTopColor: Colors.Colors.cyan.primary,
-    borderTopWidth: 2,
+    borderTopWidth: 1,
     paddingBottom: Platform.OS === 'ios' ? 20 : 8,
     paddingTop: 8,
   },
   tabBarContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingHorizontal: 8,
+    justifyContent: 'flex-start',
+    paddingHorizontal: 4,
+    flexWrap: 'nowrap',
   },
   tabButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    flex: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 8,
+    minWidth: 60,
+    maxWidth: 80,
     backgroundColor: 'transparent',
   },
   tabButtonActive: {

@@ -683,19 +683,19 @@ export default function LogoMenu({ onPress, onLongPress }: LogoMenuProps) {
 
 const styles = StyleSheet.create({
   logoButton: {
-    padding: 4,
+    padding: 2,
   },
   logoCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
   },
   logoSymbol: {
-    width: 60,
-    height: 60,
+    width: 48,
+    height: 48,
   },
   modalOverlay: {
     flex: 1,

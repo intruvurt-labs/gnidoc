@@ -9,13 +9,11 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useFonts } from "expo-font";
 import { Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { trpc, trpcClient } from "@/lib/trpc";
-import AnimatedMoltenBackground from "@/components/AnimatedMoltenBackground";
 import AISupportChat from "@/components/AISupportChat";
-import { useAuth } from "@/contexts/AuthContext";
 
 const AgentProvider = lazy(() => import("@/contexts/AgentContext").then(m => ({ default: m.AgentProvider })));
 const DatabaseProvider = lazy(() => import("@/contexts/DatabaseContext").then(m => ({ default: m.DatabaseProvider })));
@@ -232,12 +230,7 @@ export default function RootLayout() {
                                   <IntegrationsProvider>
                                     <ResearchProvider>
                                     <StatusBar style="light" backgroundColor={Colors.Colors.background.primary} />
-                                    <View style={{ flex: 1 }}>
-                                      <AnimatedMoltenBackground
-                                        heroBannerUri="https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/qvhbsg2l35ali5raxtus0"
-                                        textLogoUri="https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/9uyhiznsj2k9cegpqglzk"
-                                        symbolUri="https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/k95rc9dv5sso3otf9ckgb"
-                                      />
+                                    <View style={{ flex: 1, backgroundColor: Colors.Colors.background.primary }}>
                                       <RootLayoutNav />
                                       <FloatingAISupport />
                                     </View>
