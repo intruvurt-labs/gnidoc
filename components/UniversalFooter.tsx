@@ -153,7 +153,7 @@ export default function UniversalFooter() {
   });
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} pointerEvents="box-none">
       {isExpanded && (
         <Pressable
           style={styles.overlay}
@@ -169,6 +169,7 @@ export default function UniversalFooter() {
                 opacity: menuOpacity,
                 transform: [{ scale: menuScale }],
                 width: containerW,
+                marginBottom: 100 + insets.bottom,
               },
             ]}
           >
@@ -191,7 +192,6 @@ export default function UniversalFooter() {
                     accessibilityLabel={item.label}
                     accessibilityHint={`Navigate to ${item.label}`}
                     hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                    android_ripple={Platform.select({ android: { borderless: false } })}
                   >
                     <View style={[styles.menuIconContainer, active && styles.menuIconContainerActive]}>
                       <Icon
@@ -210,7 +210,7 @@ export default function UniversalFooter() {
         </Pressable>
       )}
 
-      <View style={[styles.footer, { paddingBottom: insets.bottom + 10 }]}>
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 10) }]}>
         <TouchableOpacity
           style={styles.sphereButton}
           onPress={toggleExpand}
@@ -314,6 +314,7 @@ const styles = StyleSheet.create({
   footer: {
     alignItems: 'center',
     paddingTop: 10,
+    backgroundColor: 'transparent',
   },
   sphereButton: {
     alignItems: 'center',

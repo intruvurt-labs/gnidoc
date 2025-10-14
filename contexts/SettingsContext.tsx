@@ -93,22 +93,6 @@ function deepEqual(a: unknown, b: unknown) {
   }
 }
 
-async function safeParseFromStorage<T>(
-  key: string,
-  schema: z.ZodSchema<T>,
-  fallback: T
-): Promise<T> {
-  const raw = await AsyncStorage.getItem(key);
-  if (!raw) return fallback;
-  try {
-    const parsed = JSON.parse(raw);
-    const res = schema.safeParse(parsed);
-    return res.success ? res.data : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
 /** ───────────────────────── Context ───────────────────────── */
 
 export const [SettingsProvider, useSettings] = createContextHook(() => {
@@ -156,15 +140,14 @@ export const [SettingsProvider, useSettings] = createContextHook(() => {
   /** Load once */
   const loadSettings = useCallback(async () => {
     try {
-      // atomic batch read
       const data = await batchGetItems([SETTINGS_KEY, PROFILE_KEY]);
 
       const storedSettings = await (async () => {
+        if (!data) return DEFAULT_SETTINGS;
         const v = data[SETTINGS_KEY];
         if (!v) return DEFAULT_SETTINGS;
         try {
           const parsed = typeof v === 'string' ? JSON.parse(v) : v;
-          // migration hook
           const migrated = migrateSettings(parsed);
           const res = SettingsSchema.safeParse(migrated);
           return res.success ? res.data : DEFAULT_SETTINGS;
@@ -174,11 +157,11 @@ export const [SettingsProvider, useSettings] = createContextHook(() => {
       })();
 
       const storedProfile = await (async () => {
+        if (!data) return DEFAULT_PROFILE;
         const v = data[PROFILE_KEY];
         if (!v) return DEFAULT_PROFILE;
         try {
           const parsed = typeof v === 'string' ? JSON.parse(v) : v;
-          // migration hook
           const migrated = migrateProfile(parsed);
           const res = ProfileSchema.safeParse(migrated);
           return res.success ? res.data : DEFAULT_PROFILE;
@@ -189,9 +172,11 @@ export const [SettingsProvider, useSettings] = createContextHook(() => {
 
       setSettings(storedSettings);
       setProfile(storedProfile);
-      // console.log('[SettingsContext] Settings & profile loaded');
+      console.log('[SettingsContext] Settings & profile loaded successfully');
     } catch (error) {
       console.error('[SettingsContext] Failed to load settings:', error);
+      setSettings(DEFAULT_SETTINGS);
+      setProfile(DEFAULT_PROFILE);
     } finally {
       setIsLoading(false);
     }
