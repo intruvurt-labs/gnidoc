@@ -358,47 +358,152 @@ export async function pushToGitHub(
   console.log('[GitHub] Successfully pushed files to repository');
 }
 
+type FileSpec =
+  | { path: string; contentText: string }
+  | { path: string; contentBase64: string }
+  | { path: string; contentBytes: Uint8Array | ArrayBufferLike };
+
+type UpsertResult = { path: string; status: 'created' | 'updated'; sha: string; html_url: string };
+
+function encodePath(path: string): string {
+  return path.split('/').map(encodeURIComponent).join('/');
+}
+
+function toBase64(input: FileSpec): string {
+  if ('contentBase64' in input) return input.contentBase64;
+  if ('contentText' in input) {
+    if (typeof btoa === 'function') {
+      return btoa(unescape(encodeURIComponent(input.contentText)));
+    }
+    const { Buffer } = require('buffer');
+    return Buffer.from(input.contentText, 'utf8').toString('base64');
+  }
+  const bytes = input.contentBytes instanceof Uint8Array
+    ? input.contentBytes
+    : new Uint8Array(input.contentBytes as ArrayBufferLike);
+  if (typeof btoa === 'function') {
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+  }
+  const { Buffer } = require('buffer');
+  return Buffer.from(bytes).toString('base64');
+}
+
+async function withRetry<T>(fn: () => Promise<T>, label: string, max = 3): Promise<T> {
+  let attempt = 0;
+  let lastErr: any;
+  while (attempt < max) {
+    try {
+      return await fn();
+    } catch (e: any) {
+      lastErr = e;
+      attempt++;
+      const retryAfter = Number(e?.retryAfter || 0);
+      const delay = retryAfter > 0 ? retryAfter * 1000 : 400 * Math.pow(2, attempt);
+      if (attempt >= max) break;
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+  throw new Error(`${label} failed after ${max} attempts: ${lastErr?.message || lastErr}`);
+}
+
+async function fetchJson(url: string, init: RequestInit) {
+  const res = await fetch(url, init);
+  if (!res.ok) {
+    let detail = '';
+    try { detail = JSON.stringify(await res.json()); } catch {}
+    const err: any = new Error(`${init.method || 'GET'} ${url} -> ${res.status} ${res.statusText} ${detail}`);
+    const ra = res.headers.get('Retry-After');
+    if (ra) err.retryAfter = ra;
+    throw err;
+  }
+  return res.json();
+}
+
 export async function upsertFilesViaContentsAPI(
   accessToken: string,
   owner: string,
   repo: string,
-  files: { path: string; content: string }[],
+  files: FileSpec[],
   message = 'Update from AI App Generator',
-  branch = 'main'
-) {
-  for (const f of files) {
-    const head = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(f.path)}?ref=${branch}`,
-      { headers: { Authorization: `Bearer ${accessToken}`, 'User-Agent': 'aiappgen/1.0', Accept: 'application/vnd.github.v3+json' } }
-    );
+  branch = 'main',
+  committer?: { name: string; email: string },
+  author?: { name: string; email: string },
+  concurrency = 4
+): Promise<UpsertResult[]> {
+  const base = `https://api.github.com/repos/${owner}/${repo}`;
+  const headers = {
+    Authorization: `Bearer ${accessToken}`,
+    'User-Agent': 'aiappgen/1.0',
+    Accept: 'application/vnd.github.v3+json',
+    'Content-Type': 'application/json',
+  } as const;
+
+  async function upsertOne(f: FileSpec): Promise<UpsertResult> {
+    const path = 'path' in f ? f.path : (f as any).path;
+    const urlPath = encodePath(path);
+
     let sha: string | undefined;
-    if (head.ok) {
-      const j = await head.json();
-      sha = j.sha;
+    await withRetry(async () => {
+      const headRes = await fetch(`${base}/contents/${urlPath}?ref=${encodeURIComponent(branch)}`, { headers });
+      if (headRes.status === 404) { sha = undefined; return; }
+      if (!headRes.ok) {
+        const errJson = await headRes.json().catch(() => ({}));
+        const err: any = new Error(`HEAD ${path} -> ${headRes.status} ${headRes.statusText} ${JSON.stringify(errJson)}`);
+        const ra = headRes.headers.get('Retry-After'); if (ra) err.retryAfter = ra;
+        throw err;
+      }
+      const meta = await headRes.json();
+      sha = meta.sha;
+    }, `read ${path}`);
+
+    const base64 = toBase64(f);
+    const approxBytes = Math.ceil(base64.length * 0.75);
+    if (approxBytes > 950_000) {
+      throw new Error(`File too large for Contents API (~1MB): ${path} (${approxBytes} bytes). Use git tree API or LFS.`);
     }
 
-    const res = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(f.path)}`,
-      {
-        method: 'PUT',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'User-Agent': 'aiappgen/1.0',
-          Accept: 'application/vnd.github.v3+json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message,
-          content: Buffer.from(f.content, 'utf8').toString('base64'),
-          branch,
-          sha,
-        }),
+    const body = JSON.stringify({
+      message,
+      content: base64,
+      branch,
+      ...(sha ? { sha } : {}),
+      ...(committer ? { committer } : {}),
+      ...(author ? { author } : {}),
+    });
+
+    const res = await withRetry(async () =>
+      fetchJson(`${base}/contents/${urlPath}`, { method: 'PUT', headers, body })
+    , `upsert ${path}`);
+
+    const status: 'created' | 'updated' = sha ? 'updated' : 'created';
+    return {
+      path,
+      status,
+      sha: res.content?.sha || res.commit?.sha,
+      html_url: res.content?.html_url || `${base.replace('api.github.com/repos', 'github.com')}/blob/${branch}/${urlPath}`,
+    };
+  }
+
+  const results: UpsertResult[] = [];
+  let i = 0;
+  async function worker() {
+    while (i < files.length) {
+      const idx = i++;
+      try {
+        results[idx] = await upsertOne(files[idx]);
+      } catch (e: any) {
+        if (String(e?.message || '').includes('409')) {
+          const retried = await upsertOne(files[idx]);
+          results[idx] = retried;
+        } else {
+          throw e;
+        }
       }
-    );
-    if (!res.ok) {
-      let detail = '';
-      try { detail = JSON.stringify(await res.json()); } catch {}
-      throw new Error(`Failed to upsert ${f.path}: ${res.status} ${res.statusText} ${detail}`);
     }
   }
+  const workers = Array.from({ length: Math.min(concurrency, files.length) }, () => worker());
+  await Promise.all(workers);
+  return results;
 }
