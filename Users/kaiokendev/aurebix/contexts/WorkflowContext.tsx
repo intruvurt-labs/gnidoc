@@ -59,10 +59,25 @@ export type WorkflowConnection = z.infer<typeof WorkflowConnectionSchema>;
 export type Workflow = z.infer<typeof WorkflowSchema>;
 export type WorkflowExecution = z.infer<typeof WorkflowExecutionSchema>;
 
+export interface ExecuteOptions {
+  signal?: AbortSignal;
+  maxConcurrency?: number;
+}
+
+interface WorkflowLog {
+  id: string;
+  nodeId: string;
+  timestamp: Date;
+  level: 'info' | 'warning' | 'error' | 'success';
+  message: string;
+  data?: any;
+}
+
 const SCHEMA_VERSION = 1;
 const STORAGE_KEY = `gnidoc-workflows:v${SCHEMA_VERSION}`;
 const EXECUTIONS_KEY = `gnidoc-workflow-executions:v${SCHEMA_VERSION}`;
 const MAX_EXECS = 100;
+const MAX_CODE_LENGTH = 8_192;
 
 function reviveDates(key: string, value: any) {
   if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
@@ -91,7 +106,7 @@ interface WorkflowContextType {
   createWorkflow: (workflow: Omit<Workflow, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateWorkflow: (id: string, updates: Partial<Workflow>) => Promise<void>;
   deleteWorkflow: (id: string) => Promise<void>;
-  executeWorkflow: (id: string) => Promise<void>;
+  executeWorkflow: (id: string, opts?: ExecuteOptions) => Promise<void>;
   loadWorkflows: () => Promise<void>;
 }
 
@@ -173,11 +188,18 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
   }, [workflows, saveWorkflows]);
 
   const updateWorkflow = useCallback(async (id: string, updates: Partial<Workflow>) => {
-    const updated = workflows.map(w => 
-      w.id === id 
-        ? WorkflowSchema.parse({ ...w, ...updates, updatedAt: new Date() })
-        : w
-    );
+    const updated = workflows.map(w => {
+      if (w.id !== id) return w;
+      const next = { ...w, ...updates, updatedAt: new Date() };
+      const ids = new Set(next.nodes.map(n => n.id));
+      if (ids.size !== next.nodes.length) throw new Error('Duplicate node IDs are not allowed');
+      next.connections.forEach(c => {
+        if (!ids.has(c.source) || !ids.has(c.target)) {
+          throw new Error(`Invalid connection ${c.id} (${c.source}->${c.target})`);
+        }
+      });
+      return WorkflowSchema.parse(next);
+    });
     await saveWorkflows(updated);
     if (currentWorkflow?.id === id) {
       const updatedCurrent = updated.find(w => w.id === id);
@@ -193,7 +215,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     }
   }, [workflows, currentWorkflow, saveWorkflows]);
 
-  const executeWorkflow = useCallback(async (id: string) => {
+  const executeWorkflow = useCallback(async (id: string, opts: ExecuteOptions = {}) => {
     const workflow = workflows.find(w => w.id === id);
     if (!workflow) {
       console.error('[WorkflowContext] Workflow not found:', id);
@@ -215,22 +237,53 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     try {
       console.log(`[WorkflowContext] Executing workflow: ${workflow.name}`);
       
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const sortedNodes = topologicalSort(workflow.nodes, workflow.connections);
+      const context: Record<string, any> = {};
+      const logs: WorkflowLog[] = [];
+
+      for (const node of sortedNodes) {
+        if (opts.signal?.aborted) {
+          throw new Error('Execution cancelled by user');
+        }
+
+        const logEntry: WorkflowLog = {
+          id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          nodeId: node.id,
+          timestamp: new Date(),
+          level: 'info',
+          message: `Executing node: ${node.label}`,
+        };
+        logs.push(logEntry);
+
+        try {
+          const result = await executeNodeReal(node, context, { signal: opts.signal });
+          context[node.id] = result;
+          logs.push({
+            id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            nodeId: node.id,
+            timestamp: new Date(),
+            level: 'success',
+            message: `Node completed: ${node.label}`,
+            data: result,
+          });
+        } catch (nodeError) {
+          logs.push({
+            id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            nodeId: node.id,
+            timestamp: new Date(),
+            level: 'error',
+            message: nodeError instanceof Error ? nodeError.message : 'Node execution failed',
+          });
+          throw nodeError;
+        }
+      }
 
       const completedExecution: WorkflowExecution = {
         ...validated,
         status: 'completed',
         endTime: new Date(),
-        logs: [
-          {
-            id: `log_${Date.now()}`,
-            nodeId: workflow.nodes[0]?.id ?? 'unknown',
-            timestamp: new Date(),
-            level: 'success',
-            message: 'Workflow completed successfully',
-          }
-        ],
-        results: { success: true },
+        logs,
+        results: context,
       };
 
       const completedValidated = WorkflowExecutionSchema.parse(completedExecution);
@@ -247,6 +300,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         status: 'failed',
         endTime: new Date(),
         logs: [
+          ...validated.logs,
           {
             id: `log_${Date.now()}`,
             nodeId: workflow.nodes[0]?.id ?? 'unknown',
@@ -285,6 +339,134 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       {children}
     </WorkflowContext.Provider>
   );
+}
+
+function guardSource(src: string, label: string) {
+  if (src.length > MAX_CODE_LENGTH) throw new Error(`${label} too large`);
+}
+
+function topologicalSort(nodes: WorkflowNode[], connections: WorkflowConnection[]): WorkflowNode[] {
+  const graph = new Map<string, string[]>();
+  const inDegree = new Map<string, number>();
+  const nodeIds = new Set(nodes.map(n => n.id));
+
+  for (const c of connections) {
+    if (!nodeIds.has(c.source) || !nodeIds.has(c.target)) {
+      throw new Error(`Invalid connection "${c.id}": ${c.source} -> ${c.target} references missing node(s).`);
+    }
+  }
+
+  nodes.forEach((node) => {
+    graph.set(node.id, []);
+    inDegree.set(node.id, 0);
+  });
+
+  connections.forEach((conn) => {
+    graph.get(conn.source)?.push(conn.target);
+    inDegree.set(conn.target, (inDegree.get(conn.target) || 0) + 1);
+  });
+
+  const queue: string[] = [];
+  inDegree.forEach((degree, nodeId) => {
+    if (degree === 0) queue.push(nodeId);
+  });
+
+  const sorted: string[] = [];
+  while (queue.length > 0) {
+    const nodeId = queue.shift()!;
+    sorted.push(nodeId);
+
+    graph.get(nodeId)?.forEach((neighbor) => {
+      const newDegree = (inDegree.get(neighbor) || 0) - 1;
+      inDegree.set(neighbor, newDegree);
+      if (newDegree === 0) queue.push(neighbor);
+    });
+  }
+
+  if (sorted.length !== nodes.length) {
+    const remaining = [...nodeIds].filter(id => !sorted.includes(id));
+    throw new Error(`Workflow contains a cycle or unreachable nodes. Offending node(s): ${remaining.join(', ')}`);
+  }
+  return sorted.map((id) => nodes.find((n) => n.id === id)!).filter(Boolean);
+}
+
+async function executeNodeReal(
+  node: WorkflowNode,
+  context: Record<string, any>,
+  opts: { signal?: AbortSignal } = {}
+): Promise<any> {
+  switch (node.type) {
+    case 'trigger':
+      return { triggered: true, timestamp: new Date() };
+
+    case 'action':
+      return { action: node.data.action || 'default', executed: true };
+
+    case 'code': {
+      const code = String(node.data.code || '');
+      const allow = Boolean(node.data.allowExecution === true);
+      if (!allow) throw new Error('Code node blocked (allowExecution=false).');
+      guardSource(code, 'Code');
+      if (opts.signal?.aborted) throw new Error('Execution cancelled');
+
+      const fn = new Function('ctx', 'signal', code);
+      const res = await Promise.resolve(fn(context, opts.signal));
+      return res;
+    }
+
+    case 'condition': {
+      const expr = String(node.data.condition ?? 'true');
+      guardSource(expr, 'Condition');
+      const fn = new Function('ctx', `return !!(${expr});`);
+      const passed = !!fn(context);
+      return { condition: expr, passed };
+    }
+
+    case 'transform': {
+      const expr = String(node.data.transform ?? 'ctx');
+      guardSource(expr, 'Transform');
+      const fn = new Function('ctx', `return (${expr});`);
+      return fn(context);
+    }
+
+    case 'api': {
+      const url: string = node.data.url;
+      if (!url) throw new Error('API node requires a URL');
+      const method = (node.data.method || 'GET').toUpperCase();
+      const headers: Record<string, string> = node.data.headers || {};
+      const bodyData = node.data.body;
+      const timeout = Number(node.data.timeout) || 30000;
+
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), timeout);
+
+      try {
+        const res = await fetch(url, {
+          method,
+          headers,
+          body: method === 'GET' || method === 'HEAD' ? undefined : JSON.stringify(bodyData),
+          signal: controller.signal,
+        });
+        const data = await res.json();
+        return { status: res.status, data };
+      } finally {
+        clearTimeout(t);
+        if (opts.signal?.aborted) throw new Error('Execution cancelled');
+      }
+    }
+
+    case 'database':
+      return { query: node.data.query || 'SELECT 1', result: [] };
+
+    case 'ai-agent':
+      return { agent: node.data.agent || 'default', response: 'AI response' };
+
+    case 'weather':
+      return { weather: 'sunny', temp: 72 };
+
+    default:
+      throw new Error(`Unknown node type: ${(node as any).type}`);
+  }
 }
 
 export function useWorkflow() {
