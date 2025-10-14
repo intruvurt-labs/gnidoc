@@ -1,4 +1,6 @@
 // batcher.ts
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 type BatchRequest<T> = {
   resolve: (value: T) => void;
   reject: (error: Error) => void;
@@ -83,3 +85,23 @@ export abstract class KeyedRequestBatcher<T> {
     }
   }
 }
+
+class StorageBatcher extends KeyedRequestBatcher<string | null> {
+  protected async executeBatch(keys: string[]): Promise<Map<string, string | null>> {
+    const results = new Map<string, string | null>();
+    
+    try {
+      const pairs = await AsyncStorage.multiGet(keys);
+      for (const [key, value] of pairs) {
+        results.set(key, value);
+      }
+    } catch (error) {
+      console.error('[StorageBatcher] multiGet failed:', error);
+      throw error;
+    }
+    
+    return results;
+  }
+}
+
+export const storageBatcher = new StorageBatcher(50, 10);
