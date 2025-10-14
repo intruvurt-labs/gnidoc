@@ -476,3 +476,7 @@ export function useWorkflow() {
   }
   return context;
 }
+
+export const getWorkflowById = (wfs: Workflow[], id: string) => wfs.find(w => w.id === id) ?? null;
+export const getExecutionsFor = (execs: WorkflowExecution[], id: string) =>
+  execs.filter(e => e.workflowId === id).sort((a,b)=> +b.startTime - +a.startTime);
