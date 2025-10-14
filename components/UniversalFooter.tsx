@@ -152,8 +152,10 @@ export default function UniversalFooter() {
     outputRange: [0.8, 1],
   });
 
+  const footerHeight = 80 + Math.max(insets.bottom, 10);
+
   return (
-    <View style={styles.container} pointerEvents="box-none">
+    <View style={[styles.container, { height: footerHeight }]} pointerEvents="box-none">
       {isExpanded && (
         <Pressable
           style={styles.overlay}
@@ -253,6 +255,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 1000,
+    pointerEvents: 'box-none',
   },
   overlay: {
     position: 'absolute',
