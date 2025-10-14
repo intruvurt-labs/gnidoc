@@ -141,7 +141,7 @@ export default function HomeScreen() {
               onPress={() => router.push('/(tabs)/agent' as any)}
             >
               <Image
-                source={require('@/assets/images/agent25.PNG')}
+                source={require('@/assets/images/multi-agent.PNG')}
                 style={styles.quickActionImage}
                 resizeMode="contain"
               />
