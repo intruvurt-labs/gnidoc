@@ -1,5 +1,6 @@
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
+import * as Crypto from 'expo-crypto';
 import { Platform } from 'react-native';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -10,6 +11,14 @@ const discovery = {
   authorizationEndpoint: 'https://github.com/login/oauth/authorize',
   tokenEndpoint: 'https://github.com/login/oauth/access_token',
 };
+
+function base64URLEncode(input: string | Uint8Array): string {
+  const str = typeof input === 'string' ? input : String.fromCharCode(...input);
+  return btoa(str)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
 
 export interface GitHubUser {
   id: number;
@@ -124,7 +133,10 @@ export async function authenticateWithGitHub(): Promise<GitHubAuthResult> {
   console.log('[GitHub OAuth] Redirect URI:', redirectUri);
   console.log('[GitHub OAuth] Platform:', Platform.OS);
 
+  await WebBrowser.warmUpAsync().catch(() => {});
+
   let authUrl: string;
+  let codeVerifier: string | undefined;
   
   if (Platform.OS === 'web') {
     try {
@@ -140,10 +152,30 @@ export async function authenticateWithGitHub(): Promise<GitHubAuthResult> {
     if (!GITHUB_CLIENT_ID) {
       throw new Error('GitHub Client ID not configured. Please set EXPO_PUBLIC_GITHUB_CLIENT_ID in your .env file.');
     }
-    authUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=read:user%20user:email%20repo`;
+
+    const state = Math.random().toString(36).slice(2);
+    codeVerifier = base64URLEncode(Crypto.getRandomBytes(32));
+    const challengeBuffer = await Crypto.digestStringAsync(
+      Crypto.CryptoDigestAlgorithm.SHA256,
+      codeVerifier,
+      { encoding: Crypto.CryptoEncoding.BASE64 }
+    );
+    const codeChallenge = base64URLEncode(challengeBuffer);
+
+    const params = new URLSearchParams({
+      client_id: GITHUB_CLIENT_ID,
+      redirect_uri: redirectUri,
+      scope: 'read:user user:email public_repo',
+      state,
+      code_challenge: codeChallenge,
+      code_challenge_method: 'S256',
+    });
+
+    authUrl = `https://github.com/login/oauth/authorize?${params.toString()}`;
   }
 
   const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+  await WebBrowser.coolDownAsync().catch(() => {});
 
   if (result.type !== 'success') {
     throw new Error('GitHub authentication was cancelled or failed');
@@ -173,7 +205,10 @@ export async function authenticateWithGitHub(): Promise<GitHubAuthResult> {
       throw new Error('Failed to complete GitHub authentication. Please try again.');
     }
   } else {
-    accessToken = await exchangeCodeForToken(code);
+    if (!codeVerifier) {
+      throw new Error('Missing PKCE code_verifier. This should not happen.');
+    }
+    accessToken = await exchangeCodeForTokenPKCE({ code, redirectUri, codeVerifier });
     user = await fetchGitHubUser(accessToken);
   }
 
