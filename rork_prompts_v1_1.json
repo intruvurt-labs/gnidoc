@@ -1,0 +1,89 @@
+{
+  "app": {
+    "name": "Aurebix",
+    "version": "1.1.0",
+    "navigation": {
+      "footer": [
+        { "name": "home", "label": "Home", "route": "/", "icon": "Home" },
+        { "name": "dashboard", "label": "Dashboard", "route": "/dashboard", "icon": "BarChart3" },
+        { "name": "agent", "label": "Agent", "route": "/agent", "icon": "Bot" },
+        { "name": "workflow", "label": "Workflow", "route": "/workflow", "icon": "Workflow" }
+      ],
+      "logoRadial": [
+        { "name": "orchestration", "label": "Orchestration", "route": "/orchestration", "icon": "Network" },
+        { "name": "research", "label": "Research", "route": "/research", "icon": "Sparkles" },
+        { "name": "database", "label": "Database", "route": "/database", "icon": "Database" },
+        { "name": "code", "label": "Code", "route": "/code", "icon": "Code" }
+      ],
+      "overflow": [
+        { "name": "terminal", "label": "Terminal", "route": "/terminal", "icon": "Terminal" },
+        { "name": "deploy", "label": "Deploy", "route": "/deploy", "icon": "Rocket" },
+        { "name": "security", "label": "Security", "route": "/security", "icon": "Shield" },
+        { "name": "integrations", "label": "Integrations", "route": "/integrations", "icon": "Zap" },
+        { "name": "analysis", "label": "Analysis", "route": "/analysis", "icon": "TrendingUp" },
+        { "name": "leaderboard", "label": "Leaderboard", "route": "/leaderboard", "icon": "Users" },
+        { "name": "referrals", "label": "Referrals", "route": "/referrals", "icon": "Gift" },
+        { "name": "themes", "label": "Themes", "route": "/themes", "icon": "Palette" },
+        { "name": "ai-models", "label": "AI Models", "route": "/ai-models", "icon": "Brain" },
+        { "name": "api-keys", "label": "API Keys", "route": "/api-keys", "icon": "Key" },
+        { "name": "subscription", "label": "Subscription", "route": "/subscription", "icon": "CreditCard" },
+        { "name": "preferences", "label": "Preferences", "route": "/preferences", "icon": "Settings" }
+      ]
+    },
+    "quickActions": [
+      {
+        "name": "deploy",
+        "label": "Deploy",
+        "route": "/deploy",
+        "asset": "assets/images/deploy.png"
+      },
+      {
+        "name": "orchestrate",
+        "label": "Orchestrate",
+        "route": "/orchestration",
+        "asset": "assets/images/quickicon-orchestrate.png"
+      },
+      {
+        "name": "generate",
+        "label": "Generate",
+        "route": "/app-generator",
+        "asset": "assets/images/generate app.png"
+      },
+      {
+        "name": "dashboard",
+        "label": "Dashboard",
+        "route": "/dashboard",
+        "asset": "assets/images/dashboard.png"
+      }
+    ],
+    "assets": {
+      "logo": "assets/images/simplelogo.png",
+      "favicon": "assets/images/favicon.png",
+      "splash": "assets/images/sphere.png",
+      "adaptiveIcon": "assets/images/simplelogo.png"
+    },
+    "persistence": {
+      "storageLib": "@react-native-async-storage/async-storage",
+      "keys": [
+        "settings.notifications",
+        "settings.weeklyDigest",
+        "settings.showTooltips",
+        "session.accessToken",
+        "theme.currentPalette",
+        "onboarding_completed"
+      ]
+    },
+    "theme": {
+      "background": "matrix_grid",
+      "paletteRotation": {
+        "/": ["#00FFFF", "#A200FF"],
+        "/agent": ["#00FFFF", "#B3FF00"],
+        "/orchestration": ["#00FFFF", "#FF004C"],
+        "/deploy": ["#B3FF00", "#FF33CC"],
+        "/themes": ["#00FFFF", "#FF004C"],
+        "/database": ["#00FFFF", "#B3FF00"],
+        "/dashboard": ["#B3FF00", "#FFD93B"]
+      }
+    }
+  }
+}
