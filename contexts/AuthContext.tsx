@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { trpcClient } from '@/lib/trpc';
 import { batchSetItems, batchGetItems } from '@/lib/storage';
-import { requestCache } from '@/lib/batch-requests';
 
 export interface User {
   id: string;
@@ -38,9 +37,7 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
   const loadAuthState = useCallback(async () => {
     try {
-      const data = await requestCache.get('auth-state', async () => {
-        return await batchGetItems([STORAGE_KEYS.USER, STORAGE_KEYS.TOKEN]);
-      }) as Record<string, any>;
+      const data = await batchGetItems([STORAGE_KEYS.USER, STORAGE_KEYS.TOKEN]);
 
       const storedUser = data[STORAGE_KEYS.USER];
       const storedToken = data[STORAGE_KEYS.TOKEN] as string | null;
@@ -98,7 +95,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         isLoading: false,
       });
 
-      requestCache.clear();
       console.log('[AuthContext] Login successful');
       return { success: true, user: response.user };
     } catch (error) {
@@ -143,7 +139,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         isLoading: false,
       });
 
-      requestCache.clear();
       console.log('[AuthContext] Signup successful');
       return { success: true, user: response.user };
     } catch (error) {
@@ -185,7 +180,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           isLoading: false,
         });
 
-        requestCache.clear();
         console.log(`[AuthContext] GitHub OAuth successful:`, user.name);
         return { success: true, user };
       } else {
@@ -214,7 +208,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
           isLoading: false,
         });
 
-        requestCache.clear();
         console.log(`[AuthContext] OAuth login successful with ${provider}`);
         return { success: true, user: mockUser };
       }
@@ -238,7 +231,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
         isLoading: false,
       });
 
-      requestCache.clear();
       console.log('[AuthContext] Logout successful');
     } catch (error) {
       console.error('[AuthContext] Logout failed:', error);
@@ -261,7 +253,6 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
       await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser));
 
-      requestCache.clear();
       console.log('[AuthContext] Profile updated:', updates);
       return { success: true, user: updatedUser };
     } catch (error) {
