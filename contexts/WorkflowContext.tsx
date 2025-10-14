@@ -398,6 +398,13 @@ function logLine(
 function topologicalSort(nodes: WorkflowNode[], connections: WorkflowConnection[]): WorkflowNode[] {
   const graph = new Map<string, string[]>();
   const inDegree = new Map<string, number>();
+  const nodeIds = new Set(nodes.map(n => n.id));
+
+  for (const c of connections) {
+    if (!nodeIds.has(c.source) || !nodeIds.has(c.target)) {
+      throw new Error(`Invalid connection "${c.id}": ${c.source} -> ${c.target} references missing node(s).`);
+    }
+  }
 
   nodes.forEach((node) => {
     graph.set(node.id, []);
@@ -426,6 +433,10 @@ function topologicalSort(nodes: WorkflowNode[], connections: WorkflowConnection[
     });
   }
 
+  if (sorted.length !== nodes.length) {
+    const remaining = [...nodeIds].filter(id => !sorted.includes(id));
+    throw new Error(`Workflow contains a cycle or unreachable nodes. Offending node(s): ${remaining.join(', ')}`);
+  }
   return sorted.map((id) => nodes.find((n) => n.id === id)!).filter(Boolean);
 }
 
