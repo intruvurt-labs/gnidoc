@@ -1,6 +1,7 @@
 import createContextHook from '@nkzw/create-context-hook';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Animated } from 'react-native';
 import Colors from '@/constants/colors';
 
 export interface Theme {
@@ -137,6 +138,28 @@ export const [ThemeProvider, useTheme] = createContextHook(() => {
     }
   }, []);
 
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const speed = settings.pulseSpeed / 50;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.15,
+          duration: 1000 / speed,
+          useNativeDriver: false,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1000 / speed,
+          useNativeDriver: false,
+        }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [settings.pulseSpeed, pulseAnim]);
+
   return useMemo(
     () => ({
       settings,
@@ -144,7 +167,29 @@ export const [ThemeProvider, useTheme] = createContextHook(() => {
       currentTheme,
       isLoading,
       resetTheme,
+      pulse: pulseAnim,
+      primary: currentTheme.colors.primary,
+      secondary: currentTheme.colors.secondary,
+      accent: currentTheme.colors.accent,
+      background: currentTheme.colors.background,
+      card: currentTheme.colors.card,
+      text: currentTheme.colors.text,
+      border: currentTheme.colors.border,
     }),
-    [settings, setSettings, currentTheme, isLoading, resetTheme]
+    [settings, setSettings, currentTheme, isLoading, resetTheme, pulseAnim]
   );
 });
+
+export function useGlowStyle() {
+  const { settings, currentTheme } = useTheme();
+  return useMemo(() => {
+    const intensity = settings.glowIntensity / 100;
+    return {
+      shadowColor: currentTheme.colors.primary,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.5 * intensity,
+      shadowRadius: 18 * intensity,
+      elevation: 8 * intensity,
+    };
+  }, [settings.glowIntensity, currentTheme.colors.primary]);
+}
