@@ -1,47 +1,44 @@
+// batcher.ts
 type BatchRequest<T> = {
   resolve: (value: T) => void;
   reject: (error: Error) => void;
   key: string;
 };
 
-class RequestBatcher<T> {
+export abstract class KeyedRequestBatcher<T> {
   private queue: Map<string, BatchRequest<T>[]> = new Map();
   private timeoutId: ReturnType<typeof setTimeout> | null = null;
-  private readonly batchDelay: number;
-  private readonly maxBatchSize: number;
 
-  constructor(batchDelay: number = 50, maxBatchSize: number = 10) {
-    this.batchDelay = batchDelay;
-    this.maxBatchSize = maxBatchSize;
-  }
+  constructor(
+    private readonly batchDelay: number = 50,
+    private readonly maxBatchSize: number = 10
+  ) {}
 
-  add(key: string, executor: () => Promise<T>): Promise<T> {
-    return new Promise((resolve, reject) => {
-      const existing = this.queue.get(key);
-      
-      if (existing) {
-        existing.push({ resolve, reject, key });
-        return;
+  /** Public API */
+  get(key: string): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const list = this.queue.get(key);
+      const entry = { resolve, reject, key };
+      if (list) {
+        list.push(entry);
+      } else {
+        this.queue.set(key, [entry]);
       }
 
-      this.queue.set(key, [{ resolve, reject, key }]);
-
       if (this.queue.size >= this.maxBatchSize) {
-        this.flush();
+        this.flush(); // flush immediately when too many unique keys queued
       } else {
         this.scheduleFlush();
       }
     });
   }
 
-  private scheduleFlush(): void {
-    if (this.timeoutId) {
-      clearTimeout(this.timeoutId);
-    }
+  /** Subclasses implement a true batched call */
+  protected abstract executeBatch(keys: string[]): Promise<Map<string, T>>;
 
-    this.timeoutId = setTimeout(() => {
-      this.flush();
-    }, this.batchDelay);
+  private scheduleFlush(): void {
+    if (this.timeoutId) clearTimeout(this.timeoutId);
+    this.timeoutId = setTimeout(() => this.flush(), this.batchDelay);
   }
 
   private async flush(): Promise<void> {
@@ -49,78 +46,40 @@ class RequestBatcher<T> {
       clearTimeout(this.timeoutId);
       this.timeoutId = null;
     }
+    if (this.queue.size === 0) return;
 
-    const currentQueue = new Map(this.queue);
-    this.queue.clear();
-
-    for (const [key, requests] of currentQueue) {
-      console.log(`[RequestBatcher] Processing batch for key: ${key}, size: ${requests.length}`);
-      
-      try {
-        const result = await this.executeBatch(key);
-        requests.forEach(req => req.resolve(result));
-      } catch (error) {
-        const err = error instanceof Error ? error : new Error('Batch request failed');
-        requests.forEach(req => req.reject(err));
-      }
+    // Drain up to maxBatchSize unique keys for this flush
+    const keys: string[] = [];
+    const batchRequests = new Map<string, BatchRequest<T>[]>();
+    for (const [key, requests] of this.queue) {
+      keys.push(key);
+      batchRequests.set(key, requests);
+      this.queue.delete(key);
+      if (keys.length >= this.maxBatchSize) break;
     }
-  }
-
-  protected async executeBatch(key: string): Promise<T> {
-    throw new Error('executeBatch must be implemented by subclass');
-  }
-}
-
-export class AsyncStorageBatcher extends RequestBatcher<string | null> {
-  protected async executeBatch(key: string): Promise<string | null> {
-    const AsyncStorage = await import('@react-native-async-storage/async-storage').then(m => m.default);
-    return AsyncStorage.getItem(key);
-  }
-}
-
-export class DeduplicatedRequestCache<T> {
-  private cache: Map<string, Promise<T>> = new Map();
-  private ttl: number;
-
-  constructor(ttl: number = 5000) {
-    this.ttl = ttl;
-  }
-
-  async get(key: string, fetcher: () => Promise<T>): Promise<T> {
-    const cached = this.cache.get(key);
-    
-    if (cached) {
-      console.log(`[DeduplicatedCache] Cache hit for key: ${key}`);
-      return cached;
-    }
-
-    console.log(`[DeduplicatedCache] Cache miss for key: ${key}, fetching...`);
-    const promise = fetcher();
-    this.cache.set(key, promise);
-
-    setTimeout(() => {
-      this.cache.delete(key);
-      console.log(`[DeduplicatedCache] Expired cache for key: ${key}`);
-    }, this.ttl);
 
     try {
-      const result = await promise;
-      return result;
-    } catch (error) {
-      this.cache.delete(key);
-      throw error;
+      const results = await this.executeBatch(keys); // Map<key, value>
+      for (const key of keys) {
+        const value = results.get(key);
+        const reqs = batchRequests.get(key) || [];
+        if (value !== undefined) {
+          reqs.forEach(r => r.resolve(value));
+        } else {
+          const err = new Error(`Missing value for key "${key}" in batched result`);
+          reqs.forEach(r => r.reject(err));
+        }
+      }
+    } catch (e) {
+      const err = e instanceof Error ? e : new Error('Batch request failed');
+      for (const key of keys) {
+        (batchRequests.get(key) || []).forEach(r => r.reject(err));
+      }
+    }
+
+    // If there are still items left (more than maxBatchSize were queued), schedule another flush tick quickly
+    if (this.queue.size > 0) {
+      this.scheduleFlush();
     }
   }
-
-  clear(): void {
-    this.cache.clear();
-    console.log('[DeduplicatedCache] Cache cleared');
-  }
-
-  has(key: string): boolean {
-    return this.cache.has(key);
-  }
 }
-
-export const storageBatcher = new AsyncStorageBatcher(100, 20);
-export const requestCache = new DeduplicatedRequestCache(10000);
