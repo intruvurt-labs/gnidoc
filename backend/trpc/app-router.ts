@@ -26,6 +26,9 @@ import { createProjectProcedure } from "./routes/projects/create/route";
 import { gitInitProcedure } from "./routes/projects/git-init/route";
 import { exportZipProcedure } from "./routes/projects/export-zip/route";
 import { getFileUrlProcedure } from "./routes/files/get-url/route";
+import { checkCodeProcedure } from "./routes/policy/check-code/route";
+import { manualFlagProcedure } from "./routes/policy/manual-flag/route";
+import { awardCreditsProcedure } from "./routes/policy/award-credits/route";
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -75,6 +78,11 @@ export const appRouter = createTRPCRouter({
   }),
   files: createTRPCRouter({
     getUrl: getFileUrlProcedure,
+  }),
+  policy: createTRPCRouter({
+    checkCode: checkCodeProcedure,
+    manualFlag: manualFlagProcedure,
+    awardCredits: awardCreditsProcedure,
   }),
 });
 

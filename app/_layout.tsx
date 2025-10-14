@@ -32,6 +32,7 @@ const PreferencesProvider = lazy(() => import("@/contexts/PreferencesContext").t
 const SecurityProvider = lazy(() => import("@/contexts/SecurityContext").then(m => ({ default: m.SecurityProvider })));
 const GamificationProvider = lazy(() => import("@/contexts/GamificationContext").then(m => ({ default: m.GamificationProvider })));
 const SubscriptionProvider = lazy(() => import("@/contexts/SubscriptionContext").then(m => ({ default: m.SubscriptionProvider })));
+const PolicyProvider = lazy(() => import("@/contexts/PolicyContext").then(m => ({ default: m.PolicyProvider })));
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -176,6 +177,13 @@ function RootLayoutNav() {
           headerShown: false,
         }} 
       />
+      <Stack.Screen 
+        name="policy" 
+        options={{ 
+          headerTitle: "No Mock/Demo Policy",
+          headerShown: false,
+        }} 
+      />
     </Stack>
   );
 }
@@ -270,6 +278,7 @@ export default function RootLayout() {
                   <Suspense fallback={<LoadingFallback />}>
                     <GamificationProvider>
                       <SubscriptionProvider>
+                        <PolicyProvider>
                         <SecurityProvider>
                           <PreferencesProvider>
                         <DatabaseProvider>
@@ -299,6 +308,7 @@ export default function RootLayout() {
                         </DatabaseProvider>
                           </PreferencesProvider>
                         </SecurityProvider>
+                        </PolicyProvider>
                       </SubscriptionProvider>
                     </GamificationProvider>
                   </Suspense>

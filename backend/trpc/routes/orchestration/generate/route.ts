@@ -2,6 +2,7 @@ import { z } from "zod";
 import { protectedProcedure } from "../../../create-context";
 import { generateText } from "@rork/toolkit-sdk";
 import { getAvailableModels } from "../../../../../lib/ai-providers";
+import { enforceNoDemo } from "../../../../../lib/noDemoEnforcement";
 
 const orchestrationRequestSchema = z.object({
   prompt: z.string().min(1).max(5000),
@@ -9,6 +10,8 @@ const orchestrationRequestSchema = z.object({
   selectionStrategy: z.enum(['quality', 'speed', 'cost', 'balanced']),
   context: z.record(z.string(), z.any()).optional(),
   systemPrompt: z.string().optional(),
+  tier: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]).optional(),
+  enforcePolicyCheck: z.boolean().optional(),
 });
 
 
@@ -110,6 +113,18 @@ Generate ONLY valid code without markdown formatting.`;
     const totalTime = Date.now() - startTime;
     const totalCost = responses.reduce((sum, r) => sum + r.cost, 0);
 
+    let policyResult = null;
+    if (input.enforcePolicyCheck && input.tier && input.tier >= 3) {
+      console.log(`[Orchestration] Running policy check for tier ${input.tier}...`);
+      policyResult = enforceNoDemo(selectedResponse.content, input.tier);
+      
+      if (!policyResult.allowed) {
+        console.log(`[Orchestration] Policy violation detected: ${policyResult.message}`);
+      } else {
+        console.log(`[Orchestration] Policy check passed`);
+      }
+    }
+
     const result = {
       id: `orch-${Date.now()}`,
       prompt: input.prompt,
@@ -119,6 +134,7 @@ Generate ONLY valid code without markdown formatting.`;
       totalCost,
       totalTime,
       createdAt: new Date(),
+      policyCheck: policyResult,
     };
 
     console.log(`[Orchestration] Complete: Selected ${selectedResponse.modelId} with quality ${selectedResponse.qualityScore}%`);
