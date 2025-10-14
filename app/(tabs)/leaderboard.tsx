@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   View,
   Text,
@@ -7,10 +8,10 @@ import {
   TouchableOpacity,
   Switch,
   Alert,
-  Linking,
+
   Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+
 import {
   User,
   Crown,
@@ -25,8 +26,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
-import { useAuth } from '@/providers/AuthProvider';
-import { useOnboarding } from '@/providers/OnboardingProvider';
+import { useAuth } from '@/contexts/AuthContext';
 import { router } from 'expo-router';
 
 type ToggleRow = {
@@ -63,22 +63,25 @@ const STORAGE_KEYS = {
 } as const;
 
 export default function SettingsScreen() {
-  const { user, signOut } = useAuth();
-  const { state, toggleTooltips, resetOnboarding } = useOnboarding();
+  const { user, logout } = useAuth();
+  const insets = useSafeAreaInsets();
 
   const [notifications, setNotifications] = useState(true);
   const [weeklyDigest, setWeeklyDigest] = useState(true);
+  const [showTooltips, setShowTooltips] = useState(true);
 
   // Load persisted toggles
   useEffect(() => {
     (async () => {
       try {
-        const [nRaw, wRaw] = await Promise.all([
+        const [nRaw, wRaw, tRaw] = await Promise.all([
           AsyncStorage.getItem(STORAGE_KEYS.notifications),
           AsyncStorage.getItem(STORAGE_KEYS.weeklyDigest),
+          AsyncStorage.getItem(STORAGE_KEYS.showTooltips),
         ]);
         if (nRaw != null) setNotifications(nRaw === '1');
         if (wRaw != null) setWeeklyDigest(wRaw === '1');
+        if (tRaw != null) setShowTooltips(tRaw === '1');
       } catch {}
     })();
   }, []);
@@ -90,13 +93,16 @@ export default function SettingsScreen() {
   useEffect(() => {
     AsyncStorage.setItem(STORAGE_KEYS.weeklyDigest, weeklyDigest ? '1' : '0').catch(() => {});
   }, [weeklyDigest]);
+  useEffect(() => {
+    AsyncStorage.setItem(STORAGE_KEYS.showTooltips, showTooltips ? '1' : '0').catch(() => {});
+  }, [showTooltips]);
 
   const handleSignOut = useCallback(() => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: signOut },
+      { text: 'Sign Out', style: 'destructive', onPress: logout },
     ]);
-  }, [signOut]);
+  }, [logout]);
 
   const handleResetOnboarding = useCallback(() => {
     Alert.alert('Reset Onboarding', 'This will show all tooltips and guides again. Continue?', [
@@ -104,12 +110,13 @@ export default function SettingsScreen() {
       {
         text: 'Reset',
         onPress: async () => {
-          await resetOnboarding();
+          await AsyncStorage.setItem(STORAGE_KEYS.showTooltips, '1');
+          setShowTooltips(true);
           Alert.alert('Success', 'Onboarding has been reset. Restart the app to see the welcome screen.');
         },
       },
     ]);
-  }, [resetOnboarding]);
+  }, []);
 
   const goUpgrade = useCallback(() => router.push('/upgrade' as any), []);
   const goHelp = useCallback(() => router.push('/help' as any), []);
@@ -141,7 +148,7 @@ export default function SettingsScreen() {
             kind: 'nav',
             icon: Globe,
             label: 'Store',
-            value: user?.storeName ?? '',
+            value: user?.name ?? '',
             onPress: () => {},
             rightIcon: true,
           },
@@ -149,9 +156,9 @@ export default function SettingsScreen() {
             kind: 'nav',
             icon: Crown,
             label: 'Subscription',
-            value: user?.plan === 'premium' ? 'Premium' : 'Free Plan',
-            isPremiumBadge: user?.plan === 'premium',
-            onPress: user?.plan === 'free' ? goUpgrade : undefined,
+            value: user?.subscription === 'free' ? 'Free Plan' : user?.subscription?.toUpperCase() ?? 'Free Plan',
+            isPremiumBadge: user?.subscription !== 'free',
+            onPress: user?.subscription === 'free' ? goUpgrade : undefined,
             rightIcon: true,
           },
         ],
@@ -185,9 +192,9 @@ export default function SettingsScreen() {
             kind: 'toggle',
             icon: HelpCircle,
             label: 'Show Tooltips',
-            value: state.showTooltips,
+            value: showTooltips,
             onToggle: (v) => {
-              toggleTooltips();
+              setShowTooltips(v);
               maybeHaptics('light');
             },
             testID: 'toggle-tooltips',
@@ -203,24 +210,24 @@ export default function SettingsScreen() {
         ],
       },
     ],
-    [user?.email, user?.storeName, user?.plan, notifications, weeklyDigest, state.showTooltips, goUpgrade, goHelp, goPrivacy, handleResetOnboarding]
+    [user?.email, user?.name, user?.subscription, notifications, weeklyDigest, showTooltips, goUpgrade, goHelp, goPrivacy, handleResetOnboarding]
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Neon User Card */}
         <View style={styles.userCard}>
           <View style={styles.userAvatar}>
-            <User size={28} color={Colors.Colors?.text?.inverse ?? '#fff'} />
+            <User size={28} color={Colors.Colors.text.inverse} />
           </View>
           <View style={styles.userInfo}>
-            <Text style={styles.userName}>{user?.storeName || 'Store Owner'}</Text>
+            <Text style={styles.userName}>{user?.name || 'User'}</Text>
             <Text style={styles.userEmail}>{user?.email || 'email@example.com'}</Text>
-            {user?.plan === 'premium' && (
+            {user?.subscription && user.subscription !== 'free' && (
               <View style={styles.premiumBadge}>
-                <Crown size={12} color={Colors.Colors?.premium ?? '#FFD93B'} />
-                <Text style={styles.premiumText}>Premium Member</Text>
+                <Crown size={12} color={Colors.Colors.yellow.primary} />
+                <Text style={styles.premiumText}>{user.subscription.charAt(0).toUpperCase() + user.subscription.slice(1)} Member</Text>
               </View>
             )}
           </View>
@@ -243,7 +250,7 @@ export default function SettingsScreen() {
                       accessibilityRole="adjustable"
                     >
                       <View style={styles.settingLeft}>
-                        <Icon size={20} color={Colors.Colors?.gray?.[600] ?? '#7a7a7a'} />
+                        <Icon size={20} color={Colors.Colors.text.muted} />
                         <Text style={styles.settingLabel}>{item.label}</Text>
                       </View>
                       <Switch
@@ -263,13 +270,13 @@ export default function SettingsScreen() {
                     accessibilityRole="button"
                   >
                     <View style={styles.settingLeft}>
-                      <Icon size={20} color={Colors.Colors?.gray?.[600] ?? '#7a7a7a'} />
+                      <Icon size={20} color={Colors.Colors.text.muted} />
                       <Text style={styles.settingLabel}>{item.label}</Text>
                     </View>
                     <View style={styles.settingRight}>
                       {!!item.value && <Text style={styles.settingValue}>{item.value}</Text>}
-                      {!!item.isPremiumBadge && <Crown size={16} color={Colors.Colors?.premium ?? '#FFD93B'} style={styles.premiumIcon} />}
-                      {item.rightIcon !== false && <ChevronRight size={20} color={Colors.Colors?.gray?.[400] ?? '#9b9b9b'} />}
+                      {!!item.isPremiumBadge && <Crown size={16} color={Colors.Colors.yellow.primary} style={styles.premiumIcon} />}
+                      {item.rightIcon !== false && <ChevronRight size={20} color={Colors.Colors.text.muted} />}
                     </View>
                   </TouchableOpacity>
                 );
@@ -288,28 +295,28 @@ export default function SettingsScreen() {
           testID="sign-out-button"
           accessibilityRole="button"
         >
-          <LogOut size={20} color={Colors.Colors?.error ?? '#ff004c'} />
+          <LogOut size={20} color={Colors.Colors.error} />
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
 
         {/* Version */}
         <Text style={styles.version}>Meta-Master v1.0.0</Text>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.Colors?.background?.primary ?? Colors.background },
+  container: { flex: 1, backgroundColor: Colors.Colors.background.primary },
   userCard: {
     flexDirection: 'row',
     alignItems: 'center',
     margin: 16,
     padding: 16,
     borderRadius: 14,
-    backgroundColor: Colors.Colors?.background?.card ?? Colors.white,
+    backgroundColor: Colors.Colors.background.card,
     borderWidth: 1,
-    borderColor: Colors.Colors?.border?.primary ?? '#1f2937',
+    borderColor: Colors.Colors.border.primary,
     shadowColor: '#00ffff',
     shadowOpacity: Platform.select({ ios: 0.25, android: 0.0 }) as number,
     shadowRadius: 12,
@@ -319,7 +326,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: Colors.Colors?.cyan?.primary ?? Colors.primary,
+    backgroundColor: Colors.Colors.cyan.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -327,18 +334,18 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 18,
     fontWeight: '700',
-    color: Colors.Colors?.text?.primary ?? Colors.text,
+    color: Colors.Colors.text.primary,
     marginBottom: 4,
   },
   userEmail: {
     fontSize: 14,
-    color: Colors.Colors?.text?.secondary ?? Colors.textSecondary,
+    color: Colors.Colors.text.secondary,
     marginBottom: 6,
   },
   premiumBadge: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start' },
   premiumText: {
     fontSize: 12,
-    color: Colors.Colors?.premium ?? '#FFD93B',
+    color: Colors.Colors.yellow.primary,
     fontWeight: '600',
     marginLeft: 4,
   },
@@ -347,7 +354,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 12,
     fontWeight: '700',
-    color: Colors.Colors?.text?.secondary ?? Colors.textSecondary,
+    color: Colors.Colors.text.secondary,
     marginHorizontal: 16,
     marginBottom: 8,
     textTransform: 'uppercase',
@@ -357,24 +364,24 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: Colors.Colors?.background?.card ?? Colors.white,
+    backgroundColor: Colors.Colors.background.card,
     borderWidth: 1,
-    borderColor: Colors.Colors?.border?.muted ?? Colors.border,
+    borderColor: Colors.Colors.border.muted,
   },
   settingItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
-  settingItemBorder: { borderBottomWidth: 1, borderBottomColor: Colors.Colors?.border?.muted ?? Colors.border },
+  settingItemBorder: { borderBottomWidth: 1, borderBottomColor: Colors.Colors.border.muted },
   settingLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  settingLabel: { fontSize: 16, color: Colors.Colors?.text?.primary ?? Colors.text, marginLeft: 12 },
+  settingLabel: { fontSize: 16, color: Colors.Colors.text.primary, marginLeft: 12 },
   settingRight: { flexDirection: 'row', alignItems: 'center' },
-  settingValue: { fontSize: 14, color: Colors.Colors?.text?.secondary ?? Colors.textSecondary, marginRight: 8 },
+  settingValue: { fontSize: 14, color: Colors.Colors.text.secondary, marginRight: 8 },
   premiumIcon: { marginRight: 8 },
 
   signOutButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: Colors.Colors?.background?.card ?? Colors.white,
+    backgroundColor: Colors.Colors.background.card,
     marginHorizontal: 16, marginBottom: 16, padding: 16,
-    borderRadius: 12, borderWidth: 1, borderColor: Colors.Colors?.error ?? '#ff004c'
+    borderRadius: 12, borderWidth: 1, borderColor: Colors.Colors.error
   },
-  signOutText: { fontSize: 16, fontWeight: '700', color: Colors.Colors?.error ?? '#ff004c', marginLeft: 8 },
-  version: { fontSize: 12, color: Colors.Colors?.text?.secondary ?? Colors.textSecondary, textAlign: 'center', marginBottom: 32 },
+  signOutText: { fontSize: 16, fontWeight: '700', color: Colors.Colors.error, marginLeft: 8 },
+  version: { fontSize: 12, color: Colors.Colors.text.secondary, textAlign: 'center', marginBottom: 32 },
 });
