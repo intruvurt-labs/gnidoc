@@ -290,7 +290,7 @@ async function runAllTests() {
 
   const totalDuration = Date.now() - startTime;
   const passed = tests.filter(t => t.passed).length;
-  const failed = tests.filter(t => t.passed).length;
+  const failed = tests.filter(t => !t.passed).length;
 
   console.log('\n═══════════════════════════════════════════════════════════════');
   console.log('                      TEST RESULTS                              ');
