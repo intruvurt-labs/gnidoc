@@ -147,12 +147,12 @@ export const [ThemeProvider, useTheme] = createContextHook(() => {
         Animated.timing(pulseAnim, {
           toValue: 1.15,
           duration: 1000 / speed,
-          useNativeDriver: false,
+          useNativeDriver: true,
         }),
         Animated.timing(pulseAnim, {
           toValue: 1,
           duration: 1000 / speed,
-          useNativeDriver: false,
+          useNativeDriver: true,
         }),
       ])
     );

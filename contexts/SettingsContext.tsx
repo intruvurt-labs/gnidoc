@@ -143,8 +143,8 @@ export const [SettingsProvider, useSettings] = createContextHook(() => {
       const data = await batchGetItems([SETTINGS_KEY, PROFILE_KEY]);
 
       const storedSettings = await (async () => {
-        if (!data) return DEFAULT_SETTINGS;
-        const v = data[SETTINGS_KEY];
+        if (!data || data === null) return DEFAULT_SETTINGS;
+        const v = data?.[SETTINGS_KEY];
         if (!v) return DEFAULT_SETTINGS;
         try {
           const parsed = typeof v === 'string' ? JSON.parse(v) : v;
@@ -157,8 +157,8 @@ export const [SettingsProvider, useSettings] = createContextHook(() => {
       })();
 
       const storedProfile = await (async () => {
-        if (!data) return DEFAULT_PROFILE;
-        const v = data[PROFILE_KEY];
+        if (!data || data === null) return DEFAULT_PROFILE;
+        const v = data?.[PROFILE_KEY];
         if (!v) return DEFAULT_PROFILE;
         try {
           const parsed = typeof v === 'string' ? JSON.parse(v) : v;
