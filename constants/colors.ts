@@ -110,18 +110,18 @@ const Colors = {
 
 export const Shadows = {
   glowCyan: {
-    shadowColor: '#00FFFF',
+    shadowColor: Deep.cyan.base,
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 18,
-    elevation: 8,
+    elevation: 6,
   },
   glowLime: {
-    shadowColor: '#B3FF00',
+    shadowColor: Deep.lime.soft,
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 18,
-    elevation: 8,
+    elevation: 6,
   },
   glowMagenta: {
     shadowColor: '#FF33CC',
