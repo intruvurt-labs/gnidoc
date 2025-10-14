@@ -1,546 +1,380 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Dimensions,
-  Image,
+  Switch,
+  Alert,
+  Linking,
+  Platform,
 } from 'react-native';
-import { Stack } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  Trophy,
-  Medal,
-  Award,
-  TrendingUp,
-  Star,
-  Zap,
+  User,
   Crown,
-  Target,
+  Bell,
+  Shield,
+  HelpCircle,
+  LogOut,
+  ChevronRight,
+  Mail,
+  Globe,
 } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Haptics from 'expo-haptics';
 import Colors from '@/constants/colors';
-import { limeWithOutline } from '@/constants/textStyles';
-import { useGamification } from '@/contexts/GamificationContext';
-import { useAuth } from '@/contexts/AuthContext';
-import BrandedHeader from '@/components/BrandedHeader';
-import ScreenBackground from '@/components/ScreenBackground';
+import { useAuth } from '@/providers/AuthProvider';
+import { useOnboarding } from '@/providers/OnboardingProvider';
+import { router } from 'expo-router';
 
-const { width } = Dimensions.get('window');
+type ToggleRow = {
+  kind: 'toggle';
+  icon: React.ComponentType<any>;
+  label: string;
+  value: boolean;
+  onToggle: (next: boolean) => void;
+  testID?: string;
+};
 
-interface LeaderboardEntry {
-  id: string;
-  rank: number;
-  name: string;
-  avatar?: string;
-  level: number;
-  xp: number;
-  builds: number;
-  achievements: number;
-  streak: number;
-}
+type NavRow = {
+  kind: 'nav';
+  icon: React.ComponentType<any>;
+  label: string;
+  value?: string;
+  rightIcon?: boolean;
+  isPremiumBadge?: boolean;
+  onPress?: () => void;
+  testID?: string;
+};
 
-const mockLeaderboard: LeaderboardEntry[] = [
-  {
-    id: '1',
-    rank: 1,
-    name: 'CodeMaster Pro',
-    level: 42,
-    xp: 125000,
-    builds: 350,
-    achievements: 45,
-    streak: 89,
-  },
-  {
-    id: '2',
-    rank: 2,
-    name: 'AI Architect',
-    level: 38,
-    xp: 98000,
-    builds: 280,
-    achievements: 38,
-    streak: 67,
-  },
-  {
-    id: '3',
-    rank: 3,
-    name: 'DevOps Ninja',
-    level: 35,
-    xp: 87000,
-    builds: 245,
-    achievements: 35,
-    streak: 54,
-  },
-  {
-    id: '4',
-    rank: 4,
-    name: 'Full Stack Hero',
-    level: 32,
-    xp: 76000,
-    builds: 220,
-    achievements: 32,
-    streak: 45,
-  },
-  {
-    id: '5',
-    rank: 5,
-    name: 'Cloud Wizard',
-    level: 30,
-    xp: 68000,
-    builds: 195,
-    achievements: 28,
-    streak: 38,
-  },
-];
+type SettingsRow = ToggleRow | NavRow;
 
-export default function LeaderboardScreen() {
-  const insets = useSafeAreaInsets();
-  const { user } = useAuth();
-  const { level, xp, iterationStats, achievements, streak } = useGamification();
-  const [category, setCategory] = useState<'overall' | 'builds' | 'achievements' | 'streak'>('overall');
+type SettingsSection = {
+  title: string;
+  items: SettingsRow[];
+};
 
-  const userRank = 12;
-  const userEntry: LeaderboardEntry = {
-    id: user?.id || 'current',
-    rank: userRank,
-    name: user?.name || 'You',
-    avatar: user?.avatar,
-    level,
-    xp,
-    builds: iterationStats.totalIterations,
-    achievements: achievements.filter(a => a.unlockedAt).length,
-    streak,
+const STORAGE_KEYS = {
+  notifications: 'settings.notifications',
+  weeklyDigest: 'settings.weeklyDigest',
+  showTooltips: 'settings.showTooltips',
+} as const;
+
+export default function SettingsScreen() {
+  const { user, signOut } = useAuth();
+  const { state, toggleTooltips, resetOnboarding } = useOnboarding();
+
+  const [notifications, setNotifications] = useState(true);
+  const [weeklyDigest, setWeeklyDigest] = useState(true);
+
+  // Load persisted toggles
+  useEffect(() => {
+    (async () => {
+      try {
+        const [nRaw, wRaw] = await Promise.all([
+          AsyncStorage.getItem(STORAGE_KEYS.notifications),
+          AsyncStorage.getItem(STORAGE_KEYS.weeklyDigest),
+        ]);
+        if (nRaw != null) setNotifications(nRaw === '1');
+        if (wRaw != null) setWeeklyDigest(wRaw === '1');
+      } catch {}
+    })();
+  }, []);
+
+  // Persist on change
+  useEffect(() => {
+    AsyncStorage.setItem(STORAGE_KEYS.notifications, notifications ? '1' : '0').catch(() => {});
+  }, [notifications]);
+  useEffect(() => {
+    AsyncStorage.setItem(STORAGE_KEYS.weeklyDigest, weeklyDigest ? '1' : '0').catch(() => {});
+  }, [weeklyDigest]);
+
+  const handleSignOut = useCallback(() => {
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign Out', style: 'destructive', onPress: signOut },
+    ]);
+  }, [signOut]);
+
+  const handleResetOnboarding = useCallback(() => {
+    Alert.alert('Reset Onboarding', 'This will show all tooltips and guides again. Continue?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Reset',
+        onPress: async () => {
+          await resetOnboarding();
+          Alert.alert('Success', 'Onboarding has been reset. Restart the app to see the welcome screen.');
+        },
+      },
+    ]);
+  }, [resetOnboarding]);
+
+  const goUpgrade = useCallback(() => router.push('/upgrade' as any), []);
+  const goHelp = useCallback(() => router.push('/help' as any), []);
+  const goPrivacy = useCallback(() => router.push('/privacy' as any), []);
+
+  const maybeHaptics = (type: 'light' | 'success' | 'warning' = 'light') => {
+    const map = {
+      light: Haptics.selectionAsync,
+      success: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success),
+      warning: () => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning),
+    } as const;
+    map[type]().catch(() => {});
   };
 
-  const categories = [
-    { id: 'overall' as const, label: 'Overall', icon: Trophy },
-    { id: 'builds' as const, label: 'Builds', icon: Zap },
-    { id: 'achievements' as const, label: 'Achievements', icon: Award },
-    { id: 'streak' as const, label: 'Streak', icon: Target },
-  ];
-
-  const getRankColor = (rank: number) => {
-    if (rank === 1) return Colors.Colors.warning;
-    if (rank === 2) return '#C0C0C0';
-    if (rank === 3) return '#CD7F32';
-    return Colors.Colors.cyan.primary;
-  };
-
-  const getRankIcon = (rank: number) => {
-    if (rank === 1) return <Crown color={Colors.Colors.warning} size={24} />;
-    if (rank === 2) return <Medal color="#C0C0C0" size={24} />;
-    if (rank === 3) return <Medal color="#CD7F32" size={24} />;
-    return <Star color={Colors.Colors.cyan.primary} size={20} />;
-  };
+  const sections: SettingsSection[] = useMemo(
+    () => [
+      {
+        title: 'Account',
+        items: [
+          {
+            kind: 'nav',
+            icon: User,
+            label: 'Profile',
+            value: user?.email ?? '',
+            onPress: () => {},
+            rightIcon: true,
+          },
+          {
+            kind: 'nav',
+            icon: Globe,
+            label: 'Store',
+            value: user?.storeName ?? '',
+            onPress: () => {},
+            rightIcon: true,
+          },
+          {
+            kind: 'nav',
+            icon: Crown,
+            label: 'Subscription',
+            value: user?.plan === 'premium' ? 'Premium' : 'Free Plan',
+            isPremiumBadge: user?.plan === 'premium',
+            onPress: user?.plan === 'free' ? goUpgrade : undefined,
+            rightIcon: true,
+          },
+        ],
+      },
+      {
+        title: 'Preferences',
+        items: [
+          {
+            kind: 'toggle',
+            icon: Bell,
+            label: 'Push Notifications',
+            value: notifications,
+            onToggle: (v) => {
+              setNotifications(v);
+              maybeHaptics('light');
+            },
+            testID: 'toggle-notifications',
+          },
+          {
+            kind: 'toggle',
+            icon: Mail,
+            label: 'Weekly Digest',
+            value: weeklyDigest,
+            onToggle: (v) => {
+              setWeeklyDigest(v);
+              maybeHaptics('light');
+            },
+            testID: 'toggle-weekly',
+          },
+          {
+            kind: 'toggle',
+            icon: HelpCircle,
+            label: 'Show Tooltips',
+            value: state.showTooltips,
+            onToggle: (v) => {
+              toggleTooltips();
+              maybeHaptics('light');
+            },
+            testID: 'toggle-tooltips',
+          },
+        ],
+      },
+      {
+        title: 'Support',
+        items: [
+          { kind: 'nav', icon: HelpCircle, label: 'Help Center', onPress: goHelp, rightIcon: true },
+          { kind: 'nav', icon: HelpCircle, label: 'Reset Onboarding', onPress: handleResetOnboarding, rightIcon: true },
+          { kind: 'nav', icon: Shield, label: 'Privacy Policy', onPress: goPrivacy, rightIcon: true },
+        ],
+      },
+    ],
+    [user?.email, user?.storeName, user?.plan, notifications, weeklyDigest, state.showTooltips, goUpgrade, goHelp, goPrivacy, handleResetOnboarding]
+  );
 
   return (
-    <ScreenBackground variant="default" showPattern>
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <Stack.Screen options={{ headerShown: false }} />
-
-        <BrandedHeader
-          title="Leaderboard"
-          subtitle="Compete with top builders worldwide"
-        />
-
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.categorySelector}>
-            {categories.map(cat => (
-              <TouchableOpacity
-                key={cat.id}
-                style={[
-                  styles.categoryButton,
-                  category === cat.id && styles.categoryButtonActive,
-                ]}
-                onPress={() => setCategory(cat.id)}
-              >
-                <cat.icon
-                  color={
-                    category === cat.id
-                      ? Colors.Colors.text.inverse
-                      : Colors.Colors.cyan.primary
-                  }
-                  size={18}
-                />
-                <Text
-                  style={[
-                    styles.categoryText,
-                    category === cat.id && styles.categoryTextActive,
-                  ]}
-                >
-                  {cat.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Neon User Card */}
+        <View style={styles.userCard}>
+          <View style={styles.userAvatar}>
+            <User size={28} color={Colors.Colors?.text?.inverse ?? '#fff'} />
           </View>
-
-          <View style={styles.podiumSection}>
-            <View style={styles.podiumContainer}>
-              <View style={[styles.podiumPlace, styles.podiumSecond]}>
-                <View style={styles.podiumAvatar}>
-                  <Text style={styles.podiumAvatarText}>
-                    {mockLeaderboard[1].name.charAt(0)}
-                  </Text>
-                </View>
-                <View style={styles.podiumRank}>
-                  <Medal color="#C0C0C0" size={20} />
-                  <Text style={styles.podiumRankText}>2</Text>
-                </View>
-                <Text style={styles.podiumName} numberOfLines={1}>
-                  {mockLeaderboard[1].name}
-                </Text>
-                <Text style={styles.podiumScore}>{mockLeaderboard[1].xp.toLocaleString()} XP</Text>
+          <View style={styles.userInfo}>
+            <Text style={styles.userName}>{user?.storeName || 'Store Owner'}</Text>
+            <Text style={styles.userEmail}>{user?.email || 'email@example.com'}</Text>
+            {user?.plan === 'premium' && (
+              <View style={styles.premiumBadge}>
+                <Crown size={12} color={Colors.Colors?.premium ?? '#FFD93B'} />
+                <Text style={styles.premiumText}>Premium Member</Text>
               </View>
+            )}
+          </View>
+        </View>
 
-              <View style={[styles.podiumPlace, styles.podiumFirst]}>
-                <View style={[styles.podiumAvatar, styles.podiumAvatarFirst]}>
-                  <Text style={styles.podiumAvatarText}>
-                    {mockLeaderboard[0].name.charAt(0)}
-                  </Text>
-                </View>
-                <View style={[styles.podiumRank, styles.podiumRankFirst]}>
-                  <Crown color={Colors.Colors.warning} size={24} />
-                  <Text style={styles.podiumRankText}>1</Text>
-                </View>
-                <Text style={styles.podiumName} numberOfLines={1}>
-                  {mockLeaderboard[0].name}
-                </Text>
-                <Text style={styles.podiumScore}>{mockLeaderboard[0].xp.toLocaleString()} XP</Text>
-              </View>
+        {/* Sections */}
+        {sections.map((section, sIdx) => (
+          <View key={sIdx} style={styles.section}>
+            <Text style={styles.sectionTitle}>{section.title}</Text>
+            <View style={styles.sectionContent}>
+              {section.items.map((item, iIdx) => {
+                const Icon = item.icon;
+                const isLast = iIdx === section.items.length - 1;
 
-              <View style={[styles.podiumPlace, styles.podiumThird]}>
-                <View style={styles.podiumAvatar}>
-                  <Text style={styles.podiumAvatarText}>
-                    {mockLeaderboard[2].name.charAt(0)}
-                  </Text>
-                </View>
-                <View style={styles.podiumRank}>
-                  <Medal color="#CD7F32" size={20} />
-                  <Text style={styles.podiumRankText}>3</Text>
-                </View>
-                <Text style={styles.podiumName} numberOfLines={1}>
-                  {mockLeaderboard[2].name}
-                </Text>
-                <Text style={styles.podiumScore}>{mockLeaderboard[2].xp.toLocaleString()} XP</Text>
-              </View>
+                if (item.kind === 'toggle') {
+                  return (
+                    <View
+                      key={`${section.title}-${iIdx}`}
+                      style={[styles.settingItem, !isLast && styles.settingItemBorder]}
+                      accessibilityRole="adjustable"
+                    >
+                      <View style={styles.settingLeft}>
+                        <Icon size={20} color={Colors.Colors?.gray?.[600] ?? '#7a7a7a'} />
+                        <Text style={styles.settingLabel}>{item.label}</Text>
+                      </View>
+                      <Switch
+                        testID={item?.testID}
+                        value={item.value}
+                        onValueChange={item.onToggle}
+                      />
+                    </View>
+                  );
+                }
+
+                return (
+                  <TouchableOpacity
+                    key={`${section.title}-${iIdx}`}
+                    style={[styles.settingItem, !isLast && styles.settingItemBorder]}
+                    onPress={item.onPress}
+                    accessibilityRole="button"
+                  >
+                    <View style={styles.settingLeft}>
+                      <Icon size={20} color={Colors.Colors?.gray?.[600] ?? '#7a7a7a'} />
+                      <Text style={styles.settingLabel}>{item.label}</Text>
+                    </View>
+                    <View style={styles.settingRight}>
+                      {!!item.value && <Text style={styles.settingValue}>{item.value}</Text>}
+                      {!!item.isPremiumBadge && <Crown size={16} color={Colors.Colors?.premium ?? '#FFD93B'} style={styles.premiumIcon} />}
+                      {item.rightIcon !== false && <ChevronRight size={20} color={Colors.Colors?.gray?.[400] ?? '#9b9b9b'} />}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
+        ))}
 
-          <View style={styles.userRankCard}>
-            <View style={styles.userRankHeader}>
-              <Text style={styles.userRankTitle}>Your Rank</Text>
-              <TrendingUp color={Colors.Colors.success} size={20} />
-            </View>
-            <View style={styles.userRankContent}>
-              <View style={styles.userRankBadge}>
-                <Text style={styles.userRankNumber}>#{userRank}</Text>
-              </View>
-              <View style={styles.userRankStats}>
-                <View style={styles.userRankStat}>
-                  <Text style={styles.userRankStatLabel}>Level</Text>
-                  <Text style={styles.userRankStatValue}>{level}</Text>
-                </View>
-                <View style={styles.userRankStat}>
-                  <Text style={styles.userRankStatLabel}>XP</Text>
-                  <Text style={styles.userRankStatValue}>{xp.toLocaleString()}</Text>
-                </View>
-                <View style={styles.userRankStat}>
-                  <Text style={styles.userRankStatLabel}>Builds</Text>
-                  <Text style={styles.userRankStatValue}>{iterationStats.totalIterations}</Text>
-                </View>
-              </View>
-            </View>
-          </View>
+        {/* Sign Out */}
+        <TouchableOpacity
+          style={styles.signOutButton}
+          onPress={() => {
+            maybeHaptics('warning');
+            handleSignOut();
+          }}
+          testID="sign-out-button"
+          accessibilityRole="button"
+        >
+          <LogOut size={20} color={Colors.Colors?.error ?? '#ff004c'} />
+          <Text style={styles.signOutText}>Sign Out</Text>
+        </TouchableOpacity>
 
-          <View style={styles.leaderboardList}>
-            <Text style={styles.listTitle}>Top Builders</Text>
-            {mockLeaderboard.slice(3).map(entry => (
-              <View key={entry.id} style={styles.leaderboardCard}>
-                <View style={styles.leaderboardRank}>
-                  {getRankIcon(entry.rank)}
-                  <Text style={[styles.leaderboardRankText, { color: getRankColor(entry.rank) }]}>
-                    #{entry.rank}
-                  </Text>
-                </View>
-                <View style={styles.leaderboardAvatar}>
-                  <Text style={styles.leaderboardAvatarText}>{entry.name.charAt(0)}</Text>
-                </View>
-                <View style={styles.leaderboardInfo}>
-                  <Text style={styles.leaderboardName}>{entry.name}</Text>
-                  <View style={styles.leaderboardStats}>
-                    <View style={styles.leaderboardStat}>
-                      <Text style={styles.leaderboardStatLabel}>Lvl {entry.level}</Text>
-                    </View>
-                    <View style={styles.leaderboardStat}>
-                      <Zap color={Colors.Colors.warning} size={12} />
-                      <Text style={styles.leaderboardStatLabel}>{entry.builds}</Text>
-                    </View>
-                    <View style={styles.leaderboardStat}>
-                      <Award color={Colors.Colors.cyan.primary} size={12} />
-                      <Text style={styles.leaderboardStatLabel}>{entry.achievements}</Text>
-                    </View>
-                  </View>
-                </View>
-                <View style={styles.leaderboardScore}>
-                  <Text style={styles.leaderboardScoreValue}>{entry.xp.toLocaleString()}</Text>
-                  <Text style={styles.leaderboardScoreLabel}>XP</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-
-          <View style={{ height: 40 }} />
-        </ScrollView>
-      </View>
-    </ScreenBackground>
+        {/* Version */}
+        <Text style={styles.version}>Meta-Master v1.0.0</Text>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-  },
-  categorySelector: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    gap: 8,
-  },
-  categoryButton: {
-    flex: 1,
+  container: { flex: 1, backgroundColor: Colors.Colors?.background?.primary ?? Colors.background },
+  userCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    backgroundColor: Colors.Colors.background.card,
-    borderWidth: 1,
-    borderColor: Colors.Colors.border.muted,
-    gap: 6,
-  },
-  categoryButtonActive: {
-    backgroundColor: Colors.Colors.cyan.primary,
-    borderColor: Colors.Colors.cyan.primary,
-  },
-  categoryText: {
-    fontSize: 12,
-    fontWeight: '600' as const,
-    ...limeWithOutline,
-  },
-  categoryTextActive: {
-    color: Colors.Colors.text.inverse,
-  },
-  podiumSection: {
-    paddingHorizontal: 20,
-    paddingVertical: 24,
-  },
-  podiumContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    gap: 12,
-  },
-  podiumPlace: {
-    flex: 1,
-    alignItems: 'center',
-    backgroundColor: Colors.Colors.background.card,
-    borderRadius: 12,
+    margin: 16,
     padding: 16,
-    borderWidth: 2,
-    borderColor: Colors.Colors.border.muted,
-  },
-  podiumFirst: {
-    borderColor: Colors.Colors.warning,
-    paddingTop: 24,
-  },
-  podiumSecond: {
-    borderColor: '#C0C0C0',
-  },
-  podiumThird: {
-    borderColor: '#CD7F32',
-  },
-  podiumAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: Colors.Colors.cyan.primary + '40',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  podiumAvatarFirst: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-  },
-  podiumAvatarText: {
-    fontSize: 20,
-    fontWeight: 'bold' as const,
-    color: Colors.Colors.cyan.primary,
-  },
-  podiumRank: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 8,
-  },
-  podiumRankFirst: {
-    marginBottom: 12,
-  },
-  podiumRankText: {
-    fontSize: 16,
-    fontWeight: 'bold' as const,
-    ...limeWithOutline,
-  },
-  podiumName: {
-    fontSize: 13,
-    fontWeight: '600' as const,
-    ...limeWithOutline,
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  podiumScore: {
-    fontSize: 12,
-    color: Colors.Colors.cyan.primary,
-    fontWeight: '600' as const,
-  },
-  userRankCard: {
-    marginHorizontal: 20,
-    marginBottom: 24,
-    backgroundColor: Colors.Colors.background.card,
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 2,
-    borderColor: Colors.Colors.cyan.primary,
-  },
-  userRankHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  userRankTitle: {
-    fontSize: 16,
-    fontWeight: 'bold' as const,
-    ...limeWithOutline,
-  },
-  userRankContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  userRankBadge: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: Colors.Colors.cyan.primary + '20',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: Colors.Colors.cyan.primary,
-  },
-  userRankNumber: {
-    fontSize: 18,
-    fontWeight: 'bold' as const,
-    color: Colors.Colors.cyan.primary,
-  },
-  userRankStats: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  userRankStat: {
-    alignItems: 'center',
-  },
-  userRankStatLabel: {
-    fontSize: 11,
-    color: Colors.Colors.text.muted,
-    marginBottom: 4,
-  },
-  userRankStatValue: {
-    fontSize: 16,
-    fontWeight: 'bold' as const,
-    color: Colors.Colors.cyan.primary,
-  },
-  leaderboardList: {
-    paddingHorizontal: 20,
-  },
-  listTitle: {
-    fontSize: 18,
-    fontWeight: 'bold' as const,
-    ...limeWithOutline,
-    marginBottom: 16,
-  },
-  leaderboardCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.Colors.background.card,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
+    borderRadius: 14,
+    backgroundColor: Colors.Colors?.background?.card ?? Colors.white,
     borderWidth: 1,
-    borderColor: Colors.Colors.border.muted,
-    gap: 12,
+    borderColor: Colors.Colors?.border?.primary ?? '#1f2937',
+    shadowColor: '#00ffff',
+    shadowOpacity: Platform.select({ ios: 0.25, android: 0.0 }) as number,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 }
   },
-  leaderboardRank: {
-    width: 50,
-    alignItems: 'center',
-    gap: 4,
-  },
-  leaderboardRankText: {
-    fontSize: 12,
-    fontWeight: 'bold' as const,
-  },
-  leaderboardAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.Colors.cyan.primary + '40',
+  userAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: Colors.Colors?.cyan?.primary ?? Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  leaderboardAvatarText: {
-    fontSize: 16,
-    fontWeight: 'bold' as const,
-    color: Colors.Colors.cyan.primary,
-  },
-  leaderboardInfo: {
-    flex: 1,
-  },
-  leaderboardName: {
-    fontSize: 14,
-    fontWeight: '600' as const,
-    ...limeWithOutline,
+  userInfo: { flex: 1, marginLeft: 16 },
+  userName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Colors.Colors?.text?.primary ?? Colors.text,
     marginBottom: 4,
   },
-  leaderboardStats: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  leaderboardStat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  leaderboardStatLabel: {
-    fontSize: 11,
-    color: Colors.Colors.text.muted,
-  },
-  leaderboardScore: {
-    alignItems: 'flex-end',
-  },
-  leaderboardScoreValue: {
+  userEmail: {
     fontSize: 14,
-    fontWeight: 'bold' as const,
-    color: Colors.Colors.cyan.primary,
+    color: Colors.Colors?.text?.secondary ?? Colors.textSecondary,
+    marginBottom: 6,
   },
-  leaderboardScoreLabel: {
-    fontSize: 10,
-    color: Colors.Colors.text.muted,
+  premiumBadge: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start' },
+  premiumText: {
+    fontSize: 12,
+    color: Colors.Colors?.premium ?? '#FFD93B',
+    fontWeight: '600',
+    marginLeft: 4,
   },
+
+  section: { marginBottom: 24 },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.Colors?.text?.secondary ?? Colors.textSecondary,
+    marginHorizontal: 16,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  sectionContent: {
+    marginHorizontal: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: Colors.Colors?.background?.card ?? Colors.white,
+    borderWidth: 1,
+    borderColor: Colors.Colors?.border?.muted ?? Colors.border,
+  },
+  settingItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
+  settingItemBorder: { borderBottomWidth: 1, borderBottomColor: Colors.Colors?.border?.muted ?? Colors.border },
+  settingLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  settingLabel: { fontSize: 16, color: Colors.Colors?.text?.primary ?? Colors.text, marginLeft: 12 },
+  settingRight: { flexDirection: 'row', alignItems: 'center' },
+  settingValue: { fontSize: 14, color: Colors.Colors?.text?.secondary ?? Colors.textSecondary, marginRight: 8 },
+  premiumIcon: { marginRight: 8 },
+
+  signOutButton: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.Colors?.background?.card ?? Colors.white,
+    marginHorizontal: 16, marginBottom: 16, padding: 16,
+    borderRadius: 12, borderWidth: 1, borderColor: Colors.Colors?.error ?? '#ff004c'
+  },
+  signOutText: { fontSize: 16, fontWeight: '700', color: Colors.Colors?.error ?? '#ff004c', marginLeft: 8 },
+  version: { fontSize: 12, color: Colors.Colors?.text?.secondary ?? Colors.textSecondary, textAlign: 'center', marginBottom: 32 },
 });

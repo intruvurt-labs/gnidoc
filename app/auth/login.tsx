@@ -91,7 +91,7 @@ export default function LoginScreen() {
             <View style={styles.featureBadges}>
               <View style={styles.featureBadge}>
                 <Zap color={Colors.Colors.cyan.primary} size={14} />
-                <Text style={styles.featureBadgeText}>AI-Powered</Text>
+                <Text style={styles.featureBadgeText}>AI-Powered ~ For Creators, SMB, Entrepreneirs</Text>
               </View>
               <View style={styles.featureBadge}>
                 <Shield color={Colors.Colors.red.primary} size={14} />
