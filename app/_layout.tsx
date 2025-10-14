@@ -12,6 +12,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Colors from "@/constants/colors";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { SettingsProvider } from "@/contexts/SettingsContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { trpc, trpcClient } from "@/lib/trpc";
 import AISupportChat from "@/components/AISupportChat";
@@ -265,6 +266,7 @@ export default function RootLayout() {
             <QueryClientProvider client={queryClient}>
               <AuthProvider>
                 <SettingsProvider>
+                  <ThemeProvider>
                   <Suspense fallback={<LoadingFallback />}>
                     <GamificationProvider>
                       <SubscriptionProvider>
@@ -300,6 +302,7 @@ export default function RootLayout() {
                       </SubscriptionProvider>
                     </GamificationProvider>
                   </Suspense>
+                  </ThemeProvider>
                 </SettingsProvider>
               </AuthProvider>
             </QueryClientProvider>

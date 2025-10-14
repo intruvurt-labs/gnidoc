@@ -8,14 +8,15 @@ import {
   PanResponder,
   LayoutChangeEvent,
   AccessibilityInfo,
+  Platform,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Palette, Check } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors, { Shadows } from '@/constants/colors';
 import MatrixGridBackground from '@/components/MatrixGridBackground';
+import { useTheme, THEMES } from '@/contexts/ThemeContext';
 
 // Optional gradient – if not available, we’ll render solid blocks.
 let LinearGradient: any;
@@ -26,19 +27,7 @@ try {
   LinearGradient = null;
 }
 
-interface Theme {
-  id: string;
-  name: string;
-  preview: string[];
-}
 
-type SavedTheme = {
-  themeId: string;
-  glowIntensity: number;
-  pulseSpeed: number;
-};
-
-const STORAGE_KEY = 'app-theme';
 
 function clamp(n: number, min = 0, max = 100) {
   return Math.min(max, Math.max(min, n));
@@ -76,14 +65,18 @@ function Slider({
         onPanResponderGrant: evt => {
           const x = evt.nativeEvent.locationX;
           setByX(x);
-          Haptics.selectionAsync().catch(() => {});
+          if (Platform.OS !== 'web') {
+            Haptics.selectionAsync().catch(() => {});
+          }
         },
         onPanResponderMove: evt => {
           const x = evt.nativeEvent.locationX;
           setByX(x);
         },
         onPanResponderRelease: () => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+          if (Platform.OS !== 'web') {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+          }
         },
       }),
     [setByX]
@@ -116,54 +109,18 @@ function Slider({
 export default function ThemesScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [selectedTheme, setSelectedTheme] = useState<string>('cyan_red_power');
-  const [glowIntensity, setGlowIntensity] = useState<number>(60);
-  const [pulseSpeed, setPulseSpeed] = useState<number>(50);
-
-  const themes: Theme[] = [
-    { id: 'cyan_red_power', name: 'Cyan-Red Power', preview: [Colors.Colors.cyan.primary, Colors.Colors.red.primary] },
-    { id: 'lime_purple_elite', name: 'Lime-Purple Elite', preview: [Colors.Colors.lime.primary, Colors.Colors.purple.primary] },
-    { id: 'matrix_noir', name: 'Matrix Noir', preview: [Colors.Colors.black.ink, Colors.Colors.cyan.primary] },
-    { id: 'neon_magenta', name: 'Neon Magenta', preview: [Colors.Colors.magenta.primary, Colors.Colors.yellow.primary] },
-  ];
-
-  // Load saved theme on mount
-  React.useEffect(() => {
-    (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const saved: SavedTheme = JSON.parse(raw);
-          setSelectedTheme(saved.themeId);
-          setGlowIntensity(saved.glowIntensity);
-          setPulseSpeed(saved.pulseSpeed);
-        }
-      } catch {
-        // ignore
-      }
-    })();
-  }, []);
+  const { settings, setSettings, currentTheme } = useTheme();
+  const selectedTheme = settings.themeId;
+  const glowIntensity = settings.glowIntensity;
+  const pulseSpeed = settings.pulseSpeed;
 
   const applyTheme = useCallback(async () => {
-    const payload: SavedTheme = {
-      themeId: selectedTheme,
-      glowIntensity,
-      pulseSpeed,
-    };
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      AccessibilityInfo.announceForAccessibility?.('Theme applied');
-      router.back();
-    } catch (e) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+    if (Platform.OS !== 'web') {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     }
-  }, [glowIntensity, pulseSpeed, router, selectedTheme]);
-
-  const currentTheme = useMemo(
-    () => themes.find(t => t.id === selectedTheme) ?? themes[0],
-    [selectedTheme, themes]
-  );
+    AccessibilityInfo.announceForAccessibility?.('Theme applied');
+    router.back();
+  }, [router]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -185,39 +142,37 @@ export default function ThemesScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Theme Presets</Text>
           <View style={styles.themesGrid}>
-            {themes.map((theme) => {
+            {THEMES.map((theme) => {
               const isActive = selectedTheme === theme.id;
-              const PreviewInner = (
-                LinearGradient ? (
-                  <LinearGradient
-                    colors={theme.preview}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.themePreview}
-                  />
-                ) : (
-                  <View style={styles.themePreview}>
-                    {/* fallback to two solid halves */}
-                    <View style={[styles.colorBlock, { backgroundColor: theme.preview[0] }]} />
-                    <View style={[styles.colorBlock, { backgroundColor: theme.preview[1] }]} />
-                  </View>
-                )
-              );
 
               return (
                 <TouchableOpacity
                   key={theme.id}
                   style={[styles.themeCard, isActive && styles.themeCardActive]}
                   onPress={() => {
-                    setSelectedTheme(theme.id);
-                    Haptics.selectionAsync().catch(() => {});
+                    setSettings({ themeId: theme.id });
+                    if (Platform.OS !== 'web') {
+                      Haptics.selectionAsync().catch(() => {});
+                    }
                   }}
                   accessibilityRole="button"
                   accessibilityState={{ selected: isActive }}
                   accessibilityLabel={`Theme ${theme.name}`}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  {PreviewInner}
+                  {LinearGradient ? (
+                    <LinearGradient
+                      colors={theme.preview}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.themePreview}
+                    />
+                  ) : (
+                    <View style={styles.themePreview}>
+                      <View style={[styles.colorBlock, { backgroundColor: theme.preview[0] }]} />
+                      <View style={[styles.colorBlock, { backgroundColor: theme.preview[1] }]} />
+                    </View>
+                  )}
                   <Text style={styles.themeName}>{theme.name}</Text>
                   {isActive && (
                     <View style={styles.checkmark}>
@@ -237,14 +192,14 @@ export default function ThemesScreen() {
           <Slider
             label="Glow Intensity"
             value={glowIntensity}
-            onChange={setGlowIntensity}
+            onChange={(v) => setSettings({ glowIntensity: v })}
             testID="glow-slider"
           />
 
           <Slider
             label="Pulse Speed"
             value={pulseSpeed}
-            onChange={setPulseSpeed}
+            onChange={(v) => setSettings({ pulseSpeed: v })}
             testID="pulse-slider"
           />
         </View>
@@ -275,7 +230,11 @@ export default function ThemesScreen() {
                   opacity: 0.9,
                 },
               ]}
-              onPress={() => Haptics.selectionAsync().catch(() => {})}
+              onPress={() => {
+                if (Platform.OS !== 'web') {
+                  Haptics.selectionAsync().catch(() => {});
+                }
+              }}
               accessibilityRole="button"
               accessibilityLabel="Sample action button"
             >
