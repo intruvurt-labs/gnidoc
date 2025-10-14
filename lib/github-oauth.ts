@@ -421,6 +421,179 @@ async function fetchJson(url: string, init: RequestInit) {
   return res.json();
 }
 
+export interface DryRunResult {
+  path: string;
+  action: 'create' | 'update' | 'skip';
+  sizeBytes: number;
+  currentSha?: string;
+}
+
+export interface BulkCommitOptions {
+  message?: string;
+  branch?: string;
+  committer?: { name: string; email: string };
+  author?: { name: string; email: string };
+  dryRun?: boolean;
+}
+
+export interface BulkCommitResult {
+  commitSha: string;
+  treeSha: string;
+  filesProcessed: number;
+  html_url: string;
+}
+
+export async function dryRunFiles(
+  accessToken: string,
+  owner: string,
+  repo: string,
+  files: FileSpec[],
+  branch = 'main'
+): Promise<DryRunResult[]> {
+  const base = `https://api.github.com/repos/${owner}/${repo}`;
+  const headers = {
+    Authorization: `Bearer ${accessToken}`,
+    'User-Agent': 'aiappgen/1.0',
+    Accept: 'application/vnd.github.v3+json',
+  } as const;
+
+  const results: DryRunResult[] = [];
+
+  for (const f of files) {
+    const path = 'path' in f ? f.path : (f as any).path;
+    const urlPath = encodePath(path);
+    const base64 = toBase64(f);
+    const sizeBytes = Math.ceil(base64.length * 0.75);
+
+    let currentSha: string | undefined;
+    let action: 'create' | 'update' | 'skip' = 'create';
+
+    try {
+      const headRes = await fetch(`${base}/contents/${urlPath}?ref=${encodeURIComponent(branch)}`, { headers });
+      if (headRes.ok) {
+        const meta = await headRes.json();
+        currentSha = meta.sha;
+        action = 'update';
+      }
+    } catch {
+      action = 'create';
+    }
+
+    results.push({ path, action, sizeBytes, currentSha });
+  }
+
+  return results;
+}
+
+export async function bulkCommitViaTreeAPI(
+  accessToken: string,
+  owner: string,
+  repo: string,
+  files: FileSpec[],
+  options: BulkCommitOptions = {}
+): Promise<BulkCommitResult | DryRunResult[]> {
+  const {
+    message = 'Bulk commit from AI App Generator',
+    branch = 'main',
+    committer,
+    author,
+    dryRun = false,
+  } = options;
+
+  if (dryRun) {
+    return dryRunFiles(accessToken, owner, repo, files, branch);
+  }
+
+  const base = `https://api.github.com/repos/${owner}/${repo}`;
+  const headers = {
+    Authorization: `Bearer ${accessToken}`,
+    'User-Agent': 'aiappgen/1.0',
+    Accept: 'application/vnd.github.v3+json',
+    'Content-Type': 'application/json',
+  } as const;
+
+  const refRes = await withRetry(
+    async () => fetchJson(`${base}/git/refs/heads/${encodeURIComponent(branch)}`, { headers }),
+    `get ref ${branch}`
+  );
+  const latestCommitSha = refRes.object.sha;
+
+  const commitRes = await withRetry(
+    async () => fetchJson(`${base}/git/commits/${latestCommitSha}`, { headers }),
+    `get commit ${latestCommitSha}`
+  );
+  const baseTreeSha = commitRes.tree.sha;
+
+  const blobs: Array<{ path: string; mode: string; type: 'blob'; sha: string }> = [];
+
+  for (const f of files) {
+    const path = 'path' in f ? f.path : (f as any).path;
+    const base64 = toBase64(f);
+
+    const blobRes = await withRetry(
+      async () =>
+        fetchJson(`${base}/git/blobs`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ content: base64, encoding: 'base64' }),
+        }),
+      `create blob ${path}`
+    );
+
+    blobs.push({
+      path,
+      mode: '100644',
+      type: 'blob',
+      sha: blobRes.sha,
+    });
+  }
+
+  const treeRes = await withRetry(
+    async () =>
+      fetchJson(`${base}/git/trees`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ base_tree: baseTreeSha, tree: blobs }),
+      }),
+    'create tree'
+  );
+
+  const commitBody: any = {
+    message,
+    tree: treeRes.sha,
+    parents: [latestCommitSha],
+  };
+  if (committer) commitBody.committer = committer;
+  if (author) commitBody.author = author;
+
+  const newCommitRes = await withRetry(
+    async () =>
+      fetchJson(`${base}/git/commits`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(commitBody),
+      }),
+    'create commit'
+  );
+
+  await withRetry(
+    async () =>
+      fetchJson(`${base}/git/refs/heads/${encodeURIComponent(branch)}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ sha: newCommitRes.sha, force: false }),
+      }),
+    'update ref'
+  );
+
+  return {
+    commitSha: newCommitRes.sha,
+    treeSha: treeRes.sha,
+    filesProcessed: files.length,
+    html_url: `https://github.com/${owner}/${repo}/commit/${newCommitRes.sha}`,
+  };
+}
+
 export async function upsertFilesViaContentsAPI(
   accessToken: string,
   owner: string,
