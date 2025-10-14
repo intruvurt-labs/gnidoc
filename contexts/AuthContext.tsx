@@ -39,6 +39,12 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     try {
       const data = await batchGetItems([STORAGE_KEYS.USER, STORAGE_KEYS.TOKEN]);
 
+      if (!data) {
+        console.log('[AuthContext] No stored auth data found');
+        setAuthState(prev => ({ ...prev, isLoading: false }));
+        return;
+      }
+
       const storedUser = data[STORAGE_KEYS.USER];
       const storedToken = data[STORAGE_KEYS.TOKEN] as string | null;
 
