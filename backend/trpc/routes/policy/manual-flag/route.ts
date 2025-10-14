@@ -17,7 +17,7 @@ export const manualFlagProcedure = protectedProcedure
     const result = handleManualFlag(code, tier, userNotes);
 
     console.log('[Policy] Manual flag:', {
-      userId: ctx.user.id,
+      token: ctx.token,
       tier,
       artifactId,
       offendingLines: result.scanResult.offendingLines,
