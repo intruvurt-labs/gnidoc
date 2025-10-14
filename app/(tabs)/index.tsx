@@ -9,6 +9,7 @@ import {
   RefreshControl,
   Image,
 } from 'react-native';
+import { Bot } from 'lucide-react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
@@ -140,11 +141,9 @@ export default function HomeScreen() {
               style={styles.quickActionCard}
               onPress={() => router.push('/(tabs)/agent' as any)}
             >
-              <Image
-                source={require('@/assets/images/multi-agent.PNG')}
-                style={styles.quickActionImage}
-                resizeMode="contain"
-              />
+              <View style={styles.quickActionIconContainer}>
+                <Bot size={48} color={Colors.Colors.cyan.primary} strokeWidth={1.5} />
+              </View>
               <Text style={styles.quickActionTitle}>AI Agent</Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -271,6 +270,13 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     marginBottom: 12,
+  },
+  quickActionIconContainer: {
+    width: 48,
+    height: 48,
+    marginBottom: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   quickActionTitle: {
     fontSize: 14,
