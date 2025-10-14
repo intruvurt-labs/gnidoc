@@ -5,12 +5,10 @@ import { Platform } from 'react-native';
 WebBrowser.maybeCompleteAuthSession();
 
 const GITHUB_CLIENT_ID = process.env.EXPO_PUBLIC_GITHUB_CLIENT_ID || '';
-const GITHUB_CLIENT_SECRET = process.env.EXPO_PUBLIC_GITHUB_CLIENT_SECRET || '';
 
 const discovery = {
   authorizationEndpoint: 'https://github.com/login/oauth/authorize',
   tokenEndpoint: 'https://github.com/login/oauth/access_token',
-  revocationEndpoint: `https://github.com/settings/connections/applications/${GITHUB_CLIENT_ID}`,
 };
 
 export interface GitHubUser {
@@ -41,8 +39,10 @@ export function useGitHubAuth() {
   const [request, response, promptAsync] = AuthSession.useAuthRequest(
     {
       clientId: GITHUB_CLIENT_ID,
-      scopes: ['read:user', 'user:email', 'repo'],
+      scopes: ['read:user', 'user:email', 'public_repo'],
       redirectUri,
+      usePKCE: true,
+      state: Math.random().toString(36).slice(2),
     },
     discovery
   );
@@ -55,35 +55,32 @@ export function useGitHubAuth() {
   };
 }
 
-export async function exchangeCodeForToken(code: string): Promise<string> {
-  if (!GITHUB_CLIENT_ID || !GITHUB_CLIENT_SECRET) {
-    throw new Error('GitHub OAuth credentials not configured. Please set EXPO_PUBLIC_GITHUB_CLIENT_ID and EXPO_PUBLIC_GITHUB_CLIENT_SECRET in your .env file.');
-  }
-
-  const response = await fetch('https://github.com/login/oauth/access_token', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify({
-      client_id: GITHUB_CLIENT_ID,
-      client_secret: GITHUB_CLIENT_SECRET,
+export async function exchangeCodeForTokenPKCE({
+  code,
+  redirectUri,
+  codeVerifier,
+}: {
+  code: string;
+  redirectUri: string;
+  codeVerifier: string;
+}): Promise<string> {
+  const tokenRes = await AuthSession.exchangeCodeAsync(
+    {
+      clientId: GITHUB_CLIENT_ID,
       code,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to exchange code for token: ${response.statusText}`);
+      redirectUri,
+      extraParams: {
+        code_verifier: codeVerifier,
+      },
+    },
+    {
+      tokenEndpoint: discovery.tokenEndpoint,
+    }
+  );
+  if (!tokenRes.accessToken) {
+    throw new Error('No access token returned from GitHub.');
   }
-
-  const data = await response.json();
-
-  if (data.error) {
-    throw new Error(`GitHub OAuth error: ${data.error_description || data.error}`);
-  }
-
-  return data.access_token;
+  return tokenRes.accessToken;
 }
 
 export async function fetchGitHubUser(accessToken: string): Promise<GitHubUser> {
