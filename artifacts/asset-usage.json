@@ -1,0 +1,133 @@
+{
+  "version": "1.0.0",
+  "generated": "2025-01-14T00:00:00Z",
+  "assets": {
+    "quickActions": {
+      "orchestrate": {
+        "path": "assets/images/quickicon-orchestrate.png",
+        "usedIn": ["app/(tabs)/index.tsx"],
+        "type": "image/png",
+        "purpose": "Quick action icon for orchestration feature",
+        "status": "active"
+      },
+      "deploy": {
+        "path": "assets/images/deploy.png",
+        "usedIn": ["app/(tabs)/index.tsx"],
+        "type": "image/png",
+        "purpose": "Quick action icon for deployment feature",
+        "status": "active"
+      },
+      "agent": {
+        "path": "assets/images/agent25.PNG",
+        "usedIn": ["app/(tabs)/index.tsx"],
+        "type": "image/png",
+        "purpose": "Quick action icon for AI agent feature",
+        "status": "active"
+      },
+      "dashboard": {
+        "path": "assets/images/dashboard.png",
+        "usedIn": ["app/(tabs)/index.tsx"],
+        "type": "image/png",
+        "purpose": "Quick action icon for dashboard feature",
+        "status": "active"
+      }
+    },
+    "branding": {
+      "appIcon": {
+        "path": "assets/images/icon.png",
+        "usedIn": ["app.json"],
+        "type": "image/png",
+        "purpose": "Main app icon",
+        "status": "active"
+      },
+      "favicon": {
+        "path": "assets/images/favicon.png",
+        "usedIn": ["app.json"],
+        "type": "image/png",
+        "purpose": "Web favicon",
+        "status": "active"
+      },
+      "splashIcon": {
+        "path": "assets/images/splash-icon.png",
+        "usedIn": ["app.json"],
+        "type": "image/png",
+        "purpose": "Splash screen icon",
+        "status": "active"
+      },
+      "adaptiveIcon": {
+        "path": "assets/images/adaptive-icon.png",
+        "usedIn": ["app.json"],
+        "type": "image/png",
+        "purpose": "Android adaptive icon",
+        "status": "active"
+      },
+      "sphereLogo": {
+        "path": "https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/43sdu1wozhhc59ove8qj5",
+        "usedIn": ["components/UniversalFooter.tsx"],
+        "type": "image/png",
+        "purpose": "Footer sphere navigation button",
+        "status": "active",
+        "remote": true
+      },
+      "logoMenu": {
+        "path": "https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/3m84a7w7p2uwori7ld5pn",
+        "usedIn": ["components/LogoMenu.tsx"],
+        "type": "image/png",
+        "purpose": "Logo menu icon",
+        "status": "active",
+        "remote": true
+      }
+    },
+    "additional": {
+      "logo1banner": {
+        "path": "assets/images/logo1banner.png",
+        "usedIn": [],
+        "type": "image/png",
+        "purpose": "Banner logo variant",
+        "status": "unused"
+      },
+      "simplelogo": {
+        "path": "assets/images/simplelogo.png",
+        "usedIn": [],
+        "type": "image/png",
+        "purpose": "Simple logo variant",
+        "status": "unused"
+      },
+      "circuitrylogo": {
+        "path": "assets/images/circuitrylogo.jpg",
+        "usedIn": [],
+        "type": "image/jpeg",
+        "purpose": "Circuitry-themed logo",
+        "status": "unused"
+      },
+      "multiAgent": {
+        "path": "assets/images/multi-agent.PNG",
+        "usedIn": [],
+        "type": "image/png",
+        "purpose": "Multi-agent illustration",
+        "status": "unused"
+      },
+      "agentVariants": {
+        "agent22": "assets/images/agent22.PNG",
+        "agent26": "assets/images/agent26.PNG",
+        "agent28": "assets/images/agent28.PNG",
+        "agent40": "assets/images/agent40.PNG",
+        "purpose": "Agent UI screenshots/variants",
+        "status": "unused"
+      }
+    }
+  },
+  "summary": {
+    "totalAssets": 18,
+    "activeAssets": 10,
+    "unusedAssets": 8,
+    "remoteAssets": 2,
+    "localAssets": 16
+  },
+  "recommendations": [
+    "Consider removing unused assets to reduce bundle size",
+    "Optimize PNG files with compression tools",
+    "Add WebP variants for web platform",
+    "Cache remote assets for offline support"
+  ]
+}

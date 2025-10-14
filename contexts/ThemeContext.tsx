@@ -27,6 +27,21 @@ export interface ThemeSettings {
 
 const STORAGE_KEY = 'app-theme';
 
+export const ROUTE_PALETTES: Record<string, string[]> = {
+  '/': ['#00FFFF', '#A200FF'],
+  '/agent': ['#00FFFF', '#B3FF00'],
+  '/orchestration': ['#00FFFF', '#FF004C'],
+  '/deploy': ['#B3FF00', '#FF33CC'],
+  '/themes': ['#00FFFF', '#FF004C'],
+  '/hub': ['#B3FF00', '#FFD93B'],
+  '/dashboard': ['#00FFFF', '#FF004C'],
+  '/code': ['#B3FF00', '#FF33CC'],
+  '/database': ['#00FFFF', '#B3FF00'],
+  '/terminal': ['#00FFFF', '#FF004C'],
+  '/security': ['#FF004C', '#00FFFF'],
+  '/preferences': ['#00FFFF', '#A200FF'],
+};
+
 export const THEMES: Theme[] = [
   {
     id: 'cyan_red_power',
@@ -175,6 +190,7 @@ export const [ThemeProvider, useTheme] = createContextHook(() => {
       card: currentTheme.colors.card,
       text: currentTheme.colors.text,
       border: currentTheme.colors.border,
+      ROUTE_PALETTES,
     }),
     [settings, setSettings, currentTheme, isLoading, resetTheme, pulseAnim]
   );

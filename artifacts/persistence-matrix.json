@@ -1,0 +1,135 @@
+{
+  "version": "1.0.0",
+  "generated": "2025-01-14T00:00:00Z",
+  "persistenceKeys": {
+    "settings": {
+      "key": "app-settings",
+      "context": "SettingsContext",
+      "type": "AppSettings",
+      "default": {
+        "notifications": true,
+        "darkMode": true,
+        "autoSave": true,
+        "analytics": false,
+        "fontSize": 14,
+        "tabSize": 2,
+        "wordWrap": true,
+        "lineNumbers": true,
+        "minimap": false,
+        "autoComplete": true
+      },
+      "validation": "SettingsSchema (Zod)",
+      "migration": "migrateSettings()",
+      "status": "safe"
+    },
+    "profile": {
+      "key": "user-profile",
+      "context": "SettingsContext",
+      "type": "UserProfile",
+      "default": {
+        "name": "Developer",
+        "email": "support@intruvurt.space"
+      },
+      "validation": "ProfileSchema (Zod)",
+      "migration": "migrateProfile()",
+      "status": "safe"
+    },
+    "theme": {
+      "key": "app-theme",
+      "context": "ThemeContext",
+      "type": "ThemeSettings",
+      "default": {
+        "themeId": "cyan_red_power",
+        "glowIntensity": 60,
+        "pulseSpeed": 50
+      },
+      "validation": "None (TypeScript only)",
+      "migration": "None",
+      "status": "safe"
+    },
+    "auth": {
+      "key": "auth-token",
+      "context": "AuthContext",
+      "type": "string | null",
+      "default": null,
+      "validation": "None",
+      "migration": "None",
+      "status": "safe",
+      "security": "Stored in AsyncStorage (consider SecureStore for production)"
+    },
+    "onboarding": {
+      "key": "onboarding_completed",
+      "context": "OnboardingWrapper (app/_layout.tsx)",
+      "type": "boolean",
+      "default": false,
+      "validation": "None",
+      "migration": "None",
+      "status": "safe"
+    },
+    "project": {
+      "key": "logo-menu:last-project-id",
+      "context": "LogoMenu",
+      "type": "string | null",
+      "default": null,
+      "validation": "None",
+      "migration": "None",
+      "status": "safe"
+    }
+  },
+  "storageStrategy": {
+    "library": "@react-native-async-storage/async-storage",
+    "batchOperations": true,
+    "debouncing": true,
+    "debounceDelay": 400,
+    "errorHandling": "try-catch with console.error",
+    "fallbacks": "Always return defaults on error"
+  },
+  "dataFlow": {
+    "load": [
+      "Component mounts",
+      "useEffect triggers loadSettings()",
+      "batchGetItems([keys])",
+      "Parse JSON",
+      "Validate with Zod schema",
+      "Migrate if needed",
+      "setState(validated)",
+      "setIsLoading(false)"
+    ],
+    "save": [
+      "User updates setting",
+      "updateSettings(partial)",
+      "setState(merged)",
+      "Debounced save triggered",
+      "Validate with Zod schema",
+      "AsyncStorage.setItem(key, JSON.stringify(data))",
+      "Error handling"
+    ]
+  },
+  "exportImport": {
+    "export": {
+      "format": "ExportPackage",
+      "version": "1.1.0",
+      "includes": ["settings", "profile"],
+      "timestamp": true
+    },
+    "import": {
+      "validation": "Zod schema",
+      "migration": "Version-based",
+      "batchWrite": true
+    }
+  },
+  "recommendations": [
+    "Consider using expo-secure-store for auth-token in production",
+    "Add encryption for sensitive user data",
+    "Implement cloud sync for cross-device persistence",
+    "Add data export/import UI for user control",
+    "Monitor AsyncStorage size to avoid quota issues"
+  ],
+  "testing": {
+    "roundTrip": "✅ Verified",
+    "defaults": "✅ All keys have safe defaults",
+    "validation": "✅ Zod schemas for critical data",
+    "migration": "✅ Migration functions in place",
+    "errorHandling": "✅ Graceful degradation"
+  }
+}

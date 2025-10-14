@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Dimensions,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -117,28 +118,44 @@ export default function HomeScreen() {
               style={styles.quickActionCard}
               onPress={() => router.push('/(tabs)/orchestration' as any)}
             >
-              <Text style={styles.quickActionIcon}>🎯</Text>
+              <Image
+                source={require('@/assets/images/quickicon-orchestrate.png')}
+                style={styles.quickActionImage}
+                resizeMode="contain"
+              />
               <Text style={styles.quickActionTitle}>Orchestrate</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.quickActionCard}
               onPress={() => router.push('/deploy' as any)}
             >
-              <Text style={styles.quickActionIcon}>🚀</Text>
+              <Image
+                source={require('@/assets/images/deploy.png')}
+                style={styles.quickActionImage}
+                resizeMode="contain"
+              />
               <Text style={styles.quickActionTitle}>Deploy</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.quickActionCard}
               onPress={() => router.push('/(tabs)/agent' as any)}
             >
-              <Text style={styles.quickActionIcon}>🤖</Text>
+              <Image
+                source={require('@/assets/images/agent25.PNG')}
+                style={styles.quickActionImage}
+                resizeMode="contain"
+              />
               <Text style={styles.quickActionTitle}>AI Agent</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.quickActionCard}
-              onPress={() => router.push('/(tabs)/code' as any)}
+              onPress={() => router.push('/(tabs)/dashboard' as any)}
             >
-              <Text style={styles.quickActionIcon}>💻</Text>
+              <Image
+                source={require('@/assets/images/dashboard.png')}
+                style={styles.quickActionImage}
+                resizeMode="contain"
+              />
               <Text style={styles.quickActionTitle}>Dashboard</Text>
             </TouchableOpacity>
           </View>
@@ -250,8 +267,9 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: Colors.Colors.cyan.primary,
   },
-  quickActionIcon: {
-    fontSize: 40,
+  quickActionImage: {
+    width: 48,
+    height: 48,
     marginBottom: 12,
   },
   quickActionTitle: {

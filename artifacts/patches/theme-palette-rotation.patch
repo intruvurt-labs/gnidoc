@@ -1,0 +1,89 @@
+--- a/contexts/ThemeContext.tsx
++++ b/contexts/ThemeContext.tsx
+@@ -1,6 +1,7 @@
+ import createContextHook from '@nkzw/create-context-hook';
+ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+ import AsyncStorage from '@react-native-async-storage/async-storage';
+ import { Animated } from 'react-native';
++import { usePathname } from 'expo-router';
+ import Colors from '@/constants/colors';
+ 
+@@ -28,6 +29,22 @@ export interface ThemeSettings {
+ 
+ const STORAGE_KEY = 'app-theme';
+ 
++export const ROUTE_PALETTES: Record<string, string[]> = {
++  '/': ['#00FFFF', '#A200FF'],
++  '/agent': ['#00FFFF', '#B3FF00'],
++  '/orchestration': ['#00FFFF', '#FF004C'],
++  '/deploy': ['#B3FF00', '#FF33CC'],
++  '/themes': ['#00FFFF', '#FF004C'],
++  '/hub': ['#B3FF00', '#FFD93B'],
++  '/dashboard': ['#00FFFF', '#FF004C'],
++  '/code': ['#B3FF00', '#FF33CC'],
++  '/database': ['#00FFFF', '#B3FF00'],
++  '/terminal': ['#00FFFF', '#FF004C'],
++  '/security': ['#FF004C', '#00FFFF'],
++  '/preferences': ['#00FFFF', '#A200FF'],
++};
++
+ export const THEMES: Theme[] = [
+   {
+     id: 'cyan_red_power',
+@@ -176,6 +193,7 @@ export const [ThemeProvider, useTheme] = createContextHook(() => {
+       card: currentTheme.colors.card,
+       text: currentTheme.colors.text,
+       border: currentTheme.colors.border,
++      ROUTE_PALETTES,
+     }),
+     [settings, setSettings, currentTheme, isLoading, resetTheme, pulseAnim]
+   );
+
+## Usage Example
+
+To use route-based palette rotation in your screens:
+
+```tsx
+import { useTheme } from '@/contexts/ThemeContext';
+import { usePathname } from 'expo-router';
+
+function MyScreen() {
+  const { ROUTE_PALETTES } = useTheme();
+  const pathname = usePathname();
+  
+  const palette = ROUTE_PALETTES[pathname] || ROUTE_PALETTES['/'];
+  const [primary, secondary] = palette;
+  
+  return (
+    <View style={{ backgroundColor: primary }}>
+      <Text style={{ color: secondary }}>Dynamic colors!</Text>
+    </View>
+  );
+}
+```
+
+## MatrixGridBackground Integration
+
+```tsx
+import { useTheme } from '@/contexts/ThemeContext';
+import { usePathname } from 'expo-router';
+
+function MyScreen() {
+  const { ROUTE_PALETTES, pulse, settings } = useTheme();
+  const pathname = usePathname();
+  
+  const palette = ROUTE_PALETTES[pathname] || ROUTE_PALETTES['/'];
+  
+  return (
+    <View>
+      <MatrixGridBackground 
+        parallax 
+        pulse={pulse}
+        speedMod={settings.pulseSpeed}
+        tint={palette[0]} 
+      />
+      {/* Your content */}
+    </View>
+  );
+}
+```

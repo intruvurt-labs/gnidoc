@@ -1,0 +1,127 @@
+{
+  "version": "1.0.0",
+  "generated": "2025-01-14T00:00:00Z",
+  "navigation": {
+    "footer": {
+      "component": "UniversalFooter",
+      "trigger": "Sphere button at bottom center",
+      "layout": "3-column grid",
+      "items": [
+        { "name": "home", "label": "Home", "route": "/(tabs)", "icon": "Home" },
+        { "name": "dashboard", "label": "Dashboard", "route": "/(tabs)/dashboard", "icon": "BarChart3" },
+        { "name": "agent", "label": "Agent", "route": "/(tabs)/agent", "icon": "Bot" },
+        { "name": "workflow", "label": "Workflow", "route": "/(tabs)/workflow", "icon": "Workflow" },
+        { "name": "orchestration", "label": "Orchestration", "route": "/(tabs)/orchestration", "icon": "Network" },
+        { "name": "research", "label": "Research", "route": "/(tabs)/research", "icon": "Sparkles" },
+        { "name": "database", "label": "Database", "route": "/(tabs)/database", "icon": "Database" },
+        { "name": "code", "label": "Code", "route": "/(tabs)/code", "icon": "Code" },
+        { "name": "terminal", "label": "Terminal", "route": "/(tabs)/terminal", "icon": "Terminal" },
+        { "name": "deploy", "label": "Deploy", "route": "/deploy", "icon": "Rocket" },
+        { "name": "security", "label": "Security", "route": "/(tabs)/security", "icon": "Shield" },
+        { "name": "integrations", "label": "Integrations", "route": "/(tabs)/integrations", "icon": "Zap" },
+        { "name": "analysis", "label": "Analysis", "route": "/(tabs)/analysis", "icon": "TrendingUp" },
+        { "name": "leaderboard", "label": "Leaderboard", "route": "/(tabs)/leaderboard", "icon": "Users" },
+        { "name": "referrals", "label": "Referrals", "route": "/(tabs)/referrals", "icon": "Gift" },
+        { "name": "themes", "label": "Themes", "route": "/themes", "icon": "Palette" },
+        { "name": "ai-models", "label": "AI Models", "route": "/(tabs)/ai-models", "icon": "Brain" },
+        { "name": "api-keys", "label": "API Keys", "route": "/(tabs)/api-keys", "icon": "Key" },
+        { "name": "subscription", "label": "Subscription", "route": "/(tabs)/subscription", "icon": "CreditCard" },
+        { "name": "preferences", "label": "Preferences", "route": "/(tabs)/preferences", "icon": "Settings" }
+      ]
+    },
+    "logoRadial": {
+      "component": "LogoMenu",
+      "trigger": "Tap/long-press logo in header",
+      "quickActions": [
+        { "label": "New Project", "action": "createProject", "icon": "Plus" },
+        { "label": "Open Recent", "action": "openRecent", "icon": "FolderOpen" },
+        { "label": "Run → Generate App", "action": "generateApp", "icon": "Play", "primary": true },
+        { "label": "Preview", "action": "preview", "icon": "Eye" },
+        { "label": "Save/Export", "action": "saveExport", "icon": "Save" },
+        { "label": "Switch Workspace", "action": "switchWorkspace", "icon": "Users" }
+      ],
+      "navigation": [
+        { "label": "Orchestrate", "route": "/(tabs)/orchestration", "icon": "Network" },
+        { "label": "Preferences", "route": "/(tabs)/preferences", "icon": "User" },
+        { "label": "Security", "route": "/(tabs)/security", "icon": "Shield" },
+        { "label": "Dashboard", "route": "/(tabs)/dashboard", "icon": "BarChart3" },
+        { "label": "Leaderboard", "route": "/(tabs)/leaderboard", "icon": "Trophy" },
+        { "label": "Subscription", "route": "/(tabs)/subscription", "icon": "Crown" },
+        { "label": "Referrals", "route": "/(tabs)/referrals", "icon": "Gift" }
+      ],
+      "advancedSettings": {
+        "trigger": "Advanced Settings button",
+        "sections": [
+          "Project Settings",
+          "Generator/Models",
+          "Output/Scaffolding",
+          "IDE/Editor",
+          "Security & Privacy",
+          "Performance",
+          "Billing & Plan"
+        ]
+      }
+    },
+    "overflow": {
+      "component": "BrandedHeader",
+      "items": [
+        { "label": "About", "route": "/about" },
+        { "label": "FAQ", "route": "/faq" },
+        { "label": "Pricing", "route": "/pricing" },
+        { "label": "Policy", "route": "/policy" }
+      ]
+    }
+  },
+  "routeMapping": {
+    "tabs": {
+      "visible": [
+        "index",
+        "agent",
+        "orchestration",
+        "code",
+        "preferences",
+        "security",
+        "dashboard",
+        "leaderboard",
+        "subscription",
+        "referrals"
+      ],
+      "hidden": [
+        "settings",
+        "workflow",
+        "terminal",
+        "analysis",
+        "database",
+        "integrations",
+        "research",
+        "workflow-enhanced",
+        "api-keys",
+        "ai-models"
+      ]
+    },
+    "stack": [
+      "splash",
+      "about",
+      "faq",
+      "connections",
+      "orchestration",
+      "app-generator",
+      "builder/design",
+      "builder/logic",
+      "auth/login",
+      "auth/signup",
+      "deploy",
+      "pricing",
+      "policy",
+      "themes",
+      "hub",
+      "modal"
+    ]
+  },
+  "accessibility": {
+    "reduceMotion": true,
+    "ariaLabels": true,
+    "hitSlop": true,
+    "announcements": true
+  }
+}
