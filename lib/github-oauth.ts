@@ -357,3 +357,48 @@ export async function pushToGitHub(
 
   console.log('[GitHub] Successfully pushed files to repository');
 }
+
+export async function upsertFilesViaContentsAPI(
+  accessToken: string,
+  owner: string,
+  repo: string,
+  files: { path: string; content: string }[],
+  message = 'Update from AI App Generator',
+  branch = 'main'
+) {
+  for (const f of files) {
+    const head = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(f.path)}?ref=${branch}`,
+      { headers: { Authorization: `Bearer ${accessToken}`, 'User-Agent': 'aiappgen/1.0', Accept: 'application/vnd.github.v3+json' } }
+    );
+    let sha: string | undefined;
+    if (head.ok) {
+      const j = await head.json();
+      sha = j.sha;
+    }
+
+    const res = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(f.path)}`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'User-Agent': 'aiappgen/1.0',
+          Accept: 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message,
+          content: Buffer.from(f.content, 'utf8').toString('base64'),
+          branch,
+          sha,
+        }),
+      }
+    );
+    if (!res.ok) {
+      let detail = '';
+      try { detail = JSON.stringify(await res.json()); } catch {}
+      throw new Error(`Failed to upsert ${f.path}: ${res.status} ${res.statusText} ${detail}`);
+    }
+  }
+}
