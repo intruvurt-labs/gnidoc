@@ -107,19 +107,26 @@ export async function batchSetItems(items: Record<string, any>): Promise<void> {
   console.log(`[Storage] Batch set ${entries.length} items`);
 }
 
-export async function batchGetItems(keys: string[]): Promise<Record<string, any>> {
-  const results = await AsyncStorage.multiGet(keys);
-  const parsed: Record<string, any> = {};
-  
-  results.forEach(([key, value]) => {
-    if (value) {
-      try {
-        parsed[key] = JSON.parse(value);
-      } catch {
-        parsed[key] = value;
+export async function batchGetItems(keys: string[]): Promise<Record<string, any> | null> {
+  try {
+    const results = await AsyncStorage.multiGet(keys);
+    const parsed: Record<string, any> = {};
+    let hasData = false;
+    
+    results.forEach(([key, value]) => {
+      if (value) {
+        hasData = true;
+        try {
+          parsed[key] = JSON.parse(value);
+        } catch {
+          parsed[key] = value;
+        }
       }
-    }
-  });
-  
-  return parsed;
+    });
+    
+    return hasData ? parsed : null;
+  } catch (error) {
+    console.error('[Storage] batchGetItems failed:', error);
+    return null;
+  }
 }
