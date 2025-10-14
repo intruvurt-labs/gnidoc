@@ -108,6 +108,28 @@ const Colors = {
   },
 };
 
+export const Deep = {
+  cyan: {
+    base: '#0D6E78',
+    dim: '#0A5158',
+    line: '#0E8794',
+  },
+  red: {
+    base: '#8A1424',
+    accent: '#B61F33',
+  },
+  lime: {
+    base: '#A8F10A',
+    soft: '#C7FF5E',
+  },
+  ink: '#0A0C0F',
+  text: {
+    primary: '#E8F2F2',
+    muted: '#A5B8B8',
+    inverse: '#0A0C0F',
+  },
+};
+
 export const Shadows = {
   glowCyan: {
     shadowColor: Deep.cyan.base,
@@ -151,28 +173,6 @@ export const Typography = {
     fontSize: 14,
   },
   minBodySizePt: 13.5,
-};
-
-export const Deep = {
-  cyan: {
-    base: '#0D6E78',
-    dim: '#0A5158',
-    line: '#0E8794',
-  },
-  red: {
-    base: '#8A1424',
-    accent: '#B61F33',
-  },
-  lime: {
-    base: '#A8F10A',
-    soft: '#C7FF5E',
-  },
-  ink: '#0A0C0F',
-  text: {
-    primary: '#E8F2F2',
-    muted: '#A5B8B8',
-    inverse: '#0A0C0F',
-  },
 };
 
 export default {
