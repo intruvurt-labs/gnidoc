@@ -1,231 +1,285 @@
- import React, { useState } from 'react';
-+ import React, { useEffect, useRef, useState } from 'react';
- import {
-   View,
-   Text,
-   StyleSheet,
-   ScrollView,
-   TouchableOpacity,
-   TextInput,
- } from 'react-native';
- import { useSafeAreaInsets } from 'react-native-safe-area-context';
- import { Terminal as TerminalIcon, Play, Square, Trash2, History, Folder, Package, GitBranch } from 'lucide-react-native';
- import Colors from '@/constants/colors';
-+ import AsyncStorage from '@react-native-async-storage/async-storage';
-+ import * as Haptics from 'expo-haptics';
-+ import { nanoid } from 'nanoid/non-secure';
-+ import { simulateCommand } from '@/services/terminalSim';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Switch,
+  TextInput,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { 
+  Link, 
+  Github, 
+  Database, 
+  Cloud, 
+  Webhook, 
+  Key, 
+  CheckCircle, 
+  XCircle,
+  Settings,
+  Plus
+} from 'lucide-react-native';
+import Colors from '@/constants/colors';
 
- interface CommandHistoryItem {
--  command: string;
--  output: string;
--  timestamp: Date;
--  status: 'success' | 'error';
-+  id: string;
-+  command: string;
-+  output: string;
-+  timestamp: string; // ISO
-+  status: 'success' | 'error' | 'cancelled';
- }
+interface Integration {
+  id: string;
+  name: string;
+  description: string;
+  icon: React.ReactNode;
+  connected: boolean;
+  status: 'active' | 'inactive' | 'error';
+}
 
- export default function TerminalScreen() {
-   const [command, setCommand] = useState<string>('');
-   const insets = useSafeAreaInsets();
-   const [history, setHistory] = useState<CommandHistoryItem[]>([]);
-   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>({});
--
--  const [isRunning, setIsRunning] = useState<boolean>(false);
-+  const [isRunning, setIsRunning] = useState<boolean>(false);
-+  const abortRef = useRef<AbortController | null>(null);
-+  const scrollRef = useRef<ScrollView>(null);
+export default function IntegrationsScreen() {
+  const insets = useSafeAreaInsets();
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [integrations, setIntegrations] = useState<Integration[]>([
+    {
+      id: 'github',
+      name: 'GitHub',
+      description: 'Connect your GitHub repositories',
+      icon: <Github color={Colors.Colors.text.primary} size={24} />,
+      connected: true,
+      status: 'active',
+    },
+    {
+      id: 'database',
+      name: 'Database',
+      description: 'Connect to external databases',
+      icon: <Database color={Colors.Colors.text.primary} size={24} />,
+      connected: false,
+      status: 'inactive',
+    },
+    {
+      id: 'cloud',
+      name: 'Cloud Storage',
+      description: 'Integrate cloud storage providers',
+      icon: <Cloud color={Colors.Colors.text.primary} size={24} />,
+      connected: false,
+      status: 'inactive',
+    },
+    {
+      id: 'webhook',
+      name: 'Webhooks',
+      description: 'Configure webhook endpoints',
+      icon: <Webhook color={Colors.Colors.text.primary} size={24} />,
+      connected: true,
+      status: 'active',
+    },
+    {
+      id: 'api',
+      name: 'API Keys',
+      description: 'Manage API keys and tokens',
+      icon: <Key color={Colors.Colors.text.primary} size={24} />,
+      connected: true,
+      status: 'active',
+    },
+  ]);
 
-+  const STORAGE_KEY = 'terminal_history_v1';
-+  const MAX_ITEMS = 100;
+  const toggleIntegration = (id: string) => {
+    setIntegrations(prev =>
+      prev.map(integration =>
+        integration.id === id
+          ? {
+              ...integration,
+              connected: !integration.connected,
+              status: !integration.connected ? 'active' : 'inactive',
+            }
+          : integration
+      )
+    );
+  };
 
-+  // load persisted history
-+  useEffect(() => {
-+    (async () => {
-+      try {
-+        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-+        if (raw) setHistory(JSON.parse(raw));
-+      } catch {}
-+    })();
-+  }, []);
-+
-+  // persist on change
-+  useEffect(() => {
-+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(-MAX_ITEMS))).catch(() => {});
-+  }, [history]);
+  const filteredIntegrations = integrations.filter(integration =>
+    integration.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    integration.description.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-   const executeCommand = async (cmdToExecute?: string) => {
-     const cmd = (cmdToExecute || command).trim();
-     if (!cmd) return;
- 
-+    Haptics.selectionAsync().catch(() => {});
-     setIsRunning(true);
--    const newCommand: CommandHistoryItem = {
--      command: cmd,
--      output: 'Executing...',
--      timestamp: new Date(),
--      status: 'success'
--    };
-+    const id = nanoid();
-+    const newCommand: CommandHistoryItem = {
-+      id,
-+      command: cmd,
-+      output: 'Executing...',
-+      timestamp: new Date().toISOString(),
-+      status: 'success'
-+    };
- 
-     setHistory(prev => [...prev, newCommand]);
-     setCommand('');
- 
--    // Simulate realistic command execution
-+    // Cancellable execution
-     try {
--      const output = await simulateCommand(cmd);
--      setHistory(prev => prev.map((item, index) => 
--        index === prev.length - 1 
--          ? { ...item, output, status: 'success' as const }
--          : item
--      ));
-+      abortRef.current?.abort();
-+      abortRef.current = new AbortController();
-+      const { output, status } = await simulateCommand(cmd, abortRef.current.signal);
-+      Haptics.impactAsync(status === 'success' ? Haptics.ImpactFeedbackStyle.Light : Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-+      setHistory(prev => prev.map(item => item.id === id ? { ...item, output, status } : item));
-     } catch (error) {
--      setHistory(prev => prev.map((item, index) => 
--        index === prev.length - 1 
--          ? { ...item, output: error as string, status: 'error' as const }
--          : item
--      ));
-+      setHistory(prev => prev.map(item => item.id === id ? { ...item, output: String(error), status: 'error' as const } : item));
-     } finally {
-       setIsRunning(false);
-     }
-   };
+  const getStatusIcon = (status: Integration['status']) => {
+    switch (status) {
+      case 'active':
+        return <CheckCircle color={Colors.Colors.success} size={16} />;
+      case 'error':
+        return <XCircle color={Colors.Colors.error} size={16} />;
+      default:
+        return null;
+    }
+  };
 
--  const simulateCommand = async (cmd: string): Promise<string> => {
--    // ... (removed - moved to services/terminalSim)
--  };
-+  // Auto-scroll to bottom on new lines
-+  useEffect(() => {
-+    scrollRef.current?.scrollToEnd({ animated: true });
-+  }, [history, isRunning]);
+  return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Link color={Colors.Colors.cyan.primary} size={24} />
+        <Text style={styles.headerTitle}>Integrations</Text>
+        <TouchableOpacity style={styles.addButton}>
+          <Plus color={Colors.Colors.cyan.primary} size={20} />
+        </TouchableOpacity>
+      </View>
 
-   const clearHistory = () => {
-     setHistory([]);
-   };
-@@
--      <View style={styles.terminalContainer}>
--        <ScrollView 
-+      <View style={styles.terminalContainer} accessibilityRole="summary" accessibilityLabel="Terminal output">
-+        <ScrollView
-+          ref={scrollRef}
-           style={styles.terminalOutput} 
-           contentContainerStyle={{ paddingBottom: 20 }}
-           showsVerticalScrollIndicator={false}
-         >
--          {history.map((item, index) => {
--            const itemKey = `cmd-${index}-${item.timestamp.getTime()}`;
-+          {history.map((item) => {
-+            const itemKey = item.id;
--            const isExpanded = expandedItems[itemKey] || false;
--            const outputLines = item.output.split('\n');
-+            const isExpanded = !!expandedItems[itemKey];
-+            const outputLines = (item.output || '').split('\n');
-             const shouldTruncate = outputLines.length > 5;
-             const displayOutput = shouldTruncate && !isExpanded 
-               ? outputLines.slice(0, 5).join('\n') + '\n...' 
-               : item.output;
- 
-             return (
-               <View key={itemKey} style={styles.commandBlock}>
--                <TouchableOpacity 
-+                <TouchableOpacity
-+                  accessibilityRole="button"
-+                  accessibilityLabel={`Command ${item.command}. ${isExpanded ? 'Collapse' : 'Expand'} output`}
-                   style={styles.commandHeader}
-                   onPress={() => {
-                     setExpandedItems(prev => ({
-                       ...prev,
-                       [itemKey]: !prev[itemKey]
-                     }));
-                   }}
-                   onLongPress={() => executeCommand(item.command)}
-                 >
-                   <Text style={styles.prompt}>$ </Text>
-                   <Text style={styles.commandText}>{item.command}</Text>
-                   <Text style={styles.timestamp}>
--                    {item.timestamp.toLocaleTimeString()}
-+                    {new Date(item.timestamp).toLocaleTimeString()}
-                   </Text>
-                 </TouchableOpacity>
-                 <Text style={[
-                   styles.outputText,
-                   item.status === 'error' && styles.errorText
-                 ]}>
-                   {displayOutput}
-                 </Text>
-                 {shouldTruncate && (
-                   <TouchableOpacity 
-                     style={styles.expandButton}
-                     onPress={() => {
-                       setExpandedItems(prev => ({
-                         ...prev,
-                         [itemKey]: !prev[itemKey]
-                       }));
-                     }}
-                   >
-                     <Text style={styles.expandButtonText}>
-                       {isExpanded ? '▲ Show Less' : '▼ Show More'}
-                     </Text>
-                   </TouchableOpacity>
-                 )}
-               </View>
-             );
-           })}
-           {isRunning && (
-             <View style={styles.loadingIndicator}>
-               <Text style={styles.loadingText}>Executing command...</Text>
-             </View>
-           )}
-         </ScrollView>
-       </View>
-@@
--          <TouchableOpacity
--            style={[styles.actionButton, styles.runButton]}
--            onPress={() => executeCommand()}
--            disabled={isRunning || !command.trim()}
--          >
--            {isRunning ? (
--              <Square color={Colors.Colors.text.inverse} size={16} />
--            ) : (
--              <Play color={Colors.Colors.text.inverse} size={16} />
--            )}
--            <Text style={styles.runButtonText}>
--              {isRunning ? 'Stop' : 'Run'}
--            </Text>
--          </TouchableOpacity>
-+          <TouchableOpacity
-+            style={[styles.actionButton, styles.runButton]}
-+            onPress={() => {
-+              if (isRunning) {
-+                abortRef.current?.abort();
-+                setIsRunning(false);
-+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
-+              } else {
-+                executeCommand();
-+              }
-+            }}
-+            disabled={!isRunning && !command.trim()}
-+            accessibilityRole="button"
-+            accessibilityLabel={isRunning ? 'Stop command' : 'Run command'}
-+          >
-+            {isRunning
-+              ? <Square color={Colors.Colors.text.inverse} size={16} />
-+              : <Play color={Colors.Colors.text.inverse} size={16} />}
-+            <Text style={styles.runButtonText}>{isRunning ? 'Stop' : 'Run'}</Text>
-+          </TouchableOpacity>
+      {/* Search */}
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search integrations..."
+          placeholderTextColor={Colors.Colors.text.muted}
+        />
+      </View>
+
+      {/* Integrations List */}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {filteredIntegrations.map((integration) => (
+          <View key={integration.id} style={styles.integrationCard}>
+            <View style={styles.integrationHeader}>
+              <View style={styles.integrationIcon}>{integration.icon}</View>
+              <View style={styles.integrationInfo}>
+                <View style={styles.integrationTitleRow}>
+                  <Text style={styles.integrationName}>{integration.name}</Text>
+                  {integration.connected && getStatusIcon(integration.status)}
+                </View>
+                <Text style={styles.integrationDescription}>
+                  {integration.description}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.integrationActions}>
+              <Switch
+                value={integration.connected}
+                onValueChange={() => toggleIntegration(integration.id)}
+                trackColor={{
+                  false: Colors.Colors.border.muted,
+                  true: Colors.Colors.cyan.primary,
+                }}
+                thumbColor={Colors.Colors.text.inverse}
+              />
+              {integration.connected && (
+                <TouchableOpacity style={styles.settingsButton}>
+                  <Settings color={Colors.Colors.text.muted} size={18} />
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        ))}
+
+        {filteredIntegrations.length === 0 && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateText}>No integrations found</Text>
+          </View>
+        )}
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: Colors.Colors.background.primary,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    gap: 12,
+  },
+  headerTitle: {
+    flex: 1,
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.Colors.cyanRed.primary,
+  },
+  addButton: {
+    padding: 8,
+  },
+  searchContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  searchInput: {
+    backgroundColor: Colors.Colors.background.card,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    color: Colors.Colors.text.primary,
+    fontSize: 14,
+    borderWidth: 1,
+    borderColor: Colors.Colors.border.muted,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  integrationCard: {
+    backgroundColor: Colors.Colors.background.card,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: Colors.Colors.border.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  integrationHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  integrationIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    backgroundColor: Colors.Colors.background.secondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  integrationInfo: {
+    flex: 1,
+  },
+  integrationTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  integrationName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.Colors.text.primary,
+  },
+  integrationDescription: {
+    fontSize: 12,
+    color: Colors.Colors.text.muted,
+  },
+  integrationActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  settingsButton: {
+    padding: 4,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  emptyStateText: {
+    color: Colors.Colors.text.muted,
+    fontSize: 14,
+  },
+});
