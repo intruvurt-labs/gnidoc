@@ -151,7 +151,7 @@ export default function SecurityScreen() {
       <View style={styles.brandingSection}>
         <View style={styles.brandingHeader}>
           <Image
-            source={require('@/assets/images/logo1banner.png')}
+            source={require('@/assets/images/simplelogo.png')}
             style={styles.logoBanner}
             resizeMode="contain"
             accessibilityLabel="Aurebix Logo Banner"
