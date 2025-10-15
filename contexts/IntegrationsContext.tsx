@@ -3,26 +3,20 @@ import createContextHook from '@nkzw/create-context-hook';
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-/** Secure secrets with graceful fallback */
-let SecureStore: typeof import('expo-secure-store') | null = null;
-(async () => {
-  try { SecureStore = await import('expo-secure-store'); } catch { SecureStore = null; }
-})();
-
-export interface Integration {
-  id: string;
-  name: string;
-  description: string;
-  category: IntegrationCategory;
-  icon: string;
-  status: 'connected' | 'disconnected' | 'pending';
-  config: Record<string, any>;
-  features: string[];
-  pricing: 'free' | 'paid' | 'freemium';
-  connectedAt?: Date;
-  lastSyncAt?: Date;
+/** ───────────────────────── Secure storage (lazy) ───────────────────────── */
+type SecureStoreMod = typeof import('expo-secure-store');
+let _secureStore: SecureStoreMod | null | undefined;
+async function getSecureStore(): Promise<SecureStoreMod | null> {
+  if (_secureStore !== undefined) return _secureStore!;
+  try {
+    _secureStore = await import('expo-secure-store');
+  } catch {
+    _secureStore = null;
+  }
+  return _secureStore!;
 }
 
+/** ───────────────────────── Types ───────────────────────── */
 export type IntegrationCategory =
   | 'creator-tools'
   | 'web3-blockchain'
@@ -35,15 +29,57 @@ export type IntegrationCategory =
   | 'communication'
   | 'storage';
 
+export interface Integration {
+  id: string;
+  name: string;
+  description: string;
+  category: IntegrationCategory;
+  icon: string; // emoji or remote uri
+  status: 'connected' | 'disconnected' | 'pending';
+  config: Record<string, any>;
+  features: string[];
+  pricing: 'free' | 'paid' | 'freemium';
+  connectedAt?: Date;
+  lastSyncAt?: Date;
+}
+
 export interface IntegrationConnection {
   integrationId: string;
-  credentials: Record<string, string>; // stored in SecureStore; mirrored in-memory only
+  credentials: Record<string, string>; // SecureStore only; mirrored in-memory
   settings: Record<string, any>;
   webhooks?: string[];
 }
 
-/** ───────────────────────── Defaults / Storage ───────────────────────── **/
+export interface IntegrationsContextValue {
+  integrations: Integration[];
+  connections: IntegrationConnection[];
+  filteredIntegrations: Integration[];
+  connectedIntegrations: Integration[];
+  integrationsByCategory: Record<IntegrationCategory, Integration[]>;
+  isLoading: boolean;
+  selectedCategory: IntegrationCategory | 'all';
+  setSelectedCategory: (c: IntegrationCategory | 'all') => void;
+  loadIntegrations: () => Promise<void>;
+  connectIntegration: (
+    integrationId: string,
+    credentials: Record<string, string>,
+    settings?: Record<string, any>
+  ) => Promise<void>;
+  disconnectIntegration: (integrationId: string) => Promise<void>;
+  updateIntegrationSettings: (integrationId: string, settings: Record<string, any>) => Promise<void>;
+  syncIntegration: (integrationId: string) => Promise<void>;
+  getIntegrationConnection: (integrationId: string) => IntegrationConnection | undefined;
+  checkHealth: (integrationId: string) => Promise<{ ok: boolean; latencyMs: number }>;
+  exportState: () => string;
+  importState: (json: string) => Promise<void>;
+  /** utility */
+  flush: () => Promise<void>;
+}
+
+/** ───────────────────────── Defaults / Storage ───────────────────────── */
 const STORAGE_KEY = 'gnidoc-integrations';
+const STORAGE_VERSION_KEY = 'gnidoc-integrations-version';
+const STORAGE_VERSION = 1;
 const SAVE_DEBOUNCE_MS = 160;
 
 const DEFAULT_INTEGRATIONS: Integration[] = [
@@ -75,23 +111,31 @@ const DEFAULT_INTEGRATIONS: Integration[] = [
   { id: 'weatherapi', name: 'WeatherAPI', description: 'Global weather data and forecasting service', category: 'productivity', icon: '⛅', status: 'disconnected', config: {}, features: ['Real-time Weather','Astronomy','Air Quality','Marine Data'], pricing: 'freemium' },
 ];
 
-/** ───────────────────────── Small utils ───────────────────────── **/
+/** ───────────────────────── Small utils ───────────────────────── */
 const logger = {
   info: (...a: any[]) => { if (typeof __DEV__ === 'undefined' || __DEV__) console.log(...a); },
   warn: (...a: any[]) => { if (typeof __DEV__ === 'undefined' || __DEV__) console.warn(...a); },
   error: (...a: any[]) => console.error(...a),
 };
 
-function debounce<T extends (...args: any[]) => void>(fn: T, ms = 200) {
-  let t: any; return (...args: Parameters<T>) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+function makeDebounce<T extends (...args: any[]) => void>(fn: T, ms = 200) {
+  let t: any;
+  const debounced = (...args: Parameters<T>) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), ms);
+  };
+  debounced.cancel = () => clearTimeout(t);
+  return debounced as T & { cancel: () => void };
 }
 const toDate = (v?: any) => (v ? new Date(v) : undefined);
 const secretKey = (id: string) => `@integration_secret_${id}`;
+
 async function setSecret(id: string, creds: Record<string, string>) {
   try {
+    const ss = await getSecureStore();
     const payload = JSON.stringify(creds || {});
-    if (SecureStore?.setItemAsync) {
-      await SecureStore.setItemAsync(secretKey(id), payload, { keychainService: secretKey(id) });
+    if (ss?.setItemAsync) {
+      await ss.setItemAsync(secretKey(id), payload, { keychainService: secretKey(id) });
     } else {
       await AsyncStorage.setItem(secretKey(id), payload);
     }
@@ -99,94 +143,114 @@ async function setSecret(id: string, creds: Record<string, string>) {
 }
 async function getSecret(id: string) {
   try {
-    const raw = SecureStore?.getItemAsync
-      ? await SecureStore.getItemAsync(secretKey(id))
+    const ss = await getSecureStore();
+    const raw = ss?.getItemAsync
+      ? await ss.getItemAsync(secretKey(id))
       : await AsyncStorage.getItem(secretKey(id));
     return raw ? (JSON.parse(raw) as Record<string, string>) : {};
   } catch (e) { logger.error('[Integrations] getSecret failed:', e); return {}; }
 }
 async function deleteSecret(id: string) {
   try {
-    if (SecureStore?.deleteItemAsync) {
-      await SecureStore.deleteItemAsync(secretKey(id), { keychainService: secretKey(id) });
+    const ss = await getSecureStore();
+    if (ss?.deleteItemAsync) {
+      await ss.deleteItemAsync(secretKey(id), { keychainService: secretKey(id) });
     } else {
       await AsyncStorage.removeItem(secretKey(id));
     }
   } catch (e) { logger.error('[Integrations] deleteSecret failed:', e); }
 }
-const redact = (o: any) => JSON.parse(JSON.stringify(o, (k, v) => (k.toLowerCase().includes('key') || k.toLowerCase().includes('secret') || k.toLowerCase().includes('token') ? '******' : v)));
+const redact = (o: any) =>
+  JSON.parse(JSON.stringify(o, (k, v) =>
+    (k.toLowerCase().includes('key') || k.toLowerCase().includes('secret') || k.toLowerCase().includes('token')) ? '******' : v
+  ));
 
-/** ───────────────────────── Context ───────────────────────── **/
-export const [IntegrationsProvider, useIntegrations] = createContextHook(() => {
+/** ───────────────────────── Context ───────────────────────── */
+export const [IntegrationsProvider, useIntegrations] = createContextHook<IntegrationsContextValue>(() => {
   const [integrations, setIntegrations] = useState<Integration[]>(DEFAULT_INTEGRATIONS);
   const [connections, setConnections] = useState<IntegrationConnection[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [selectedCategory, setSelectedCategory] = useState<IntegrationCategory | 'all'>('all');
 
-  // Prevent overlapping saves
-  const saveQueued = useRef(false);
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
 
   /** Debounced persistence (strip Dates to ISO) */
-  const persist = useCallback(
-    debounce(async (ints: Integration[], conns: IntegrationConnection[]) => {
-      try {
-        await AsyncStorage.setItem(
-          STORAGE_KEY,
-          JSON.stringify({
-            integrations: ints.map(i => ({
-              ...i,
-              connectedAt: i.connectedAt?.toISOString() ?? undefined,
-              lastSyncAt: i.lastSyncAt?.toISOString() ?? undefined,
-            })),
-            connections: conns, // credentials live in SecureStore; this is settings only mirror
-          })
-        );
-      } catch (e) { logger.error('[Integrations] Save failed:', e); }
-      finally { saveQueued.current = false; }
-    }, SAVE_DEBOUNCE_MS),
-    []
-  );
+  const persist = useMemo(() => makeDebounce(async (ints: Integration[], conns: IntegrationConnection[]) => {
+    try {
+      await AsyncStorage.multiSet([
+        [STORAGE_KEY, JSON.stringify({
+          integrations: ints.map(i => ({
+            ...i,
+            connectedAt: i.connectedAt?.toISOString() ?? undefined,
+            lastSyncAt: i.lastSyncAt?.toISOString() ?? undefined,
+          })),
+          connections: conns, // credentials in SecureStore
+        })],
+        [STORAGE_VERSION_KEY, String(STORAGE_VERSION)],
+      ]);
+    } catch (e) {
+      logger.error('[Integrations] Save failed:', e);
+    }
+  }, SAVE_DEBOUNCE_MS), []);
+
+  const flush = useCallback(async () => {
+    // No-op placeholder because our debounce writes directly;
+    // kept for API symmetry and future batching.
+  }, []);
 
   const saveIntegrations = useCallback(async (newIntegrations: Integration[], newConnections: IntegrationConnection[]) => {
     setIntegrations(newIntegrations);
     setConnections(newConnections);
-    if (!saveQueued.current) {
-      saveQueued.current = true;
-      persist(newIntegrations, newConnections);
-    }
+    persist(newIntegrations, newConnections);
   }, [persist]);
 
-  /** Load persisted state (rehydrate dates + secrets) */
+  /** Load + migrate */
+  const migrateIfNeeded = useCallback(async () => {
+    const rawV = await AsyncStorage.getItem(STORAGE_VERSION_KEY);
+    const v = rawV ? Number(rawV) : 0;
+    if (v < STORAGE_VERSION) {
+      // Future migrations go here
+      await AsyncStorage.setItem(STORAGE_VERSION_KEY, String(STORAGE_VERSION));
+    }
+  }, []);
+
   const loadIntegrations = useCallback(async () => {
     setIsLoading(true);
     try {
+      await migrateIfNeeded();
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored) {
-        const { integrations: rawInts = [], connections: rawConns = [] } = JSON.parse(stored) || {};
-        const hydrated: Integration[] = (rawInts as any[]).map(int => ({
+        let parsed: any;
+        try { parsed = JSON.parse(stored); } catch { parsed = {}; }
+        const { integrations: rawInts = [], connections: rawConns = [] } = parsed || {};
+        const hydrated: Integration[] = (rawInts as any[]).map((int) => ({
           ...int,
           connectedAt: toDate(int.connectedAt),
           lastSyncAt: toDate(int.lastSyncAt),
         }));
-        // Rehydrate credentials for in-memory convenience (still stored securely)
         const withCreds: IntegrationConnection[] = [];
         for (const c of rawConns as IntegrationConnection[]) {
           const creds = await getSecret(c.integrationId);
-          withCreds.push({ ...c, credentials: creds });
+          withCreds.push({ ...c, credentials: creds || {} });
         }
+        if (!mountedRef.current) return;
         setIntegrations(hydrated.length ? hydrated : DEFAULT_INTEGRATIONS);
         setConnections(withCreds);
         logger.info(`[Integrations] Loaded ${hydrated.length || DEFAULT_INTEGRATIONS.length} integrations`);
       } else {
-        // First run: seed defaults
         await saveIntegrations(DEFAULT_INTEGRATIONS, []);
       }
     } catch (error) {
       logger.error('[Integrations] Failed to load:', error);
+      if (mountedRef.current) {
+        setIntegrations(DEFAULT_INTEGRATIONS);
+        setConnections([]);
+      }
     } finally {
-      setIsLoading(false);
+      if (mountedRef.current) setIsLoading(false);
     }
-  }, [saveIntegrations]);
+  }, [migrateIfNeeded, saveIntegrations]);
 
   useEffect(() => { loadIntegrations(); }, [loadIntegrations]);
 
@@ -199,67 +263,56 @@ export const [IntegrationsProvider, useIntegrations] = createContextHook(() => {
     const exists = integrations.find(i => i.id === integrationId);
     if (!exists) throw new Error('Integration not found');
 
-    // Prevent duplicate connections
-    const already = connections.find(c => c.integrationId === integrationId);
-    if (already && exists.status === 'connected') {
-      // Update credentials/settings if reconnect
+    const existingConn = connections.find(c => c.integrationId === integrationId);
+    if (existingConn && exists.status === 'connected') {
       await setSecret(integrationId, credentials || {});
-      const updatedConns = connections.map(c => c.integrationId === integrationId ? { ...c, settings: { ...c.settings, ...settings }, credentials: { ...credentials } } : c);
-      const updatedInts = integrations.map(i => i.id === integrationId ? { ...i, lastSyncAt: new Date() } : i);
+      const updatedConns = connections.map(c =>
+        c.integrationId === integrationId ? { ...c, settings: { ...c.settings, ...settings }, credentials: { ...credentials } } : c
+      );
+      const updatedInts = integrations.map(i =>
+        i.id === integrationId ? { ...i, lastSyncAt: new Date() } : i
+      );
       await saveIntegrations(updatedInts, updatedConns);
       logger.info('[Integrations] Updated existing connection:', integrationId, redact(credentials));
       return;
     }
 
-    const updatedInts = integrations.map(int =>
-      int.id === integrationId ? { ...int, status: 'pending' as const } : int
-    );
-    setIntegrations(updatedInts);
+    // optimistic pending state
+    setIntegrations(prev => prev.map(int => int.id === integrationId ? { ...int, status: 'pending' as const } : int));
 
     try {
-      // Simulate health check / token validation hook (optional)
-      // await validateCredentials(integrationId, credentials);
-
+      // optional: await validateCredentials(integrationId, credentials);
       const now = new Date();
-      const connectedInts = updatedInts.map(int =>
+      const connectedInts = integrations.map(int =>
         int.id === integrationId ? { ...int, status: 'connected' as const, connectedAt: now, lastSyncAt: now } : int
       );
-
       const newConn: IntegrationConnection = { integrationId, credentials: { ...credentials }, settings, webhooks: [] };
       const updatedConns = [...connections.filter(c => c.integrationId !== integrationId), newConn];
-
-      // Persist secrets securely
       await setSecret(integrationId, credentials);
       await saveIntegrations(connectedInts, updatedConns);
-
       logger.info('[Integrations] Connected', integrationId, redact(credentials));
     } catch (e) {
-      // Rollback status on failure
-      const rolledBack = integrations.map(int => int.id === integrationId ? { ...int, status: 'disconnected' as const } : int);
+      const rolledBack = integrations.map(int => int.id === integrationId ? { ...int, status: 'disconnected' as const, connectedAt: undefined, lastSyncAt: undefined } : int);
       await saveIntegrations(rolledBack, connections);
       logger.error('[Integrations] Connect failed:', integrationId, e);
       throw e instanceof Error ? e : new Error('Failed to connect integration');
     }
   }, [integrations, connections, saveIntegrations]);
 
-  /** Disconnect (idempotent + secret purge) */
+  /** Disconnect */
   const disconnectIntegration = useCallback(async (integrationId: string) => {
     const exists = integrations.find(i => i.id === integrationId);
     if (!exists) return;
-
     const updatedInts = integrations.map(int =>
-      int.id === integrationId
-        ? { ...int, status: 'disconnected' as const, connectedAt: undefined, lastSyncAt: undefined }
-        : int
+      int.id === integrationId ? { ...int, status: 'disconnected' as const, connectedAt: undefined, lastSyncAt: undefined } : int
     );
     const updatedConns = connections.filter(c => c.integrationId !== integrationId);
-
     await deleteSecret(integrationId);
     await saveIntegrations(updatedInts, updatedConns);
     logger.info('[Integrations] Disconnected', integrationId);
   }, [integrations, connections, saveIntegrations]);
 
-  /** Update settings only (keeps creds untouched unless explicitly provided elsewhere) */
+  /** Update settings */
   const updateIntegrationSettings = useCallback(async (integrationId: string, settings: Record<string, any>) => {
     const updatedConns = connections.map(c =>
       c.integrationId === integrationId ? { ...c, settings: { ...c.settings, ...settings } } : c
@@ -268,7 +321,7 @@ export const [IntegrationsProvider, useIntegrations] = createContextHook(() => {
     logger.info('[Integrations] Settings updated', integrationId, redact(settings));
   }, [integrations, connections, saveIntegrations]);
 
-  /** One-tap sync (updates lastSyncAt; your app can call remote APIs here) */
+  /** One-tap sync */
   const syncIntegration = useCallback(async (integrationId: string) => {
     const exists = integrations.find(i => i.id === integrationId);
     if (!exists) throw new Error('Integration not found');
@@ -277,11 +330,10 @@ export const [IntegrationsProvider, useIntegrations] = createContextHook(() => {
     logger.info('[Integrations] Synced', integrationId);
   }, [integrations, connections, saveIntegrations]);
 
-  /** Optional: quick health check stub (replace with real API pings) */
+  /** Health check stub */
   const checkHealth = useCallback(async (integrationId: string) => {
     const int = integrations.find(i => i.id === integrationId);
     if (!int) throw new Error('Integration not found');
-    // Fake latency + status
     const start = Date.now();
     await new Promise(r => setTimeout(r, 150));
     return { ok: int.status === 'connected', latencyMs: Date.now() - start };
@@ -312,9 +364,10 @@ export const [IntegrationsProvider, useIntegrations] = createContextHook(() => {
     [connections]
   );
 
-  /** DX helpers: import/export (no secrets in export) */
+  /** Import/Export (validated, secrets excluded) */
   const exportState = useCallback(() => {
     const payload = {
+      version: STORAGE_VERSION,
       integrations: integrations.map(i => ({
         ...i,
         connectedAt: i.connectedAt?.toISOString(),
@@ -326,7 +379,8 @@ export const [IntegrationsProvider, useIntegrations] = createContextHook(() => {
   }, [integrations, connections]);
 
   const importState = useCallback(async (json: string) => {
-    const parsed = JSON.parse(json);
+    let parsed: any;
+    try { parsed = JSON.parse(json); } catch { throw new Error('Invalid JSON'); }
     const ints: Integration[] = (parsed.integrations || []).map((i: any) => ({
       ...i,
       connectedAt: toDate(i.connectedAt),
@@ -334,14 +388,14 @@ export const [IntegrationsProvider, useIntegrations] = createContextHook(() => {
     }));
     const conns: IntegrationConnection[] = (parsed.connections || []).map((c: any) => ({
       ...c,
-      credentials: {}, // do not trust imported secrets
+      credentials: {}, // secrets must be re-entered
     }));
     await saveIntegrations(ints.length ? ints : DEFAULT_INTEGRATIONS, conns);
     logger.warn('[Integrations] Imported state (without credentials). Re-enter secrets to reconnect.');
   }, [saveIntegrations]);
 
-  /** Public API (unchanged + extras) */
-  return useMemo(() => ({
+  /** Public API */
+  return useMemo<IntegrationsContextValue>(() => ({
     integrations,
     connections,
     filteredIntegrations,
@@ -356,10 +410,10 @@ export const [IntegrationsProvider, useIntegrations] = createContextHook(() => {
     updateIntegrationSettings,
     syncIntegration,
     getIntegrationConnection,
-    // extras
     checkHealth,
     exportState,
     importState,
+    flush,
   }), [
     integrations,
     connections,
@@ -377,11 +431,6 @@ export const [IntegrationsProvider, useIntegrations] = createContextHook(() => {
     checkHealth,
     exportState,
     importState,
+    flush,
   ]);
 });
-
-/** (Optional) If you later add real credential validation per provider */
-// async function validateCredentials(integrationId: string, creds: Record<string,string>) {
-//   if (!creds || !Object.keys(creds).length) throw new Error('Missing credentials');
-//   // Add provider-specific checks here (e.g., ping API, list resources, etc.)
-// }
