@@ -5,16 +5,16 @@ import {
   Modal,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
   ScrollView,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BlurView } from 'expo-blur';
 import { ChevronRight, ChevronLeft, X, Sparkles } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 
-const { width, height } = Dimensions.get('window');
+
 
 interface OnboardingStep {
   title: string;
@@ -73,6 +73,7 @@ export default function OnboardingTour({
   onStepChange,
   persistProgress = false,
 }: OnboardingTourProps) {
+  const { width, height } = useWindowDimensions();
   const [currentStep, setCurrentStep] = useState(0);
 
   useEffect(() => {
@@ -110,21 +111,23 @@ export default function OnboardingTour({
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
+    console.log('OnboardingTour: Next button pressed, currentStep:', currentStep);
     if (currentStep < ONBOARDING_STEPS.length - 1) {
       const nextStep = currentStep + 1;
       setCurrentStep(nextStep);
-      saveProgress(nextStep);
+      await saveProgress(nextStep);
     } else {
-      handleComplete();
+      await handleComplete();
     }
   };
 
-  const handlePrevious = () => {
+  const handlePrevious = async () => {
+    console.log('OnboardingTour: Previous button pressed, currentStep:', currentStep);
     if (currentStep > 0) {
       const prevStep = currentStep - 1;
       setCurrentStep(prevStep);
-      saveProgress(prevStep);
+      await saveProgress(prevStep);
     }
   };
 
@@ -140,6 +143,7 @@ export default function OnboardingTour({
   };
 
   const handleSkip = async () => {
+    console.log('OnboardingTour: Skip button pressed');
     if (persistProgress) {
       try {
         await AsyncStorage.removeItem(PROGRESS_KEY);
@@ -169,7 +173,7 @@ export default function OnboardingTour({
           <View style={[StyleSheet.absoluteFill, styles.androidBlur]} />
         )}
 
-        <View style={styles.content}>
+        <View style={[styles.content, { width: Math.min(width * 0.9, 400), maxHeight: height * 0.8 }]}>
           <TouchableOpacity
             style={styles.skipButton}
             onPress={handleSkip}
@@ -242,8 +246,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.85)',
   },
   content: {
-    width: Math.min(width * 0.9, 400),
-    maxHeight: height * 0.8,
     backgroundColor: Colors.Colors.background.secondary,
     borderRadius: 24,
     padding: 24,
@@ -321,6 +323,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
     marginTop: 16,
+    width: '100%',
   },
   button: {
     flex: 1,
@@ -331,6 +334,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     borderRadius: 12,
     gap: 8,
+    minHeight: 52,
   },
   fullWidthButton: {
     flex: 1,
