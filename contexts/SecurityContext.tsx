@@ -8,6 +8,7 @@ export interface SecuritySession {
   createdAt: number;
   expiresAt: number;
   isLocal: boolean;
+  algorithm: string;
 }
 
 export interface SecurityScan {
@@ -177,14 +178,17 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     const now = Date.now();
     const expires = now + (isLocal ? 24 * 60 * 60 * 1000 : 60 * 60 * 1000);
     const id = `session-${now}`;
+    const algorithm = nimRevProtocolActive ? 'NimRev-Quantum-AES-512' : 'AES-256-GCM';
 
     const session: SecuritySession = {
       id,
       createdAt: now,
       expiresAt: expires,
       isLocal,
+      algorithm,
     };
 
+    console.log('[Security] Creating secure session:', { isLocal, algorithm, expires: new Date(expires).toISOString() });
     setCurrentSession(session);
     return session;
   };

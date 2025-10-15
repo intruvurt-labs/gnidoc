@@ -151,17 +151,11 @@ export default function SecurityScreen() {
       <View style={styles.brandingSection}>
         <View style={styles.brandingHeader}>
           <Image
-            source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/o6hz4skpayoyq2j4jg1bc' }}
-            style={{ width: 40, height: 40, resizeMode: 'contain', backgroundColor: 'transparent' }}
-            accessibilityLabel="Key Symbol"
-            testID="security-key-logo"
-          />
-          <Text style={styles.brandingTitle}>gnidoC TerceS</Text>
-          <Image
-            source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/o6hz4skpayoyq2j4jg1bc' }}
-            style={{ width: 32, height: 32, resizeMode: 'contain', backgroundColor: 'transparent' }}
-            accessibilityLabel="Key Symbol"
-            testID="security-key-icon-right"
+            source={require('@/assets/images/logo1banner.png')}
+            style={styles.logoBanner}
+            resizeMode="contain"
+            accessibilityLabel="Aurebix Logo Banner"
+            testID="security-logo-banner"
           />
         </View>
         <Text style={styles.brandingSubtitle}>NimRev Security Protocol</Text>
@@ -171,6 +165,7 @@ export default function SecurityScreen() {
         <View style={styles.cardHeader}>
           <Shield size={24} color="#00FFFF" />
           <Text style={styles.cardTitle}>Security Level</Text>
+          <Text style={styles.cardSubtitle}>({securityLevel.toUpperCase()})</Text>
         </View>
         <View style={styles.securityLevelButtons}>
           {(['standard', 'enhanced', 'maximum'] as const).map((level) => (
@@ -220,7 +215,7 @@ export default function SecurityScreen() {
 
       <View style={styles.card}>
         <View style={styles.cardHeader}>
-          <Zap size={24} color="#CCFF00" />
+          <Zap size={24} color="#FF004C" />
           <Text style={styles.cardTitle}>NimRev Quantum Protocol</Text>
         </View>
         <View style={styles.switchRow}>
@@ -231,7 +226,7 @@ export default function SecurityScreen() {
             value={nimRevProtocolActive}
             onValueChange={nimRevProtocolActive ? deactivateNimRevProtocol : activateNimRevProtocol}
             trackColor={{ false: '#333', true: '#00FFFF' }}
-            thumbColor={nimRevProtocolActive ? '#CCFF00' : '#666'}
+            thumbColor={nimRevProtocolActive ? '#FF004C' : '#666'}
           />
         </View>
         {nimRevProtocolActive && (
@@ -312,7 +307,7 @@ export default function SecurityScreen() {
             value={isEncryptionEnabled}
             onValueChange={toggleEncryption}
             trackColor={{ false: '#333', true: '#00FFFF' }}
-            thumbColor={isEncryptionEnabled ? '#CCFF00' : '#666'}
+            thumbColor={isEncryptionEnabled ? '#FF004C' : '#666'}
           />
         </View>
       </View>
@@ -463,7 +458,7 @@ export default function SecurityScreen() {
               value={obfuscationConfig.enabled}
               onValueChange={(value) => updateObfuscationConfig({ enabled: value })}
               trackColor={{ false: '#333', true: '#00FFFF' }}
-              thumbColor={obfuscationConfig.enabled ? '#CCFF00' : '#666'}
+              thumbColor={obfuscationConfig.enabled ? '#FF004C' : '#666'}
             />
           </View>
 
@@ -496,7 +491,7 @@ export default function SecurityScreen() {
               value={obfuscationConfig.encryptStrings}
               onValueChange={(value) => updateObfuscationConfig({ encryptStrings: value })}
               trackColor={{ false: '#333', true: '#00FFFF' }}
-              thumbColor={obfuscationConfig.encryptStrings ? '#CCFF00' : '#666'}
+              thumbColor={obfuscationConfig.encryptStrings ? '#FF004C' : '#666'}
             />
           </View>
 
@@ -506,7 +501,7 @@ export default function SecurityScreen() {
               value={obfuscationConfig.controlFlowFlattening}
               onValueChange={(value) => updateObfuscationConfig({ controlFlowFlattening: value })}
               trackColor={{ false: '#333', true: '#00FFFF' }}
-              thumbColor={obfuscationConfig.controlFlowFlattening ? '#CCFF00' : '#666'}
+              thumbColor={obfuscationConfig.controlFlowFlattening ? '#FF004C' : '#666'}
             />
           </View>
         </View>
@@ -578,7 +573,7 @@ export default function SecurityScreen() {
               <Text style={styles.linkUrl} numberOfLines={1}>{link.url}</Text>
               <View style={styles.linkStats}>
                 <View style={styles.linkStat}>
-                  <Clock size={16} color="#CCFF00" />
+                  <Clock size={16} color="#FF004C" />
                   <Text style={styles.linkStatText}>
                     Expires: {new Date(link.expiresAt).toLocaleDateString()}
                   </Text>
@@ -706,9 +701,10 @@ export default function SecurityScreen() {
           headerTintColor: '#00FFFF',
           headerTitleStyle: { 
             color: '#00FFFF',
-            textShadowColor: '#000',
+            textShadowColor: '#FF004C',
             textShadowOffset: { width: 1, height: 1 },
-            textShadowRadius: 2,
+            textShadowRadius: 3,
+            fontWeight: '700' as const,
           },
         }}
       />
@@ -799,36 +795,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 24,
     borderBottomWidth: 2,
-    borderBottomColor: '#00FFFF',
+    borderBottomColor: '#FF004C',
     marginBottom: 16,
+    backgroundColor: '#0a0a0a',
   },
   brandingHeader: {
-    flexDirection: 'row',
+    width: '100%',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'center',
   },
-  brandingTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#00FFFF',
-    textShadowColor: '#000',
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 4,
+  logoBanner: {
+    width: '80%',
+    height: 60,
+    maxWidth: 300,
   },
   brandingSubtitle: {
     fontSize: 14,
-    color: '#CCFF00',
-    marginTop: 8,
+    color: '#FF004C',
+    marginTop: 12,
     textShadowColor: '#000',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
+    fontWeight: '700' as const,
+    letterSpacing: 1.2,
   },
   card: {
-    backgroundColor: '#111',
+    backgroundColor: '#0d0d0d',
     borderRadius: 12,
     padding: 16,
     margin: 16,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: '#00FFFF',
   },
   cardHeader: {
@@ -839,11 +835,18 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: 'bold' as const,
     color: '#00FFFF',
-    textShadowColor: '#000',
+    textShadowColor: '#FF004C',
     textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
+    textShadowRadius: 3,
+    flex: 1,
+  },
+  cardSubtitle: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#FF004C',
+    marginLeft: 8,
   },
   securityLevelButtons: {
     flexDirection: 'row',
@@ -853,20 +856,24 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderRadius: 8,
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: '#00FFFF',
-    alignItems: 'center',
+    alignItems: 'center' as const,
+    backgroundColor: '#0a0a0a',
   },
   levelButtonActive: {
     backgroundColor: '#00FFFF',
+    borderColor: '#FF004C',
   },
   levelButtonText: {
     color: '#00FFFF',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700' as const,
+    letterSpacing: 0.5,
   },
   levelButtonTextActive: {
     color: '#000',
+    fontWeight: '900' as const,
   },
   switchRow: {
     flexDirection: 'row',
@@ -875,12 +882,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   switchLabel: {
-    color: '#CCFF00',
+    color: '#FF004C',
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700' as const,
     textShadowColor: '#000',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
+    letterSpacing: 0.8,
   },
   protocolInfo: {
     color: '#00FFFF',
@@ -896,8 +904,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   sessionLabel: {
-    color: '#CCFF00',
+    color: '#FF004C',
     fontSize: 14,
+    fontWeight: '600' as const,
   },
   sessionValue: {
     color: '#00FFFF',
@@ -911,12 +920,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#00FFFF',
     paddingVertical: 14,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: 'center' as const,
+    borderWidth: 2,
+    borderColor: '#FF004C',
   },
   primaryButtonText: {
     color: '#000',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '900' as const,
+    letterSpacing: 1,
   },
   secondaryButton: {
     backgroundColor: 'transparent',
@@ -982,8 +994,9 @@ const styles = StyleSheet.create({
     color: '#FF6B6B',
   },
   scanVulns: {
-    color: '#CCFF00',
+    color: '#FF004C',
     fontSize: 14,
+    fontWeight: '600' as const,
   },
   codeInput: {
     backgroundColor: '#000',
@@ -1006,8 +1019,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   scanDetailLabel: {
-    color: '#CCFF00',
+    color: '#FF004C',
     fontSize: 14,
+    fontWeight: '600' as const,
   },
   scanDetailValue: {
     color: '#00FFFF',
@@ -1019,10 +1033,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   vulnerabilitiesTitle: {
-    color: '#CCFF00',
+    color: '#FF004C',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: 'bold' as const,
     marginBottom: 8,
+    letterSpacing: 0.5,
   },
   vulnerability: {
     backgroundColor: '#000',
@@ -1070,9 +1085,10 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   vulnRecommendation: {
-    color: '#CCFF00',
+    color: '#FF004C',
     fontSize: 12,
     lineHeight: 16,
+    fontWeight: '600' as const,
   },
   obfuscationSettings: {
     gap: 16,
@@ -1082,9 +1098,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   obfuscationLevelLabel: {
-    color: '#CCFF00',
+    color: '#FF004C',
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700' as const,
+    letterSpacing: 0.5,
   },
   levelButtons: {
     flexDirection: 'row',
@@ -1108,9 +1125,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   outputLabel: {
-    color: '#CCFF00',
+    color: '#FF004C',
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700' as const,
+    letterSpacing: 0.5,
   },
   outputScroll: {
     backgroundColor: '#000',
@@ -1163,8 +1181,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   linkUrl: {
-    color: '#CCFF00',
+    color: '#FF004C',
     fontSize: 12,
+    fontWeight: '600' as const,
   },
   linkStats: {
     flexDirection: 'row',
@@ -1268,9 +1287,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   capabilitiesTitle: {
-    color: '#CCFF00',
+    color: '#FF004C',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '700' as const,
+    letterSpacing: 0.5,
   },
   capabilitiesChips: {
     flexDirection: 'row',
