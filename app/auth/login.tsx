@@ -288,20 +288,20 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.Colors.background.primary },
+  container: { flex: 1, backgroundColor: '#0A0F12' },
   keyboardView: { flex: 1 },
   scrollContent: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 40 },
 
   header: { alignItems: 'center', marginBottom: 40 },
   logoContainer: {
     width: 140, height: 140, borderRadius: 70,
-    backgroundColor: Colors.Colors.background.card,
-    borderWidth: 4, borderColor: Colors.Colors.cyan.primary,
+    backgroundColor: '#161B22',
+    borderWidth: 3, borderColor: Colors.Colors.cyan.primary,
     justifyContent: 'center', alignItems: 'center',
     marginBottom: 24,
     shadowColor: Colors.Colors.cyan.primary,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8, shadowRadius: 30, elevation: 15, overflow: 'hidden',
+    shadowOpacity: 0.6, shadowRadius: 20, elevation: 12, overflow: 'hidden',
   },
   logoImage: { width: '90%', height: '90%' },
   title: {
@@ -309,38 +309,36 @@ const styles = StyleSheet.create({
     textShadowColor: Colors.Colors.cyan.glow, textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 15, letterSpacing: 1.5,
   },
   subtitle: {
-    fontSize: 14, color: Colors.Colors.orange.primary, textAlign: 'center', fontWeight: '600' as const, marginBottom: 16,
+    fontSize: 14, color: '#8B92A0', textAlign: 'center', fontWeight: '600' as const, marginBottom: 16,
   },
   featureBadges: { flexDirection: 'row', gap: 12, marginTop: 8 },
   featureBadge: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.Colors.background.card, paddingHorizontal: 12, paddingVertical: 6,
-    borderRadius: 20, gap: 6, borderWidth: 1, borderColor: Colors.Colors.cyan.primary + '40',
+    backgroundColor: '#161B22', paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: 20, gap: 6, borderWidth: 1, borderColor: '#30363D',
   },
   featureBadgeText: { fontSize: 11, fontWeight: '600' as const, color: Colors.Colors.text.primary },
 
   form: { width: '100%' },
   inputContainer: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.Colors.background.card + 'E6',
-    borderRadius: 16, borderWidth: 2, borderColor: Colors.Colors.cyan.primary + '60',
+    backgroundColor: '#161B22',
+    borderRadius: 12, borderWidth: 1.5, borderColor: '#30363D',
     paddingHorizontal: 16, marginBottom: 12,
-    shadowColor: Colors.Colors.cyan.primary, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4,
   },
-  inputError: { borderColor: Colors.Colors.red.primary + '90' },
+  inputError: { borderColor: '#FF4757' },
   inputIcon: { marginRight: 12 },
   input: { flex: 1, height: 50, fontSize: 16, color: Colors.Colors.cyan.primary, fontWeight: '500' as const },
   eyeButton: { padding: 6, marginLeft: 8 },
 
   loginButton: {
-    backgroundColor: Colors.Colors.cyan.primary, borderRadius: 16, height: 56,
+    backgroundColor: '#4169E1', borderRadius: 12, height: 56,
     alignItems: 'center', justifyContent: 'center', marginTop: 8,
-    shadowColor: Colors.Colors.cyan.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.6, shadowRadius: 16, elevation: 10,
-    borderWidth: 2, borderColor: Colors.Colors.cyan.secondary,
+    shadowColor: '#4169E1', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 12, elevation: 8,
   },
   loginCta: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   loginButtonDisabled: { opacity: 0.6 },
-  loginButtonText: { fontSize: 18, fontWeight: 'bold' as const, color: Colors.Colors.black.primary, letterSpacing: 0.5 },
+  loginButtonText: { fontSize: 18, fontWeight: 'bold' as const, color: '#FFFFFF', letterSpacing: 0.5 },
 
   helpersRow: { marginTop: 10, alignItems: 'flex-end' },
   helperLink: { color: Colors.Colors.text.muted, fontSize: 13, textDecorationLine: 'underline' },
@@ -351,15 +349,13 @@ const styles = StyleSheet.create({
 
   oauthButton: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: Colors.Colors.background.card + 'E6',
-    borderRadius: 16, borderWidth: 2, borderColor: Colors.Colors.red.primary + '80',
-    height: 52, gap: 12, shadowColor: Colors.Colors.red.primary,
-    shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
+    backgroundColor: '#161B22',
+    borderRadius: 12, borderWidth: 1.5, borderColor: '#30363D',
+    height: 52, gap: 12,
     marginBottom: 12,
   },
   oauthGoogle: {
-    borderColor: Colors.Colors.cyan.primary + '80',
-    shadowColor: Colors.Colors.cyan.primary,
+    borderColor: '#30363D',
   },
   oauthButtonText: { fontSize: 16, fontWeight: '600' as const, color: Colors.Colors.text.primary },
 

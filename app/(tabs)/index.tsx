@@ -167,7 +167,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.Colors.background.primary,
+    backgroundColor: '#0A0F12',
   },
   header: {
     flexDirection: 'row',
@@ -209,25 +209,21 @@ const styles = StyleSheet.create({
   heroTitle: {
     fontSize: 32,
     fontWeight: 'bold' as const,
-    color: Colors.Colors.cyan.primary,
+    color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 12,
-    textShadowColor: '#00FFFF',
-    textShadowOffset: { width: 3, height: 3 },
-    textShadowRadius: 20,
-    letterSpacing: 2,
-    textTransform: 'uppercase' as const,
+    letterSpacing: 1,
   },
   typewriterText: {
     fontSize: 18,
-    color: Colors.Colors.cyan.primary,
+    color: '#00FFFF',
     textAlign: 'center',
     marginBottom: 16,
     fontWeight: '600' as const,
   },
   heroDescription: {
     fontSize: 16,
-    color: Colors.Colors.lime.primary,
+    color: '#8B92A0',
     textAlign: 'center',
     lineHeight: 24,
   },
@@ -245,7 +241,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold' as const,
-    color: Colors.Colors.lime.primary,
+    color: '#FFFFFF',
     marginBottom: 8,
   },
   quickActionsSection: {
@@ -259,12 +255,12 @@ const styles = StyleSheet.create({
   },
   quickActionCard: {
     width: (width - 52) / 2,
-    backgroundColor: Colors.Colors.background.card,
-    borderRadius: 16,
+    backgroundColor: '#161B22',
+    borderRadius: 12,
     padding: 20,
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: Colors.Colors.cyan.primary,
+    borderWidth: 1.5,
+    borderColor: '#30363D',
   },
   quickActionImage: {
     width: 48,
