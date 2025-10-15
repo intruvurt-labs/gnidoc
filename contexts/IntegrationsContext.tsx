@@ -433,4 +433,73 @@ export const [IntegrationsProvider, useIntegrations] = createContextHook<Integra
     importState,
     flush,
   ]);
+  // ───────────────────────── Background Auto-Flush ─────────────────────────
+import { AppState } from 'react-native';
+
+useEffect(() => {
+  const sub = AppState.addEventListener('change', (state) => {
+    if (state === 'background') {
+      flush().catch((e) => logger.error('[Integrations] Flush on background failed', e));
+    }
+  });
+  return () => sub.remove();
+}, [flush]);
+
+// ───────────────────────── Provider-Specific Health Checks ─────────────────────────
+const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs = 3000) => {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(id);
+    return res;
+  } catch (e) {
+    clearTimeout(id);
+    throw e;
+  }
+};
+
+const checkHealth = useCallback(
+  async (integrationId: string) => {
+    const int = integrations.find((i) => i.id === integrationId);
+    if (!int) throw new Error('Integration not found');
+    const start = Date.now();
+
+    const conn = connections.find((c) => c.integrationId === integrationId);
+    const creds = conn?.credentials || {};
+    const headers: Record<string, string> = {};
+
+    // Optional: inject API keys if stored
+    if (creds.apiKey) headers['Authorization'] = `Bearer ${creds.apiKey}`;
+    if (creds.token) headers['Authorization'] = `Bearer ${creds.token}`;
+
+    const table: Record<string, string> = {
+      stripe: 'https://api.stripe.com/v1/account',
+      supabase: `${creds.url ?? ''}/rest/v1/`,
+      openai: 'https://api.openai.com/v1/models',
+      anthropic: 'https://api.anthropic.com/v1/models',
+      vercel: 'https://api.vercel.com/v2/user',
+      github: 'https://api.github.com/user',
+    };
+
+    const url = table[integrationId];
+    if (!url) {
+      await new Promise((r) => setTimeout(r, 150));
+      return { ok: int.status === 'connected', latencyMs: Date.now() - start };
+    }
+
+    try {
+      const res = await fetchWithTimeout(url, { headers });
+      const latency = Date.now() - start;
+      if (!res.ok) throw new Error(`${res.status}`);
+      return { ok: true, latencyMs: latency };
+    } catch (e: any) {
+      const latency = Date.now() - start;
+      logger.warn(`[Integrations] Health failed for ${integrationId}:`, e?.message || e);
+      return { ok: false, error: e.name === 'AbortError' ? 'timeout' : String(e), latencyMs: latency };
+    }
+  },
+  [integrations, connections]
+);
+
 });
