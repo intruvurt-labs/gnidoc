@@ -307,8 +307,14 @@ const AnimatedMoltenBackground: React.FC<AnimatedMoltenBackgroundProps> = React.
           <Animated.View
             key={s.id}
             style={[
-              styles.spark,
               {
+                position: 'absolute' as const,
+                borderRadius: 10,
+                shadowOpacity: Platform.OS === 'web' ? 0 : 0.8,
+                shadowRadius: 12,
+                elevation: 8,
+                width: s.size,
+                height: s.size,
                 left: s.x,
                 top: s.y,
                 backgroundColor: s.color,
@@ -320,7 +326,6 @@ const AnimatedMoltenBackground: React.FC<AnimatedMoltenBackgroundProps> = React.
                 ],
                 ...(Platform.OS === 'web' ? { boxShadow: `0 0 12px ${s.color}` } : {}),
               },
-              { width: s.size, height: s.size },
             ]}
           />
         ))}
@@ -330,14 +335,17 @@ const AnimatedMoltenBackground: React.FC<AnimatedMoltenBackgroundProps> = React.
           <Animated.View
             key={f.id}
             style={[
-              styles.flame,
               {
+                position: 'absolute' as const,
+                borderRadius: 100,
+                overflow: 'hidden' as const,
+                width: f.size,
+                height: f.size * 2,
                 left: f.x,
                 bottom: 0,
                 opacity: flameOpacities[i],
                 transform: [{ scale: flameScales[i] }, { translateY: -50 }],
               },
-              { width: f.size, height: f.size * 2 },
             ]}
           >
             <LinearGradient
@@ -407,18 +415,7 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
   },
-  spark: {
-    position: 'absolute',
-    borderRadius: 10,
-    shadowOpacity: Platform.OS === 'web' ? 0 : 0.8,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  flame: {
-    position: 'absolute',
-    borderRadius: 100,
-    overflow: 'hidden',
-  },
+
   flameGradient: {
     width: '100%',
     height: '100%',
