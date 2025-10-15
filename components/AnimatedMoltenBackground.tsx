@@ -311,17 +311,16 @@ const AnimatedMoltenBackground: React.FC<AnimatedMoltenBackgroundProps> = React.
               {
                 left: s.x,
                 top: s.y,
-                width: s.size,
-                height: s.size,
+                backgroundColor: s.color,
+                shadowColor: s.color,
                 opacity: sparkOpacities[i],
                 transform: [
                   { scale: sparkScales[i] },
-                  ...(i % 3 === 0 ? [{ translateX: waveShift }] : []), // drift a subset with the wave
+                  ...(i % 3 === 0 ? [{ translateX: waveShift }] : []),
                 ],
-                backgroundColor: s.color,
-                shadowColor: s.color,
                 ...(Platform.OS === 'web' ? { boxShadow: `0 0 12px ${s.color}` } : {}),
               },
+              { width: s.size, height: s.size },
             ]}
           />
         ))}
@@ -335,11 +334,10 @@ const AnimatedMoltenBackground: React.FC<AnimatedMoltenBackgroundProps> = React.
               {
                 left: f.x,
                 bottom: 0,
-                width: f.size,
-                height: f.size * 2,
                 opacity: flameOpacities[i],
                 transform: [{ scale: flameScales[i] }, { translateY: -50 }],
               },
+              { width: f.size, height: f.size * 2 },
             ]}
           >
             <LinearGradient
