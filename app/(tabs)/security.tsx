@@ -882,10 +882,10 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   switchLabel: {
-    color: '#FF004C',
+    color: '#00FFFF',
     fontSize: 16,
     fontWeight: '700' as const,
-    textShadowColor: '#000',
+    textShadowColor: '#FF004C',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
     letterSpacing: 0.8,
@@ -904,12 +904,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   sessionLabel: {
-    color: '#FF004C',
+    color: '#00FFFF',
     fontSize: 14,
     fontWeight: '600' as const,
   },
   sessionValue: {
-    color: '#00FFFF',
+    color: '#FF004C',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -1019,12 +1019,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   scanDetailLabel: {
-    color: '#FF004C',
+    color: '#00FFFF',
     fontSize: 14,
     fontWeight: '600' as const,
   },
   scanDetailValue: {
-    color: '#00FFFF',
+    color: '#FF004C',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -1098,7 +1098,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   obfuscationLevelLabel: {
-    color: '#FF004C',
+    color: '#00FFFF',
     fontSize: 14,
     fontWeight: '700' as const,
     letterSpacing: 0.5,
@@ -1125,7 +1125,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   outputLabel: {
-    color: '#FF004C',
+    color: '#00FFFF',
     fontSize: 14,
     fontWeight: '700' as const,
     letterSpacing: 0.5,
@@ -1181,7 +1181,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   linkUrl: {
-    color: '#FF004C',
+    color: '#00FFFF',
     fontSize: 12,
     fontWeight: '600' as const,
   },
