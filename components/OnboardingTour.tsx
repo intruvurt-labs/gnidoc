@@ -165,10 +165,11 @@ export default function OnboardingTour({
       transparent
       animationType="fade"
       statusBarTranslucent
+      onRequestClose={handleSkip}
     >
       <View style={styles.container}>
         {Platform.OS === 'ios' ? (
-          <BlurView intensity={80} style={StyleSheet.absoluteFill} tint="dark" />
+          <BlurView intensity={80} style={[StyleSheet.absoluteFill, styles.blurLayer]} tint="dark" />
         ) : (
           <View style={[StyleSheet.absoluteFill, styles.androidBlur]} />
         )}
@@ -208,6 +209,8 @@ export default function OnboardingTour({
               <TouchableOpacity
                 style={[styles.button, styles.secondaryButton]}
                 onPress={handlePrevious}
+                activeOpacity={0.7}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 <ChevronLeft size={20} color={Colors.Colors.cyan.primary} />
                 <Text style={styles.secondaryButtonText}>Previous</Text>
@@ -221,6 +224,8 @@ export default function OnboardingTour({
                 currentStep === 0 && styles.fullWidthButton,
               ]}
               onPress={handleNext}
+              activeOpacity={0.7}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
               <Text style={styles.primaryButtonText}>
                 {currentStep === ONBOARDING_STEPS.length - 1 ? 'Get Started' : 'Next'}
@@ -241,6 +246,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  blurLayer: {
+    pointerEvents: 'none',
   },
   androidBlur: {
     backgroundColor: 'rgba(0, 0, 0, 0.85)',
@@ -256,12 +265,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 16,
     elevation: 10,
+    zIndex: 100,
+    position: 'relative',
   },
   skipButton: {
     position: 'absolute',
     top: 16,
     right: 16,
-    zIndex: 10,
+    zIndex: 1000,
     padding: 8,
     borderRadius: 20,
     backgroundColor: Colors.Colors.background.primary + '80',
@@ -335,6 +346,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 8,
     minHeight: 52,
+    elevation: 2,
   },
   fullWidthButton: {
     flex: 1,
