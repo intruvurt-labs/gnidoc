@@ -1,0 +1,94 @@
+--- a/contexts/ThemeContext.tsx
++++ b/contexts/ThemeContext.tsx
+@@ -1,6 +1,7 @@
+ import createContextHook from '@nkzw/create-context-hook';
+-import { useState } from 'react';
++import { useState, useCallback } from 'react';
+ import AsyncStorage from '@react-native-async-storage/async-storage';
++import { usePathname } from 'expo-router';
+ 
+ export type ThemePalette = 'default' | 'neon' | 'pastel' | 'midnight';
+ 
+@@ -8,10 +9,46 @@
+   currentPalette: ThemePalette;
+   setPalette: (palette: ThemePalette) => Promise<void>;
+   togglePalette: () => void;
++  getPaletteForRoute: (route: string) => [string, string];
+ }
+ 
++// Route-specific palette mapping from rork_prompts_v1_1.json
++const ROUTE_PALETTES: Record<string, [string, string]> = {
++  '/': ['#00FFFF', '#A200FF'],
++  '/(tabs)': ['#00FFFF', '#A200FF'],
++  '/agent': ['#00FFFF', '#B3FF00'],
++  '/(tabs)/agent': ['#00FFFF', '#B3FF00'],
++  '/orchestration': ['#00FFFF', '#FF004C'],
++  '/(tabs)/orchestration': ['#00FFFF', '#FF004C'],
++  '/deploy': ['#B3FF00', '#FF33CC'],
++  '/themes': ['#00FFFF', '#FF004C'],
++  '/database': ['#00FFFF', '#B3FF00'],
++  '/(tabs)/database': ['#00FFFF', '#B3FF00'],
++  '/dashboard': ['#B3FF00', '#FFD93B'],
++  '/(tabs)/dashboard': ['#B3FF00', '#FFD93B'],
++};
++
++const DEFAULT_PALETTE: [string, string] = ['#00FFFF', '#B3FF00'];
++
+ export const [ThemeProvider, useTheme] = createContextHook<ThemeContextValue>(() => {
+   const [currentPalette, setCurrentPalette] = useState<ThemePalette>('default');
++
++  const getPaletteForRoute = useCallback((route: string): [string, string] => {
++    // Direct match
++    if (ROUTE_PALETTES[route]) {
++      return ROUTE_PALETTES[route];
++    }
++    
++    // Prefix match (e.g., '/dashboard/settings' matches '/dashboard')
++    const matchingRoute = Object.keys(ROUTE_PALETTES).find(r => {
++      return route.startsWith(r) && r !== '/';
++    });
++    
++    if (matchingRoute) {
++      return ROUTE_PALETTES[matchingRoute];
++    }
++    
++    return DEFAULT_PALETTE;
++  }, []);
+ 
+   const setPalette = async (palette: ThemePalette) => {
+     setCurrentPalette(palette);
+@@ -29,5 +66,34 @@
+     currentPalette,
+     setPalette,
+     togglePalette,
++    getPaletteForRoute,
+   };
+ });
++
++/**
++ * Hook to automatically get palette colors for the current route
++ * Usage:
++ *   const [primaryColor, secondaryColor] = useRoutePalette();
++ *   <MatrixGridBackground tint={primaryColor} />
++ */
++export function useRoutePalette(): [string, string] {
++  const pathname = usePathname();
++  const { getPaletteForRoute } = useTheme();
++  return getPaletteForRoute(pathname);
++}
++
++/**
++ * Hook to get a specific color from the route palette
++ * Usage:
++ *   const primaryColor = useRoutePaletteColor('primary');
++ *   const secondaryColor = useRoutePaletteColor('secondary');
++ */
++export function useRoutePaletteColor(which: 'primary' | 'secondary'): string {
++  const [primary, secondary] = useRoutePalette();
++  return which === 'primary' ? primary : secondary;
++}
++
++/**
++ * Export palette map for static usage
++ */
++export { ROUTE_PALETTES };

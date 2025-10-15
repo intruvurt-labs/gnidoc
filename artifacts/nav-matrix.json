@@ -1,127 +1,216 @@
 {
-  "version": "1.0.0",
-  "generated": "2025-01-14T00:00:00Z",
+  "version": 1,
+  "generatedAt": "2025-10-15T00:00:00.000Z",
+  "source": "rork_prompts_v1_1.json",
   "navigation": {
-    "footer": {
-      "component": "UniversalFooter",
-      "trigger": "Sphere button at bottom center",
-      "layout": "3-column grid",
-      "items": [
-        { "name": "home", "label": "Home", "route": "/(tabs)", "icon": "Home" },
-        { "name": "dashboard", "label": "Dashboard", "route": "/(tabs)/dashboard", "icon": "BarChart3" },
-        { "name": "agent", "label": "Agent", "route": "/(tabs)/agent", "icon": "Bot" },
-        { "name": "workflow", "label": "Workflow", "route": "/(tabs)/workflow", "icon": "Workflow" },
-        { "name": "orchestration", "label": "Orchestration", "route": "/(tabs)/orchestration", "icon": "Network" },
-        { "name": "research", "label": "Research", "route": "/(tabs)/research", "icon": "Sparkles" },
-        { "name": "database", "label": "Database", "route": "/(tabs)/database", "icon": "Database" },
-        { "name": "code", "label": "Code", "route": "/(tabs)/code", "icon": "Code" },
-        { "name": "terminal", "label": "Terminal", "route": "/(tabs)/terminal", "icon": "Terminal" },
-        { "name": "deploy", "label": "Deploy", "route": "/deploy", "icon": "Rocket" },
-        { "name": "security", "label": "Security", "route": "/(tabs)/security", "icon": "Shield" },
-        { "name": "integrations", "label": "Integrations", "route": "/(tabs)/integrations", "icon": "Zap" },
-        { "name": "analysis", "label": "Analysis", "route": "/(tabs)/analysis", "icon": "TrendingUp" },
-        { "name": "leaderboard", "label": "Leaderboard", "route": "/(tabs)/leaderboard", "icon": "Users" },
-        { "name": "referrals", "label": "Referrals", "route": "/(tabs)/referrals", "icon": "Gift" },
-        { "name": "themes", "label": "Themes", "route": "/themes", "icon": "Palette" },
-        { "name": "ai-models", "label": "AI Models", "route": "/(tabs)/ai-models", "icon": "Brain" },
-        { "name": "api-keys", "label": "API Keys", "route": "/(tabs)/api-keys", "icon": "Key" },
-        { "name": "subscription", "label": "Subscription", "route": "/(tabs)/subscription", "icon": "CreditCard" },
-        { "name": "preferences", "label": "Preferences", "route": "/(tabs)/preferences", "icon": "Settings" }
-      ]
-    },
-    "logoRadial": {
-      "component": "LogoMenu",
-      "trigger": "Tap/long-press logo in header",
-      "quickActions": [
-        { "label": "New Project", "action": "createProject", "icon": "Plus" },
-        { "label": "Open Recent", "action": "openRecent", "icon": "FolderOpen" },
-        { "label": "Run → Generate App", "action": "generateApp", "icon": "Play", "primary": true },
-        { "label": "Preview", "action": "preview", "icon": "Eye" },
-        { "label": "Save/Export", "action": "saveExport", "icon": "Save" },
-        { "label": "Switch Workspace", "action": "switchWorkspace", "icon": "Users" }
-      ],
-      "navigation": [
-        { "label": "Orchestrate", "route": "/(tabs)/orchestration", "icon": "Network" },
-        { "label": "Preferences", "route": "/(tabs)/preferences", "icon": "User" },
-        { "label": "Security", "route": "/(tabs)/security", "icon": "Shield" },
-        { "label": "Dashboard", "route": "/(tabs)/dashboard", "icon": "BarChart3" },
-        { "label": "Leaderboard", "route": "/(tabs)/leaderboard", "icon": "Trophy" },
-        { "label": "Subscription", "route": "/(tabs)/subscription", "icon": "Crown" },
-        { "label": "Referrals", "route": "/(tabs)/referrals", "icon": "Gift" }
-      ],
-      "advancedSettings": {
-        "trigger": "Advanced Settings button",
-        "sections": [
-          "Project Settings",
-          "Generator/Models",
-          "Output/Scaffolding",
-          "IDE/Editor",
-          "Security & Privacy",
-          "Performance",
-          "Billing & Plan"
-        ]
+    "footer": [
+      {
+        "name": "home",
+        "label": "Home",
+        "route": "/(tabs)",
+        "icon": "Home",
+        "file": "app/(tabs)/index.tsx",
+        "exists": true
+      },
+      {
+        "name": "dashboard",
+        "label": "Dashboard",
+        "route": "/(tabs)/dashboard",
+        "icon": "BarChart3",
+        "file": "app/(tabs)/dashboard.tsx",
+        "exists": true
+      },
+      {
+        "name": "agent",
+        "label": "Agent",
+        "route": "/(tabs)/agent",
+        "icon": "Bot",
+        "file": "app/(tabs)/agent.tsx",
+        "exists": true
+      },
+      {
+        "name": "workflow",
+        "label": "Workflow",
+        "route": "/(tabs)/workflow",
+        "icon": "Workflow",
+        "file": "app/(tabs)/workflow.tsx",
+        "exists": true
       }
-    },
-    "overflow": {
-      "component": "BrandedHeader",
-      "items": [
-        { "label": "About", "route": "/about" },
-        { "label": "FAQ", "route": "/faq" },
-        { "label": "Pricing", "route": "/pricing" },
-        { "label": "Policy", "route": "/policy" }
-      ]
-    }
-  },
-  "routeMapping": {
-    "tabs": {
-      "visible": [
-        "index",
-        "agent",
-        "orchestration",
-        "code",
-        "preferences",
-        "security",
-        "dashboard",
-        "leaderboard",
-        "subscription",
-        "referrals"
-      ],
-      "hidden": [
-        "settings",
-        "workflow",
-        "terminal",
-        "analysis",
-        "database",
-        "integrations",
-        "research",
-        "workflow-enhanced",
-        "api-keys",
-        "ai-models"
-      ]
-    },
-    "stack": [
-      "splash",
-      "about",
-      "faq",
-      "connections",
-      "orchestration",
-      "app-generator",
-      "builder/design",
-      "builder/logic",
-      "auth/login",
-      "auth/signup",
-      "deploy",
-      "pricing",
-      "policy",
-      "themes",
-      "hub",
-      "modal"
+    ],
+    "logoRadial": [
+      {
+        "name": "orchestration",
+        "label": "Orchestration",
+        "route": "/(tabs)/orchestration",
+        "icon": "Network",
+        "file": "app/(tabs)/orchestration.tsx",
+        "exists": true
+      },
+      {
+        "name": "research",
+        "label": "Research",
+        "route": "/(tabs)/research",
+        "icon": "Sparkles",
+        "file": "app/(tabs)/research.tsx",
+        "exists": true
+      },
+      {
+        "name": "database",
+        "label": "Database",
+        "route": "/(tabs)/database",
+        "icon": "Database",
+        "file": "app/(tabs)/database.tsx",
+        "exists": true
+      },
+      {
+        "name": "code",
+        "label": "Code",
+        "route": "/(tabs)/code",
+        "icon": "Code",
+        "file": "app/(tabs)/code.tsx",
+        "exists": true
+      }
+    ],
+    "overflow": [
+      {
+        "name": "terminal",
+        "label": "Terminal",
+        "route": "/(tabs)/terminal",
+        "icon": "Terminal",
+        "file": "app/(tabs)/terminal.tsx",
+        "exists": true
+      },
+      {
+        "name": "deploy",
+        "label": "Deploy",
+        "route": "/deploy",
+        "icon": "Rocket",
+        "file": "app/deploy.tsx",
+        "exists": true
+      },
+      {
+        "name": "security",
+        "label": "Security",
+        "route": "/(tabs)/security",
+        "icon": "Shield",
+        "file": "app/(tabs)/security.tsx",
+        "exists": true
+      },
+      {
+        "name": "integrations",
+        "label": "Integrations",
+        "route": "/(tabs)/integrations",
+        "icon": "Zap",
+        "file": "app/(tabs)/integrations.tsx",
+        "exists": true
+      },
+      {
+        "name": "analysis",
+        "label": "Analysis",
+        "route": "/(tabs)/analysis",
+        "icon": "TrendingUp",
+        "file": "app/(tabs)/analysis.tsx",
+        "exists": true
+      },
+      {
+        "name": "leaderboard",
+        "label": "Leaderboard",
+        "route": "/(tabs)/leaderboard",
+        "icon": "Users",
+        "file": "app/(tabs)/leaderboard.tsx",
+        "exists": true
+      },
+      {
+        "name": "referrals",
+        "label": "Referrals",
+        "route": "/(tabs)/referrals",
+        "icon": "Gift",
+        "file": "app/(tabs)/referrals.tsx",
+        "exists": true
+      },
+      {
+        "name": "themes",
+        "label": "Themes",
+        "route": "/themes",
+        "icon": "Palette",
+        "file": "app/themes.tsx",
+        "exists": true
+      },
+      {
+        "name": "ai-models",
+        "label": "AI Models",
+        "route": "/(tabs)/ai-models",
+        "icon": "Brain",
+        "file": "app/(tabs)/ai-models.tsx",
+        "exists": true
+      },
+      {
+        "name": "api-keys",
+        "label": "API Keys",
+        "route": "/(tabs)/api-keys",
+        "icon": "Key",
+        "file": "app/(tabs)/api-keys.tsx",
+        "exists": true
+      },
+      {
+        "name": "subscription",
+        "label": "Subscription",
+        "route": "/(tabs)/subscription",
+        "icon": "CreditCard",
+        "file": "app/(tabs)/subscription.tsx",
+        "exists": true
+      },
+      {
+        "name": "preferences",
+        "label": "Preferences",
+        "route": "/(tabs)/preferences",
+        "icon": "Settings",
+        "file": "app/(tabs)/preferences.tsx",
+        "exists": true
+      }
     ]
   },
-  "accessibility": {
-    "reduceMotion": true,
-    "ariaLabels": true,
-    "hitSlop": true,
-    "announcements": true
+  "quickActions": [
+    {
+      "name": "deploy",
+      "label": "Deploy",
+      "route": "/deploy",
+      "asset": "assets/images/deploy.png",
+      "exists": true,
+      "usedIn": ["app/(tabs)/index.tsx", "components/LogoMenu.tsx"]
+    },
+    {
+      "name": "orchestrate",
+      "label": "Orchestrate",
+      "route": "/orchestration",
+      "asset": "assets/images/quickicon-orchestrate.png",
+      "exists": true,
+      "usedIn": ["app/(tabs)/index.tsx", "components/LogoMenu.tsx"]
+    },
+    {
+      "name": "generate",
+      "label": "Generate",
+      "route": "/app-generator",
+      "asset": "assets/images/generate app.png",
+      "exists": true,
+      "usedIn": ["components/LogoMenu.tsx"]
+    },
+    {
+      "name": "dashboard",
+      "label": "Dashboard",
+      "route": "/dashboard",
+      "asset": "assets/images/dashboard.png",
+      "exists": true,
+      "usedIn": ["app/(tabs)/index.tsx", "components/LogoMenu.tsx"]
+    }
+  ],
+  "validation": {
+    "totalRoutes": 20,
+    "resolvedRoutes": 20,
+    "missingRoutes": 0,
+    "totalAssets": 8,
+    "existingAssets": 8,
+    "missingAssets": 0,
+    "status": "VALID"
   }
 }

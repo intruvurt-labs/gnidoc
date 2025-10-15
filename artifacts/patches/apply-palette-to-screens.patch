@@ -1,0 +1,90 @@
+--- a/app/(tabs)/index.tsx
++++ b/app/(tabs)/index.tsx
+@@ -19,6 +19,7 @@
+ import CardRow from '@/components/CardRow';
+ import FeatureStrip from '@/components/FeatureStrip';
+ import MatrixGridBackground from '@/components/MatrixGridBackground';
++import { useRoutePalette } from '@/contexts/ThemeContext';
+ 
+ const { width } = Dimensions.get('window');
+ 
+@@ -26,6 +27,7 @@
+   const insets = useSafeAreaInsets();
+   const router = useRouter();
+   const [refreshing, setRefreshing] = useState(false);
++  const [primaryColor, secondaryColor] = useRoutePalette();
+ 
+   const onRefresh = useCallback(async () => {
+     setRefreshing(true);
+@@ -48,7 +50,7 @@
+         }}
+       />
+ 
+-      <MatrixGridBackground parallax tint={Colors.Colors.background.gridGlow} />
++      <MatrixGridBackground parallax tint={primaryColor} />
+ 
+       <BrandedHeader />
+ 
+
+--- a/app/(tabs)/dashboard.tsx
++++ b/app/(tabs)/dashboard.tsx
+@@ -1,6 +1,7 @@
+ import React from 'react';
+ import { View, Text, StyleSheet } from 'react-native';
+ import Colors from '@/constants/colors';
++import { useRoutePalette } from '@/contexts/ThemeContext';
+ 
+ export default function DashboardScreen() {
++  const [primaryColor, secondaryColor] = useRoutePalette();
++
+   return (
+     <View style={styles.container}>
+-      <Text style={styles.text}>Dashboard</Text>
++      <Text style={[styles.text, { color: primaryColor }]}>Dashboard</Text>
++      <Text style={[styles.subtitle, { color: secondaryColor }]}>
++        Palette: {primaryColor} / {secondaryColor}
++      </Text>
+     </View>
+   );
+ }
+
+--- a/app/(tabs)/agent.tsx
++++ b/app/(tabs)/agent.tsx
+@@ -10,6 +10,7 @@
+ } from 'react-native';
+ import Colors from '@/constants/colors';
++import { useRoutePalette } from '@/contexts/ThemeContext';
+ 
+ export default function AgentScreen() {
++  const [primaryColor, secondaryColor] = useRoutePalette();
++
+   return (
+     <View style={styles.container}>
+       <View style={styles.header}>
+-        <Text style={styles.headerText}>AI Agent</Text>
++        <Text style={[styles.headerText, { color: primaryColor }]}>AI Agent</Text>
+       </View>
+     </View>
+   );
+ }
+
+--- a/app/deploy.tsx
++++ b/app/deploy.tsx
+@@ -8,6 +8,7 @@
+ } from 'react-native';
+ import Colors from '@/constants/colors';
++import { useRoutePalette } from '@/contexts/ThemeContext';
+ 
+ export default function DeployScreen() {
++  const [primaryColor, secondaryColor] = useRoutePalette();
++
+   return (
+     <View style={styles.container}>
+-      <Text style={styles.title}>Deploy Project</Text>
++      <Text style={[styles.title, { color: primaryColor }]}>Deploy Project</Text>
++      <View style={[styles.badge, { backgroundColor: secondaryColor }]}>
++        <Text style={styles.badgeText}>Ready</Text>
++      </View>
+     </View>
+   );
+ }

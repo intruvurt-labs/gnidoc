@@ -1,135 +1,170 @@
 {
-  "version": "1.0.0",
-  "generated": "2025-01-14T00:00:00Z",
-  "persistenceKeys": {
-    "settings": {
-      "key": "app-settings",
+  "version": 1,
+  "generatedAt": "2025-10-15T00:00:00.000Z",
+  "storageLib": "@react-native-async-storage/async-storage",
+  "secureStorageLib": "expo-secure-store",
+  "keys": [
+    {
+      "key": "settings.notifications",
       "context": "SettingsContext",
-      "type": "AppSettings",
-      "default": {
-        "notifications": true,
-        "darkMode": true,
-        "autoSave": true,
-        "analytics": false,
-        "fontSize": 14,
-        "tabSize": 2,
-        "wordWrap": true,
-        "lineNumbers": true,
-        "minimap": false,
-        "autoComplete": true
-      },
-      "validation": "SettingsSchema (Zod)",
-      "migration": "migrateSettings()",
-      "status": "safe"
+      "type": "boolean",
+      "default": true,
+      "read": true,
+      "write": true,
+      "secure": false,
+      "roundTripVerified": true
     },
-    "profile": {
-      "key": "user-profile",
+    {
+      "key": "settings.weeklyDigest",
       "context": "SettingsContext",
-      "type": "UserProfile",
-      "default": {
-        "name": "Developer",
-        "email": "support@intruvurt.space"
-      },
-      "validation": "ProfileSchema (Zod)",
-      "migration": "migrateProfile()",
-      "status": "safe"
+      "type": "boolean",
+      "default": false,
+      "read": true,
+      "write": true,
+      "secure": false,
+      "roundTripVerified": true
     },
-    "theme": {
-      "key": "app-theme",
-      "context": "ThemeContext",
-      "type": "ThemeSettings",
-      "default": {
-        "themeId": "cyan_red_power",
-        "glowIntensity": 60,
-        "pulseSpeed": 50
-      },
-      "validation": "None (TypeScript only)",
-      "migration": "None",
-      "status": "safe"
+    {
+      "key": "settings.showTooltips",
+      "context": "SettingsContext",
+      "type": "boolean",
+      "default": true,
+      "read": true,
+      "write": true,
+      "secure": false,
+      "roundTripVerified": true
     },
-    "auth": {
-      "key": "auth-token",
+    {
+      "key": "session.accessToken",
       "context": "AuthContext",
       "type": "string | null",
       "default": null,
-      "validation": "None",
-      "migration": "None",
-      "status": "safe",
-      "security": "Stored in AsyncStorage (consider SecureStore for production)"
+      "read": true,
+      "write": true,
+      "secure": true,
+      "roundTripVerified": true,
+      "notes": "Also stored as 'auth-token' for compatibility"
     },
-    "onboarding": {
+    {
+      "key": "theme.currentPalette",
+      "context": "ThemeContext",
+      "type": "string",
+      "default": "default",
+      "read": true,
+      "write": true,
+      "secure": false,
+      "roundTripVerified": true
+    },
+    {
       "key": "onboarding_completed",
-      "context": "OnboardingWrapper (app/_layout.tsx)",
+      "context": "app/_layout.tsx (OnboardingWrapper)",
       "type": "boolean",
       "default": false,
-      "validation": "None",
-      "migration": "None",
-      "status": "safe"
+      "read": true,
+      "write": true,
+      "secure": false,
+      "roundTripVerified": true,
+      "notes": "Controls OnboardingTour visibility"
     },
-    "project": {
+    {
+      "key": "auth-token",
+      "context": "AuthContext, LogoMenu",
+      "type": "string | null",
+      "default": null,
+      "read": true,
+      "write": true,
+      "secure": true,
+      "roundTripVerified": true,
+      "notes": "Primary auth token key"
+    },
+    {
       "key": "logo-menu:last-project-id",
       "context": "LogoMenu",
       "type": "string | null",
       "default": null,
-      "validation": "None",
-      "migration": "None",
-      "status": "safe"
-    }
-  },
-  "storageStrategy": {
-    "library": "@react-native-async-storage/async-storage",
-    "batchOperations": true,
-    "debouncing": true,
-    "debounceDelay": 400,
-    "errorHandling": "try-catch with console.error",
-    "fallbacks": "Always return defaults on error"
-  },
-  "dataFlow": {
-    "load": [
-      "Component mounts",
-      "useEffect triggers loadSettings()",
-      "batchGetItems([keys])",
-      "Parse JSON",
-      "Validate with Zod schema",
-      "Migrate if needed",
-      "setState(validated)",
-      "setIsLoading(false)"
-    ],
-    "save": [
-      "User updates setting",
-      "updateSettings(partial)",
-      "setState(merged)",
-      "Debounced save triggered",
-      "Validate with Zod schema",
-      "AsyncStorage.setItem(key, JSON.stringify(data))",
-      "Error handling"
-    ]
-  },
-  "exportImport": {
-    "export": {
-      "format": "ExportPackage",
-      "version": "1.1.0",
-      "includes": ["settings", "profile"],
-      "timestamp": true
+      "read": true,
+      "write": true,
+      "secure": false,
+      "roundTripVerified": true,
+      "notes": "Tracks last active project"
     },
-    "import": {
-      "validation": "Zod schema",
-      "migration": "Version-based",
-      "batchWrite": true
+    {
+      "key": "gnidoc-integrations",
+      "context": "IntegrationsContext",
+      "type": "object (JSON)",
+      "default": "DEFAULT_INTEGRATIONS",
+      "read": true,
+      "write": true,
+      "secure": false,
+      "roundTripVerified": true,
+      "notes": "Contains integration metadata (no credentials)"
+    },
+    {
+      "key": "gnidoc-integrations-version",
+      "context": "IntegrationsContext",
+      "type": "number",
+      "default": 1,
+      "read": true,
+      "write": true,
+      "secure": false,
+      "roundTripVerified": true,
+      "notes": "Migration versioning"
+    },
+    {
+      "key": "@integration_secret_*",
+      "context": "IntegrationsContext",
+      "type": "object (JSON)",
+      "default": {},
+      "read": true,
+      "write": true,
+      "secure": true,
+      "roundTripVerified": true,
+      "notes": "Dynamic key per integration ID; uses SecureStore on native, AsyncStorage on web"
     }
+  ],
+  "backgroundFlush": {
+    "enabled": true,
+    "contexts": ["IntegrationsContext"],
+    "trigger": "AppState change to 'background'",
+    "implementation": "AppState.addEventListener in useEffect",
+    "verified": true
+  },
+  "migration": {
+    "enabled": true,
+    "versionKey": "gnidoc-integrations-version",
+    "currentVersion": 1,
+    "strategy": "Check on load, apply transforms, update version key"
+  },
+  "security": {
+    "sensitiveKeys": [
+      "session.accessToken",
+      "auth-token",
+      "@integration_secret_*"
+    ],
+    "secureStoreUsage": "Preferred on iOS/Android via expo-secure-store",
+    "webFallback": "AsyncStorage (no hardware encryption)",
+    "redactedLogging": true,
+    "notes": "All credential fields (apiKey, secret, token) are redacted in logs"
+  },
+  "validation": {
+    "totalKeys": 11,
+    "withDefaults": 11,
+    "withRoundTrip": 11,
+    "secureKeys": 3,
+    "status": "VALID"
   },
   "recommendations": [
-    "Consider using expo-secure-store for auth-token in production",
-    "Add encryption for sensitive user data",
-    "Implement cloud sync for cross-device persistence",
-    "Add data export/import UI for user control",
-    "Monitor AsyncStorage size to avoid quota issues"
-  ],
-  "testing": {
-    "roundTrip": "✅ Verified",
-    "defaults": "✅ All keys have safe defaults",
-    "validation": "✅ Zod schemas for critical data",
-    "migration": "✅ Migration functions in place",
-    "errorHandling": "✅ Graceful degradation"
-  }
+    {
+      "priority": "LOW",
+      "action": "Unify auth token keys",
+      "details": "Both 'session.accessToken' and 'auth-token' are used. Consider consolidating to single key.",
+      "impact": "Code clarity"
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Add encryption for sensitive AsyncStorage keys on web",
+      "details": "Consider using crypto-js or similar for web credential storage",
+      "impact": "Security hardening"
+    }
+  ]
 }

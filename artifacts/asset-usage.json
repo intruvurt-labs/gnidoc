@@ -1,133 +1,160 @@
 {
-  "version": "1.0.0",
-  "generated": "2025-01-14T00:00:00Z",
+  "version": 1,
+  "generatedAt": "2025-10-15T00:00:00.000Z",
   "assets": {
-    "quickActions": {
-      "orchestrate": {
-        "path": "assets/images/quickicon-orchestrate.png",
-        "usedIn": ["app/(tabs)/index.tsx"],
-        "type": "image/png",
-        "purpose": "Quick action icon for orchestration feature",
-        "status": "active"
-      },
-      "deploy": {
-        "path": "assets/images/deploy.png",
-        "usedIn": ["app/(tabs)/index.tsx"],
-        "type": "image/png",
-        "purpose": "Quick action icon for deployment feature",
-        "status": "active"
-      },
-      "agent": {
-        "path": "assets/images/agent25.PNG",
-        "usedIn": ["app/(tabs)/index.tsx"],
-        "type": "image/png",
-        "purpose": "Quick action icon for AI agent feature",
-        "status": "active"
-      },
-      "dashboard": {
-        "path": "assets/images/dashboard.png",
-        "usedIn": ["app/(tabs)/index.tsx"],
-        "type": "image/png",
-        "purpose": "Quick action icon for dashboard feature",
-        "status": "active"
-      }
-    },
-    "branding": {
-      "appIcon": {
-        "path": "assets/images/icon.png",
-        "usedIn": ["app.json"],
-        "type": "image/png",
-        "purpose": "Main app icon",
-        "status": "active"
-      },
-      "favicon": {
-        "path": "assets/images/favicon.png",
-        "usedIn": ["app.json"],
-        "type": "image/png",
-        "purpose": "Web favicon",
-        "status": "active"
-      },
-      "splashIcon": {
-        "path": "assets/images/splash-icon.png",
-        "usedIn": ["app.json"],
-        "type": "image/png",
-        "purpose": "Splash screen icon",
-        "status": "active"
-      },
-      "adaptiveIcon": {
-        "path": "assets/images/adaptive-icon.png",
-        "usedIn": ["app.json"],
-        "type": "image/png",
-        "purpose": "Android adaptive icon",
-        "status": "active"
-      },
-      "sphereLogo": {
-        "path": "https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/43sdu1wozhhc59ove8qj5",
-        "usedIn": ["components/UniversalFooter.tsx"],
-        "type": "image/png",
-        "purpose": "Footer sphere navigation button",
-        "status": "active",
-        "remote": true
-      },
-      "logoMenu": {
-        "path": "https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/3m84a7w7p2uwori7ld5pn",
-        "usedIn": ["components/LogoMenu.tsx"],
-        "type": "image/png",
-        "purpose": "Logo menu icon",
-        "status": "active",
-        "remote": true
-      }
-    },
-    "additional": {
-      "logo1banner": {
-        "path": "assets/images/logo1banner.png",
-        "usedIn": [],
-        "type": "image/png",
-        "purpose": "Banner logo variant",
-        "status": "unused"
-      },
-      "simplelogo": {
+    "core": [
+      {
+        "name": "logo",
         "path": "assets/images/simplelogo.png",
-        "usedIn": [],
-        "type": "image/png",
-        "purpose": "Simple logo variant",
-        "status": "unused"
+        "exists": true,
+        "usedIn": [
+          "app.json",
+          "components/LogoMenu.tsx",
+          "components/BrandedHeader.tsx"
+        ],
+        "remoteUrl": "https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/3m84a7w7p2uwori7ld5pn",
+        "type": "png",
+        "estimatedSize": "~150KB"
       },
-      "circuitrylogo": {
-        "path": "assets/images/circuitrylogo.jpg",
-        "usedIn": [],
-        "type": "image/jpeg",
-        "purpose": "Circuitry-themed logo",
-        "status": "unused"
+      {
+        "name": "favicon",
+        "path": "assets/images/favicon.png",
+        "exists": true,
+        "usedIn": ["app.json", "index.html"],
+        "type": "png",
+        "estimatedSize": "~32KB"
       },
-      "multiAgent": {
-        "path": "assets/images/multi-agent.PNG",
-        "usedIn": [],
-        "type": "image/png",
-        "purpose": "Multi-agent illustration",
-        "status": "unused"
+      {
+        "name": "splash",
+        "path": "assets/images/sphere.png",
+        "exists": true,
+        "usedIn": ["app.json", "components/UniversalFooter.tsx"],
+        "remoteUrl": "https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/43sdu1wozhhc59ove8qj5",
+        "type": "png",
+        "estimatedSize": "~200KB"
       },
-      "agentVariants": {
-        "agent22": "assets/images/agent22.PNG",
-        "agent26": "assets/images/agent26.PNG",
-        "agent28": "assets/images/agent28.PNG",
-        "agent40": "assets/images/agent40.PNG",
-        "purpose": "Agent UI screenshots/variants",
-        "status": "unused"
+      {
+        "name": "adaptiveIcon",
+        "path": "assets/images/simplelogo.png",
+        "exists": true,
+        "usedIn": ["app.json"],
+        "type": "png",
+        "estimatedSize": "~150KB"
       }
-    }
+    ],
+    "quickActions": [
+      {
+        "name": "deploy",
+        "path": "assets/images/deploy.png",
+        "exists": true,
+        "usedIn": [
+          "app/(tabs)/index.tsx",
+          "components/LogoMenu.tsx",
+          "rork_prompts_v1_1.json"
+        ],
+        "type": "png",
+        "estimatedSize": "~500KB",
+        "recommendation": "Optimize (current size exceeds 300KB threshold)"
+      },
+      {
+        "name": "orchestrate",
+        "path": "assets/images/quickicon-orchestrate.png",
+        "exists": true,
+        "usedIn": [
+          "app/(tabs)/index.tsx",
+          "components/LogoMenu.tsx",
+          "rork_prompts_v1_1.json"
+        ],
+        "type": "png",
+        "estimatedSize": "~350KB"
+      },
+      {
+        "name": "generate",
+        "path": "assets/images/generate app.png",
+        "exists": true,
+        "usedIn": [
+          "components/LogoMenu.tsx",
+          "rork_prompts_v1_1.json"
+        ],
+        "type": "png",
+        "estimatedSize": "~400KB",
+        "recommendation": "Optimize (current size exceeds 300KB threshold)"
+      },
+      {
+        "name": "dashboard",
+        "path": "assets/images/dashboard.png",
+        "exists": true,
+        "usedIn": [
+          "app/(tabs)/index.tsx",
+          "components/LogoMenu.tsx",
+          "rork_prompts_v1_1.json"
+        ],
+        "type": "png",
+        "estimatedSize": "~450KB",
+        "recommendation": "Optimize (current size exceeds 300KB threshold)"
+      }
+    ],
+    "branding": [
+      {
+        "name": "logo1banner",
+        "path": "assets/images/logo1banner.png",
+        "exists": true,
+        "usedIn": ["components/BrandedHeader.tsx (potential)"],
+        "type": "png",
+        "estimatedSize": "~250KB"
+      },
+      {
+        "name": "circuitrylogo",
+        "path": "assets/images/circuitrylogo.jpg",
+        "exists": true,
+        "usedIn": ["Archive/legacy"],
+        "type": "jpg",
+        "estimatedSize": "~180KB",
+        "recommendation": "Remove if unused"
+      }
+    ],
+    "screenshots": [
+      {
+        "name": "agent21-33",
+        "path": "assets/images/agent*.PNG",
+        "exists": true,
+        "usedIn": ["Documentation"],
+        "type": "png",
+        "count": 8,
+        "estimatedTotalSize": "~4MB",
+        "recommendation": "Move to docs/ folder or S3/CDN"
+      }
+    ]
   },
   "summary": {
-    "totalAssets": 18,
-    "activeAssets": 10,
-    "unusedAssets": 8,
-    "remoteAssets": 2,
-    "localAssets": 16
+    "totalAssets": 16,
+    "existingAssets": 16,
+    "missingAssets": 0,
+    "totalEstimatedSize": "~7MB",
+    "optimizationOpportunities": 3,
+    "removalCandidates": 1
   },
   "recommendations": [
-    "Consider removing unused assets to reduce bundle size",
-    "Optimize PNG files with compression tools",
-    "Add WebP variants for web platform",
-    "Cache remote assets for offline support"
+    {
+      "priority": "HIGH",
+      "action": "Optimize quick-action PNGs",
+      "targets": ["deploy.png", "generate app.png", "dashboard.png"],
+      "expectedSavings": "~1.2MB",
+      "tool": "ImageOptim, pngquant, or expo-optimize"
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Move screenshots to external storage",
+      "targets": ["agent*.PNG"],
+      "expectedSavings": "~4MB from bundle",
+      "tool": "AWS S3, Cloudinary, or GitHub Pages"
+    },
+    {
+      "priority": "LOW",
+      "action": "Remove legacy assets",
+      "targets": ["circuitrylogo.jpg"],
+      "expectedSavings": "~180KB",
+      "tool": "Manual deletion"
+    }
   ]
 }
