@@ -2,6 +2,7 @@
 import createContextHook from '@nkzw/create-context-hook';
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState } from 'react-native';
 
 /** ───────────────────────── Secure storage (lazy) ───────────────────────── */
 type SecureStoreMod = typeof import('expo-secure-store');
@@ -165,6 +166,68 @@ const redact = (o: any) =>
     (k.toLowerCase().includes('key') || k.toLowerCase().includes('secret') || k.toLowerCase().includes('token')) ? '******' : v
   ));
 
+/** ───────────────────────── Provider Credential Validation ───────────────────────── */
+const validateCredentials = async (
+  integrationId: string,
+  creds: Record<string, string>
+): Promise<{ ok: boolean; reason?: string }> => {
+  const headers: Record<string, string> = {};
+  if (creds.apiKey) headers['Authorization'] = `Bearer ${creds.apiKey}`;
+  if (creds.token) headers['Authorization'] = `Bearer ${creds.token}`;
+  if (creds.secret) headers['Authorization'] = `Bearer ${creds.secret}`;
+  if (creds['X-API-Key']) headers['X-API-Key'] = creds['X-API-Key'];
+
+  const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs = 4000) => {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(id);
+      return res;
+    } catch (e) {
+      clearTimeout(id);
+      throw e;
+    }
+  };
+
+  try {
+    switch (integrationId) {
+      case 'stripe': {
+        const res = await fetchWithTimeout('https://api.stripe.com/v1/account', { headers });
+        return res.ok
+          ? { ok: true }
+          : { ok: false, reason: `HTTP ${res.status}` };
+      }
+      case 'supabase': {
+        const url = creds.url || '';
+        const res = await fetchWithTimeout(`${url}/rest/v1/`, { headers });
+        return res.ok ? { ok: true } : { ok: false, reason: `HTTP ${res.status}` };
+      }
+      case 'openai': {
+        const res = await fetchWithTimeout('https://api.openai.com/v1/models', { headers });
+        return res.ok ? { ok: true } : { ok: false, reason: `HTTP ${res.status}` };
+      }
+      case 'anthropic': {
+        const res = await fetchWithTimeout('https://api.anthropic.com/v1/models', { headers });
+        return res.ok ? { ok: true } : { ok: false, reason: `HTTP ${res.status}` };
+      }
+      case 'vercel': {
+        const res = await fetchWithTimeout('https://api.vercel.com/v2/user', { headers });
+        return res.ok ? { ok: true } : { ok: false, reason: `HTTP ${res.status}` };
+      }
+      case 'github': {
+        const res = await fetchWithTimeout('https://api.github.com/user', { headers });
+        return res.ok ? { ok: true } : { ok: false, reason: `HTTP ${res.status}` };
+      }
+      default:
+        await new Promise(r => setTimeout(r, 150));
+        return { ok: true };
+    }
+  } catch (e: any) {
+    return { ok: false, reason: e.name === 'AbortError' ? 'timeout' : e.message };
+  }
+};
+
 /** ───────────────────────── Context ───────────────────────── */
 export const [IntegrationsProvider, useIntegrations] = createContextHook<IntegrationsContextValue>(() => {
   const [integrations, setIntegrations] = useState<Integration[]>(DEFAULT_INTEGRATIONS);
@@ -281,7 +344,10 @@ export const [IntegrationsProvider, useIntegrations] = createContextHook<Integra
     setIntegrations(prev => prev.map(int => int.id === integrationId ? { ...int, status: 'pending' as const } : int));
 
     try {
-      // optional: await validateCredentials(integrationId, credentials);
+      const validation = await validateCredentials(integrationId, credentials);
+      if (!validation.ok) {
+        throw new Error(`Credential validation failed: ${validation.reason || 'Unknown error'}`);
+      }
       const now = new Date();
       const connectedInts = integrations.map(int =>
         int.id === integrationId ? { ...int, status: 'connected' as const, connectedAt: now, lastSyncAt: now } : int
@@ -330,14 +396,24 @@ export const [IntegrationsProvider, useIntegrations] = createContextHook<Integra
     logger.info('[Integrations] Synced', integrationId);
   }, [integrations, connections, saveIntegrations]);
 
-  /** Health check stub */
+  /** Health check with real endpoints */
   const checkHealth = useCallback(async (integrationId: string) => {
     const int = integrations.find(i => i.id === integrationId);
     if (!int) throw new Error('Integration not found');
     const start = Date.now();
-    await new Promise(r => setTimeout(r, 150));
-    return { ok: int.status === 'connected', latencyMs: Date.now() - start };
-  }, [integrations]);
+
+    const conn = connections.find(c => c.integrationId === integrationId);
+    const creds = conn?.credentials || {};
+
+    const validation = await validateCredentials(integrationId, creds);
+    const latencyMs = Date.now() - start;
+
+    return { 
+      ok: validation.ok, 
+      latencyMs,
+      ...(validation.reason && { error: validation.reason })
+    };
+  }, [integrations, connections]);
 
   /** Derived lists */
   const filteredIntegrations = useMemo(() => {
@@ -394,6 +470,16 @@ export const [IntegrationsProvider, useIntegrations] = createContextHook<Integra
     logger.warn('[Integrations] Imported state (without credentials). Re-enter secrets to reconnect.');
   }, [saveIntegrations]);
 
+  /** Background Auto-Flush */
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state: string) => {
+      if (state === 'background') {
+        flush().catch((e) => logger.error('[Integrations] Flush on background failed', e));
+      }
+    });
+    return () => sub.remove();
+  }, [flush]);
+
   /** Public API */
   return useMemo<IntegrationsContextValue>(() => ({
     integrations,
@@ -433,73 +519,5 @@ export const [IntegrationsProvider, useIntegrations] = createContextHook<Integra
     importState,
     flush,
   ]);
-  // ───────────────────────── Background Auto-Flush ─────────────────────────
-import { AppState } from 'react-native';
-
-useEffect(() => {
-  const sub = AppState.addEventListener('change', (state) => {
-    if (state === 'background') {
-      flush().catch((e) => logger.error('[Integrations] Flush on background failed', e));
-    }
-  });
-  return () => sub.remove();
-}, [flush]);
-
-// ───────────────────────── Provider-Specific Health Checks ─────────────────────────
-const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs = 3000) => {
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, { ...options, signal: controller.signal });
-    clearTimeout(id);
-    return res;
-  } catch (e) {
-    clearTimeout(id);
-    throw e;
-  }
-};
-
-const checkHealth = useCallback(
-  async (integrationId: string) => {
-    const int = integrations.find((i) => i.id === integrationId);
-    if (!int) throw new Error('Integration not found');
-    const start = Date.now();
-
-    const conn = connections.find((c) => c.integrationId === integrationId);
-    const creds = conn?.credentials || {};
-    const headers: Record<string, string> = {};
-
-    // Optional: inject API keys if stored
-    if (creds.apiKey) headers['Authorization'] = `Bearer ${creds.apiKey}`;
-    if (creds.token) headers['Authorization'] = `Bearer ${creds.token}`;
-
-    const table: Record<string, string> = {
-      stripe: 'https://api.stripe.com/v1/account',
-      supabase: `${creds.url ?? ''}/rest/v1/`,
-      openai: 'https://api.openai.com/v1/models',
-      anthropic: 'https://api.anthropic.com/v1/models',
-      vercel: 'https://api.vercel.com/v2/user',
-      github: 'https://api.github.com/user',
-    };
-
-    const url = table[integrationId];
-    if (!url) {
-      await new Promise((r) => setTimeout(r, 150));
-      return { ok: int.status === 'connected', latencyMs: Date.now() - start };
-    }
-
-    try {
-      const res = await fetchWithTimeout(url, { headers });
-      const latency = Date.now() - start;
-      if (!res.ok) throw new Error(`${res.status}`);
-      return { ok: true, latencyMs: latency };
-    } catch (e: any) {
-      const latency = Date.now() - start;
-      logger.warn(`[Integrations] Health failed for ${integrationId}:`, e?.message || e);
-      return { ok: false, error: e.name === 'AbortError' ? 'timeout' : String(e), latencyMs: latency };
-    }
-  },
-  [integrations, connections]
-);
 
 });
