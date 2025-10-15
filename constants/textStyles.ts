@@ -14,6 +14,6 @@ export const textWithStrongOutline = (color: string, outlineColor: string = '#00
   textShadowRadius: 2,
 });
 
-export const cyanWithOutline: TextStyle = textWithOutline('#00FFFF', '#000000');
-export const limeWithOutline: TextStyle = textWithOutline('#CCFF00', '#000000');
-export const yellowLimeWithOutline: TextStyle = textWithOutline('#BFFF00', '#000000');
+export const cyanWithOutline: TextStyle = textWithOutline('#00D9FF', '#0A0614');
+export const purpleWithOutline: TextStyle = textWithOutline('#9D4EDD', '#0A0614');
+export const magentaWithOutline: TextStyle = textWithOutline('#E933FF', '#0A0614');

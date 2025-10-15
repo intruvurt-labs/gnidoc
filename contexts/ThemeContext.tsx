@@ -28,58 +28,30 @@ export interface ThemeSettings {
 const STORAGE_KEY = 'app-theme';
 
 export const ROUTE_PALETTES: Record<string, string[]> = {
-  '/': ['#00FFFF', '#A200FF'],
-  '/agent': ['#00FFFF', '#B3FF00'],
-  '/orchestration': ['#00FFFF', '#FF004C'],
-  '/deploy': ['#B3FF00', '#FF33CC'],
-  '/themes': ['#00FFFF', '#FF004C'],
-  '/hub': ['#B3FF00', '#FFD93B'],
-  '/dashboard': ['#00FFFF', '#FF004C'],
-  '/code': ['#B3FF00', '#FF33CC'],
-  '/database': ['#00FFFF', '#B3FF00'],
-  '/terminal': ['#00FFFF', '#FF004C'],
-  '/security': ['#FF004C', '#00FFFF'],
-  '/preferences': ['#00FFFF', '#A200FF'],
+  '/': ['#00D9FF', '#9D4EDD'],
+  '/agent': ['#00D9FF', '#E933FF'],
+  '/orchestration': ['#00D9FF', '#9D4EDD'],
+  '/deploy': ['#E933FF', '#00D9FF'],
+  '/themes': ['#9D4EDD', '#00D9FF'],
+  '/hub': ['#00D9FF', '#E933FF'],
+  '/dashboard': ['#00D9FF', '#9D4EDD'],
+  '/code': ['#E933FF', '#00D9FF'],
+  '/database': ['#00D9FF', '#9D4EDD'],
+  '/terminal': ['#00D9FF', '#E933FF'],
+  '/security': ['#9D4EDD', '#00D9FF'],
+  '/preferences': ['#00D9FF', '#9D4EDD'],
 };
 
 export const THEMES: Theme[] = [
   {
-    id: 'cyan_red_power',
-    name: 'Cyan-Red Power',
-    preview: [Colors.Colors.cyan.primary, Colors.Colors.red.primary],
+    id: 'cyber_purple',
+    name: 'Cyber Purple',
+    preview: [Colors.Colors.cyan.primary, Colors.Colors.purple.primary],
     colors: {
       primary: Colors.Colors.cyan.primary,
-      secondary: Colors.Colors.red.primary,
-      accent: Colors.Colors.cyan.primary,
-      background: Colors.Colors.black.primary,
-      card: Colors.Colors.background.card,
-      text: Colors.Colors.text.primary,
-      border: Colors.Colors.border.muted,
-    },
-  },
-  {
-    id: 'lime_purple_elite',
-    name: 'Lime-Purple Elite',
-    preview: [Colors.Colors.lime.primary, Colors.Colors.purple.primary],
-    colors: {
-      primary: Colors.Colors.lime.primary,
       secondary: Colors.Colors.purple.primary,
-      accent: Colors.Colors.lime.primary,
-      background: Colors.Colors.black.primary,
-      card: Colors.Colors.background.card,
-      text: Colors.Colors.text.primary,
-      border: Colors.Colors.border.muted,
-    },
-  },
-  {
-    id: 'matrix_noir',
-    name: 'Matrix Noir',
-    preview: [Colors.Colors.black.ink, Colors.Colors.cyan.primary],
-    colors: {
-      primary: Colors.Colors.cyan.primary,
-      secondary: Colors.Colors.black.ink,
-      accent: Colors.Colors.cyan.primary,
-      background: Colors.Colors.black.primary,
+      accent: Colors.Colors.magenta.primary,
+      background: Colors.Colors.background.primary,
       card: Colors.Colors.background.card,
       text: Colors.Colors.text.primary,
       border: Colors.Colors.border.muted,
@@ -88,12 +60,40 @@ export const THEMES: Theme[] = [
   {
     id: 'neon_magenta',
     name: 'Neon Magenta',
-    preview: [Colors.Colors.magenta.primary, Colors.Colors.yellow.primary],
+    preview: [Colors.Colors.magenta.primary, Colors.Colors.cyan.primary],
     colors: {
       primary: Colors.Colors.magenta.primary,
-      secondary: Colors.Colors.yellow.primary,
+      secondary: Colors.Colors.cyan.primary,
       accent: Colors.Colors.magenta.primary,
-      background: Colors.Colors.black.primary,
+      background: Colors.Colors.background.primary,
+      card: Colors.Colors.background.card,
+      text: Colors.Colors.text.primary,
+      border: Colors.Colors.border.muted,
+    },
+  },
+  {
+    id: 'purple_haze',
+    name: 'Purple Haze',
+    preview: [Colors.Colors.purple.primary, Colors.Colors.purple.secondary],
+    colors: {
+      primary: Colors.Colors.purple.primary,
+      secondary: Colors.Colors.purple.secondary,
+      accent: Colors.Colors.magenta.primary,
+      background: Colors.Colors.background.primary,
+      card: Colors.Colors.background.card,
+      text: Colors.Colors.text.primary,
+      border: Colors.Colors.border.muted,
+    },
+  },
+  {
+    id: 'electric_dream',
+    name: 'Electric Dream',
+    preview: [Colors.Colors.cyan.primary, Colors.Colors.magenta.primary],
+    colors: {
+      primary: Colors.Colors.cyan.primary,
+      secondary: Colors.Colors.magenta.primary,
+      accent: Colors.Colors.purple.primary,
+      background: Colors.Colors.background.primary,
       card: Colors.Colors.background.card,
       text: Colors.Colors.text.primary,
       border: Colors.Colors.border.muted,
@@ -102,7 +102,7 @@ export const THEMES: Theme[] = [
 ];
 
 const DEFAULT_SETTINGS: ThemeSettings = {
-  themeId: 'cyan_red_power',
+  themeId: 'cyber_purple',
   glowIntensity: 60,
   pulseSpeed: 50,
 };
