@@ -5,122 +5,110 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Switch,
+  ActivityIndicator,
   TextInput,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
-  Link, 
-  Github, 
-  Database, 
-  Cloud, 
-  Webhook, 
-  Key, 
   CheckCircle, 
   XCircle,
-  Settings,
-  Plus
+  RefreshCcw,
+  Search
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-
-interface Integration {
-  id: string;
-  name: string;
-  description: string;
-  icon: React.ReactNode;
-  connected: boolean;
-  status: 'active' | 'inactive' | 'error';
-}
+import { useIntegrations } from '@/contexts/IntegrationsContext';
 
 export default function IntegrationsScreen() {
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [integrations, setIntegrations] = useState<Integration[]>([
-    {
-      id: 'github',
-      name: 'GitHub',
-      description: 'Connect your GitHub repositories',
-      icon: <Github color={Colors.Colors.text.primary} size={24} />,
-      connected: true,
-      status: 'active',
-    },
-    {
-      id: 'database',
-      name: 'Database',
-      description: 'Connect to external databases',
-      icon: <Database color={Colors.Colors.text.primary} size={24} />,
-      connected: false,
-      status: 'inactive',
-    },
-    {
-      id: 'cloud',
-      name: 'Cloud Storage',
-      description: 'Integrate cloud storage providers',
-      icon: <Cloud color={Colors.Colors.text.primary} size={24} />,
-      connected: false,
-      status: 'inactive',
-    },
-    {
-      id: 'webhook',
-      name: 'Webhooks',
-      description: 'Configure webhook endpoints',
-      icon: <Webhook color={Colors.Colors.text.primary} size={24} />,
-      connected: true,
-      status: 'active',
-    },
-    {
-      id: 'api',
-      name: 'API Keys',
-      description: 'Manage API keys and tokens',
-      icon: <Key color={Colors.Colors.text.primary} size={24} />,
-      connected: true,
-      status: 'active',
-    },
-  ]);
+  const [healthChecks, setHealthChecks] = useState<Record<string, { loading: boolean; result?: { ok: boolean; latencyMs: number; error?: string } }>>({});
+  const {
+    filteredIntegrations,
+    connectedIntegrations,
+    checkHealth,
+    isLoading,
+  } = useIntegrations();
 
-  const toggleIntegration = (id: string) => {
-    setIntegrations(prev =>
-      prev.map(integration =>
-        integration.id === id
-          ? {
-              ...integration,
-              connected: !integration.connected,
-              status: !integration.connected ? 'active' : 'inactive',
-            }
-          : integration
-      )
-    );
+  const handleHealthCheck = async (integrationId: string) => {
+    setHealthChecks(prev => ({ ...prev, [integrationId]: { loading: true } }));
+    try {
+      const result = await checkHealth(integrationId);
+      setHealthChecks(prev => ({ ...prev, [integrationId]: { loading: false, result } }));
+    } catch (error) {
+      setHealthChecks(prev => ({
+        ...prev,
+        [integrationId]: {
+          loading: false,
+          result: { ok: false, latencyMs: 0, error: String(error) },
+        },
+      }));
+    }
   };
 
-  const filteredIntegrations = integrations.filter(integration =>
+  const displayedIntegrations = filteredIntegrations.filter(integration =>
     integration.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     integration.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const getStatusIcon = (status: Integration['status']) => {
-    switch (status) {
-      case 'active':
-        return <CheckCircle color={Colors.Colors.success} size={16} />;
-      case 'error':
-        return <XCircle color={Colors.Colors.error} size={16} />;
-      default:
-        return null;
+  const getStatusIndicator = (integrationId: string) => {
+    const health = healthChecks[integrationId];
+    const integration = displayedIntegrations.find(i => i.id === integrationId);
+    const isConnected = integration?.status === 'connected';
+
+    if (health?.loading) {
+      return (
+        <View style={styles.statusRow}>
+          <ActivityIndicator size="small" color={Colors.Colors.cyan.primary} />
+          <Text style={styles.statusText}>Checking...</Text>
+        </View>
+      );
     }
+
+    if (health?.result) {
+      return (
+        <View style={styles.statusRow}>
+          {health.result.ok ? (
+            <CheckCircle color="#10B981" size={16} />
+          ) : (
+            <XCircle color="#EF4444" size={16} />
+          )}
+          <Text style={[styles.statusText, { color: health.result.ok ? '#10B981' : '#EF4444' }]}>
+            {health.result.ok ? `${health.result.latencyMs}ms` : 'Error'}
+          </Text>
+        </View>
+      );
+    }
+
+    if (isConnected) {
+      return (
+        <View style={styles.statusRow}>
+          <View style={[styles.statusDot, styles.statusConnected]} />
+          <Text style={styles.statusTextConnected}>Connected</Text>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.statusRow}>
+        <View style={[styles.statusDot, styles.statusDisconnected]} />
+        <Text style={styles.statusTextDisconnected}>Disconnected</Text>
+      </View>
+    );
   };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      {/* Header */}
       <View style={styles.header}>
-        <Link color={Colors.Colors.cyan.primary} size={24} />
         <Text style={styles.headerTitle}>Integrations</Text>
-        <TouchableOpacity style={styles.addButton}>
-          <Plus color={Colors.Colors.cyan.primary} size={20} />
-        </TouchableOpacity>
+        <View style={styles.headerStats}>
+          <Text style={styles.statsText}>
+            {connectedIntegrations.length} / {filteredIntegrations.length} Connected
+          </Text>
+        </View>
       </View>
 
-      {/* Search */}
       <View style={styles.searchContainer}>
+        <Search color={Colors.Colors.text.muted} size={18} />
         <TextInput
           style={styles.searchInput}
           value={searchQuery}
@@ -130,52 +118,52 @@ export default function IntegrationsScreen() {
         />
       </View>
 
-      {/* Integrations List */}
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {filteredIntegrations.map((integration) => (
-          <View key={integration.id} style={styles.integrationCard}>
-            <View style={styles.integrationHeader}>
-              <View style={styles.integrationIcon}>{integration.icon}</View>
-              <View style={styles.integrationInfo}>
-                <View style={styles.integrationTitleRow}>
-                  <Text style={styles.integrationName}>{integration.name}</Text>
-                  {integration.connected && getStatusIcon(integration.status)}
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.Colors.cyan.primary} />
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {displayedIntegrations.map((integration) => (
+            <View key={integration.id} style={styles.card}>
+              <View style={styles.cardHeader}>
+                <View style={styles.iconContainer}>
+                  <Text style={styles.iconEmoji}>{integration.icon}</Text>
                 </View>
-                <Text style={styles.integrationDescription}>
-                  {integration.description}
-                </Text>
+                <View style={styles.cardInfo}>
+                  <Text style={styles.cardTitle}>{integration.name}</Text>
+                  <Text style={styles.cardDescription}>{integration.description}</Text>
+                </View>
+              </View>
+
+              <View style={styles.cardFooter}>
+                {getStatusIndicator(integration.id)}
+                <TouchableOpacity
+                  style={styles.checkButton}
+                  onPress={() => handleHealthCheck(integration.id)}
+                  disabled={healthChecks[integration.id]?.loading}
+                >
+                  <RefreshCcw
+                    color={Colors.Colors.cyan.primary}
+                    size={16}
+                  />
+                  <Text style={styles.checkButtonText}>Check</Text>
+                </TouchableOpacity>
               </View>
             </View>
+          ))}
 
-            <View style={styles.integrationActions}>
-              <Switch
-                value={integration.connected}
-                onValueChange={() => toggleIntegration(integration.id)}
-                trackColor={{
-                  false: Colors.Colors.border.muted,
-                  true: Colors.Colors.cyan.primary,
-                }}
-                thumbColor={Colors.Colors.text.inverse}
-              />
-              {integration.connected && (
-                <TouchableOpacity style={styles.settingsButton}>
-                  <Settings color={Colors.Colors.text.muted} size={18} />
-                </TouchableOpacity>
-              )}
+          {displayedIntegrations.length === 0 && (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>No integrations found</Text>
             </View>
-          </View>
-        ))}
-
-        {filteredIntegrations.length === 0 && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>No integrations found</Text>
-          </View>
-        )}
-      </ScrollView>
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -183,37 +171,52 @@ export default function IntegrationsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.Colors.background.primary,
+    backgroundColor: '#0A0A0A',
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    gap: 12,
+    paddingVertical: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
   },
   headerTitle: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.Colors.cyanRed.primary,
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 8,
   },
-  addButton: {
-    padding: 8,
+  headerStats: {
+    marginTop: 4,
+  },
+  statsText: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.5)',
+    fontWeight: '500',
   },
   searchContainer: {
-    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    marginHorizontal: 20,
+    marginTop: 16,
     marginBottom: 16,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    gap: 10,
   },
   searchInput: {
-    backgroundColor: Colors.Colors.background.card,
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    color: Colors.Colors.text.primary,
-    fontSize: 14,
-    borderWidth: 1,
-    borderColor: Colors.Colors.border.muted,
+    flex: 1,
+    color: '#FFFFFF',
+    fontSize: 15,
+    paddingVertical: 14,
+    fontWeight: '500',
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scrollView: {
     flex: 1,
@@ -222,64 +225,108 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
-  integrationCard: {
-    backgroundColor: Colors.Colors.background.card,
-    borderRadius: 12,
-    padding: 16,
+  card: {
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 16,
+    padding: 18,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: Colors.Colors.border.primary,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 14,
+    marginBottom: 16,
+  },
+  iconContainer: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  iconEmoji: {
+    fontSize: 28,
+  },
+  cardInfo: {
+    flex: 1,
+  },
+  cardTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 5,
+  },
+  cardDescription: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.5)',
+    lineHeight: 18,
+  },
+  cardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
   },
-  integrationHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: 12,
-  },
-  integrationIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    backgroundColor: Colors.Colors.background.secondary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  integrationInfo: {
-    flex: 1,
-  },
-  integrationTitleRow: {
+  statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 4,
   },
-  integrationName: {
-    fontSize: 16,
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  statusConnected: {
+    backgroundColor: '#10B981',
+  },
+  statusDisconnected: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  statusText: {
+    fontSize: 13,
     fontWeight: '600',
-    color: Colors.Colors.text.primary,
   },
-  integrationDescription: {
-    fontSize: 12,
-    color: Colors.Colors.text.muted,
+  statusTextConnected: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#10B981',
   },
-  integrationActions: {
+  statusTextDisconnected: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.4)',
+  },
+  checkButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(6, 182, 212, 0.12)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(6, 182, 212, 0.3)',
   },
-  settingsButton: {
-    padding: 4,
+  checkButtonText: {
+    color: Colors.Colors.cyan.primary,
+    fontSize: 13,
+    fontWeight: '600',
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
+    paddingVertical: 60,
   },
   emptyStateText: {
-    color: Colors.Colors.text.muted,
-    fontSize: 14,
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 15,
   },
 });
