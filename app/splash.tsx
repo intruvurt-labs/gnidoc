@@ -31,7 +31,7 @@ export default function SplashScreen() {
       createElectricSweepAnimation(fadeAnim).start(() => {
         router.replace('/(tabs)' as any);
       });
-    }, 2500);
+    }, 1200);
 
     return () => clearTimeout(timer);
   }, []);

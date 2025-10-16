@@ -6,8 +6,6 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { StatusBar } from "expo-status-bar";
 import { View, ActivityIndicator } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { useFonts } from "expo-font";
-import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Colors from "@/constants/colors";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
@@ -252,19 +250,9 @@ function OnboardingWrapper() {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded, fontError] = useFonts({
-    ...Ionicons.font,
-  });
-
   useEffect(() => {
-    if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded, fontError]);
-
-  if (!fontsLoaded && !fontError) {
-    return null;
-  }
+    SplashScreen.hideAsync();
+  }, []);
 
   return (
     <SafeAreaProvider>
