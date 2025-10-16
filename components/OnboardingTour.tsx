@@ -34,9 +34,9 @@ interface OnboardingTourProps {
 
 const ONBOARDING_STEPS: OnboardingStep[] = [
   {
-    title: 'Welcome to Aurebix',
-    description: 'Your AI-powered development platform. Build, deploy, and manage applications with cutting-edge AI assistance.',
-    icon: <Image source={require('@/assets/images/favicon.png')} style={{ width: 48, height: 48 }} resizeMode="contain" />,
+    title: 'Welcome to gnidoC terceS',
+    description: '"gnidoC terceS" is "Secret Coding" spelled in reverse—a symbolic mirror reflecting the hidden architecture of reality itself. In the clandestine chambers of quantum computation, code becomes cipher; every algorithm is an encrypted message from the future, written in the syntax of possibility. This platform unveils the sacred geometry of logic, where encrypted protocols dance with neural networks, and each deployment is a ritual of digital transmutation. Here, you don\'t just write code—you decipher the universe\'s hidden language, reverse-engineering consciousness itself through multi-dimensional AI orchestration.',
+    icon: <Image source={require('@/assets/images/favicon.png')} style={{ width: 144, height: 144 }} resizeMode="contain" />,
   },
   {
     title: 'AI Canvas',
@@ -189,7 +189,7 @@ export default function OnboardingTour({
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.iconContainer}>
-              {step.icon || <Image source={require('@/assets/images/favicon.png')} style={{ width: 48, height: 48 }} resizeMode="contain" />}
+              {step.icon || <Image source={require('@/assets/images/favicon.png')} style={{ width: 144, height: 144 }} resizeMode="contain" />}
             </View>
 
             <Text style={styles.title}>{step.title}</Text>
@@ -284,9 +284,9 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   iconContainer: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 176,
+    height: 176,
+    borderRadius: 88,
     backgroundColor: Colors.Colors.cyan.primary + '20',
     justifyContent: 'center',
     alignItems: 'center',
