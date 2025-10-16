@@ -244,7 +244,7 @@ export default function AboutScreen() {
 
         {/* Legal */}
         <View style={styles.legalSection}>
-          <Text style={styles.legalText}>© 2024 Intruvurt Holdings. All rights reserved.</Text>
+          <Text style={styles.legalText}>© 2025 Intruvurt Holdings. All rights reserved.</Text>
           <Text style={styles.legalText}>Built with React Native and powered by AI</Text>
         </View>
       </ScrollView>
