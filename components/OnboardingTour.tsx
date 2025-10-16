@@ -34,7 +34,7 @@ interface OnboardingTourProps {
 
 const ONBOARDING_STEPS: OnboardingStep[] = [
   {
-    title: 'Welcome /n to /n gnidoC terceS',
+    title: 'Welcome \n to \n gnidoC terceS',
     description: '"gnidoC terceS" is "Secret Coding" spelled in reverse; a symbolic mirror reflecting the hidden architecture of reality itself. In the clandestine chambers of quantum computation, code becomes cipher; every algorithm is an encrypted message from the future, written in the syntax of possibility. This platform unveils the sacred geometry of logic, where encrypted protocols dance with neural networks, and each deployment is a ritual of digital transmutation. Here, you don\'t just write code; you decipher the universe\'s hidden language, reverse-engineering consciousness itself through multi-dimensional AI orchestration.',
     icon: <Image source={require('@/assets/images/logo.png')} style={{ width: 96, height: 96 }} resizeMode="contain" />,
   },
