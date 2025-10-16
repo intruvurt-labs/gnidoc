@@ -8,10 +8,11 @@ import {
   ScrollView,
   Platform,
   useWindowDimensions,
+  Image,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BlurView } from 'expo-blur';
-import { ChevronRight, ChevronLeft, X, Sparkles } from 'lucide-react-native';
+import { ChevronRight, ChevronLeft, X } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 
 
@@ -35,7 +36,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
   {
     title: 'Welcome to Aurebix',
     description: 'Your AI-powered development platform. Build, deploy, and manage applications with cutting-edge AI assistance.',
-    icon: <Sparkles size={48} color={Colors.Colors.cyan.primary} />,
+    icon: <Image source={require('@/assets/images/favicon.png')} style={{ width: 48, height: 48 }} resizeMode="contain" />,
   },
   {
     title: 'AI Canvas',
@@ -188,7 +189,7 @@ export default function OnboardingTour({
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.iconContainer}>
-              {step.icon || <Sparkles size={48} color={Colors.Colors.cyan.primary} />}
+              {step.icon || <Image source={require('@/assets/images/favicon.png')} style={{ width: 48, height: 48 }} resizeMode="contain" />}
             </View>
 
             <Text style={styles.title}>{step.title}</Text>
