@@ -832,11 +832,14 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.Colors.success,
   },
   quickActionsContainer: {
-    paddingBottom: 16,
-    marginBottom: 8,
+    paddingBottom: 12,
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.Colors.border.muted,
   },
   quickActionsScrollContent: {
     paddingHorizontal: 16,
+    paddingVertical: 4,
     gap: 10,
   },
   quickActionButton: {
@@ -859,9 +862,10 @@ const styles = StyleSheet.create({
   messagesContainer: {
     flex: 1,
     paddingHorizontal: 16,
+    paddingTop: 8,
   },
   messageWrapper: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   messageRow: {
     flexDirection: 'row',
