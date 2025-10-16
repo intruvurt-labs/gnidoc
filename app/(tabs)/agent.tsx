@@ -832,7 +832,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.Colors.success,
   },
   quickActionsContainer: {
-    marginBottom: 12,
+    paddingBottom: 16,
+    marginBottom: 8,
   },
   quickActionsScrollContent: {
     paddingHorizontal: 16,
