@@ -36,7 +36,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
   {
     title: 'Welcome to gnidoC terceS',
     description: '"gnidoC terceS" is "Secret Coding" spelled in reverse—a symbolic mirror reflecting the hidden architecture of reality itself. In the clandestine chambers of quantum computation, code becomes cipher; every algorithm is an encrypted message from the future, written in the syntax of possibility. This platform unveils the sacred geometry of logic, where encrypted protocols dance with neural networks, and each deployment is a ritual of digital transmutation. Here, you don\'t just write code—you decipher the universe\'s hidden language, reverse-engineering consciousness itself through multi-dimensional AI orchestration.',
-    icon: <Image source={require('@/assets/images/favicon.png')} style={{ width: 96, height: 96 }} resizeMode="contain" />,
+    icon: <Image source={require('@/assets/images/logo.png')} style={{ width: 96, height: 96 }} resizeMode="contain" />,
   },
   {
     title: 'AI Canvas',
@@ -189,7 +189,7 @@ export default function OnboardingTour({
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.iconContainer}>
-              {step.icon || <Image source={require('@/assets/images/favicon.png')} style={{ width: 96, height: 96 }} resizeMode="contain" />}
+              {step.icon || <Image source={require('@/assets/images/logo.png')} style={{ width: 96, height: 96 }} resizeMode="contain" />}
             </View>
 
             <Text style={styles.title}>{step.title}</Text>
