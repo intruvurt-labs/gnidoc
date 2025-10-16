@@ -36,7 +36,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
   {
     title: 'Welcome to gnidoC terceS',
     description: '"gnidoC terceS" is "Secret Coding" spelled in reverse—a symbolic mirror reflecting the hidden architecture of reality itself. In the clandestine chambers of quantum computation, code becomes cipher; every algorithm is an encrypted message from the future, written in the syntax of possibility. This platform unveils the sacred geometry of logic, where encrypted protocols dance with neural networks, and each deployment is a ritual of digital transmutation. Here, you don\'t just write code—you decipher the universe\'s hidden language, reverse-engineering consciousness itself through multi-dimensional AI orchestration.',
-    icon: <Image source={require('@/assets/images/favicon.png')} style={{ width: 144, height: 144 }} resizeMode="contain" />,
+    icon: <Image source={require('@/assets/images/uniquelogo.png')} style={{ width: 432, height: 432 }} resizeMode="contain" />,
   },
   {
     title: 'AI Canvas',
@@ -181,7 +181,7 @@ export default function OnboardingTour({
             onPress={handleSkip}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <X size={24} color={Colors.Colors.text.secondary} />
+            <X size={24} color={Colors.Colors.red.coral} />
           </TouchableOpacity>
 
           <ScrollView
@@ -189,7 +189,7 @@ export default function OnboardingTour({
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.iconContainer}>
-              {step.icon || <Image source={require('@/assets/images/favicon.png')} style={{ width: 144, height: 144 }} resizeMode="contain" />}
+              {step.icon || <Image source={require('@/assets/images/uniquelogo.png')} style={{ width: 432, height: 432 }} resizeMode="contain" />}
             </View>
 
             <Text style={styles.title}>{step.title}</Text>
@@ -213,7 +213,7 @@ export default function OnboardingTour({
                 activeOpacity={0.7}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <ChevronLeft size={20} color={Colors.Colors.cyan.primary} />
+                <ChevronLeft size={20} color={Colors.Colors.red.coral} />
                 <Text style={styles.secondaryButtonText}>Previous</Text>
               </TouchableOpacity>
             )}
@@ -253,18 +253,18 @@ const styles = StyleSheet.create({
     pointerEvents: 'none',
   },
   androidBlur: {
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
   },
   content: {
-    backgroundColor: Colors.Colors.background.secondary,
+    backgroundColor: '#050508',
     borderRadius: 24,
     padding: 24,
-    borderWidth: 1,
-    borderColor: Colors.Colors.cyan.primary + '30',
-    shadowColor: Colors.Colors.cyan.primary,
+    borderWidth: 2,
+    borderColor: Colors.Colors.cyan.deepCyan,
+    shadowColor: Colors.Colors.red.coral,
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
     elevation: 10,
     zIndex: 100,
     position: 'relative',
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
     zIndex: 1000,
     padding: 8,
     borderRadius: 20,
-    backgroundColor: Colors.Colors.background.primary + '80',
+    backgroundColor: '#050508CC',
   },
   scrollContent: {
     alignItems: 'center',
@@ -284,29 +284,40 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   iconContainer: {
-    width: 176,
-    height: 176,
-    borderRadius: 88,
-    backgroundColor: Colors.Colors.cyan.primary + '20',
+    width: 480,
+    height: 480,
+    borderRadius: 240,
+    backgroundColor: Colors.Colors.cyan.deepCyan + '15',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
-    borderWidth: 2,
-    borderColor: Colors.Colors.cyan.primary + '40',
+    borderWidth: 3,
+    borderColor: Colors.Colors.lime.primary + '50',
+    shadowColor: Colors.Colors.yellow.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 25,
+    elevation: 8,
   },
   title: {
     fontSize: 28,
     fontWeight: '700' as const,
-    color: Colors.Colors.text.primary,
+    color: Colors.Colors.cyan.deepCyan,
     textAlign: 'center',
     marginBottom: 16,
+    textShadowColor: Colors.Colors.red.coral,
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
   },
   description: {
     fontSize: 16,
     lineHeight: 24,
-    color: Colors.Colors.text.secondary,
+    color: Colors.Colors.lime.primary,
     textAlign: 'center',
     marginBottom: 32,
+    textShadowColor: Colors.Colors.yellow.primary,
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   progressContainer: {
     width: '100%',
@@ -316,19 +327,23 @@ const styles = StyleSheet.create({
   progressBar: {
     width: '100%',
     height: 4,
-    backgroundColor: Colors.Colors.background.primary,
+    backgroundColor: '#050508',
     borderRadius: 2,
     overflow: 'hidden',
     marginBottom: 8,
   },
   progressFill: {
     height: '100%',
-    backgroundColor: Colors.Colors.cyan.primary,
+    backgroundColor: Colors.Colors.lime.primary,
     borderRadius: 2,
+    shadowColor: Colors.Colors.lime.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
   },
   progressText: {
     fontSize: 12,
-    color: Colors.Colors.text.secondary,
+    color: Colors.Colors.cyan.deepCyan,
     fontWeight: '600' as const,
   },
   buttonContainer: {
@@ -353,12 +368,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   primaryButton: {
-    backgroundColor: Colors.Colors.cyan.primary,
+    backgroundColor: Colors.Colors.lime.primary,
+    shadowColor: Colors.Colors.yellow.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
   },
   secondaryButton: {
     backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: Colors.Colors.cyan.primary,
+    borderWidth: 2,
+    borderColor: Colors.Colors.red.coral,
   },
   primaryButtonText: {
     fontSize: 16,
@@ -368,6 +387,6 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     fontSize: 16,
     fontWeight: '600' as const,
-    color: Colors.Colors.cyan.primary,
+    color: Colors.Colors.red.coral,
   },
 });
