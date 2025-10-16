@@ -197,7 +197,7 @@ export default function OnboardingTour({
 
             <View style={styles.progressContainer}>
               <View style={styles.progressBar}>
-                <View style={[styles.progressFill, { width: `${progress}%` }]} />
+                <View style={[styles.progressFill, { width: progress + '%' }]} />
               </View>
               <Text style={styles.progressText}>
                 {currentStep + 1} of {ONBOARDING_STEPS.length}
