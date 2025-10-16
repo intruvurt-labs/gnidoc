@@ -8,13 +8,20 @@ import {
   TextInput,
   Animated,
   Image,
+  Platform,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
-import { Brain, Send, Mic, Image as ImageIcon, FileText, Zap, Code, Shield, Search, Terminal, Database } from 'lucide-react-native';
+import { Brain, Send, Mic, MicOff, Image as ImageIcon, FileText, Zap, Code, Shield, Search, Terminal, Database, Paperclip, X, Video, File } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
-import { createRorkTool, useRorkAgent } from '@rork/toolkit-sdk';
+import { createRorkTool, useRorkAgent, generateText } from '@rork/toolkit-sdk';
 import { z } from 'zod';
 import { useAgent } from '@/contexts/AgentContext';
+import { Audio } from 'expo-av';
+import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 
 
 
@@ -100,8 +107,25 @@ function getAgentRole(toolName?: string): AgentRole {
   return 'coder';
 }
 
+type AttachmentFile = {
+  id: string;
+  type: 'image' | 'video' | 'file';
+  uri: string;
+  name: string;
+  mimeType?: string;
+  size?: number;
+  analysis?: string;
+};
+
 export default function AgentScreen() {
   const [input, setInput] = useState<string>('');
+  const [isRecording, setIsRecording] = useState<boolean>(false);
+  const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
+  const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
+  const [isAnalyzingAttachments, setIsAnalyzingAttachments] = useState<boolean>(false);
+  const recordingRef = useRef<Audio.Recording | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   const agentContext = useAgent();
   const insets = useSafeAreaInsets();
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -214,10 +238,298 @@ export default function AgentScreen() {
     );
   }
 
+  const startRecording = async () => {
+    try {
+      if (Platform.OS === 'web') {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = new MediaRecorder(stream);
+        audioChunksRef.current = [];
+
+        mediaRecorder.ondataavailable = (event) => {
+          audioChunksRef.current.push(event.data);
+        };
+
+        mediaRecorder.start();
+        mediaRecorderRef.current = mediaRecorder;
+        setIsRecording(true);
+      } else {
+        const { granted } = await Audio.requestPermissionsAsync();
+        if (!granted) {
+          Alert.alert('Permission Required', 'Microphone permission is needed for voice input');
+          return;
+        }
+
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+        });
+
+        const recording = new Audio.Recording();
+        await recording.prepareToRecordAsync({
+          android: {
+            extension: '.m4a',
+            outputFormat: Audio.AndroidOutputFormat.MPEG_4,
+            audioEncoder: Audio.AndroidAudioEncoder.AAC,
+            sampleRate: 44100,
+            numberOfChannels: 2,
+            bitRate: 128000,
+          },
+          ios: {
+            extension: '.wav',
+            outputFormat: Audio.IOSOutputFormat.LINEARPCM,
+            audioQuality: Audio.IOSAudioQuality.HIGH,
+            sampleRate: 44100,
+            numberOfChannels: 2,
+            bitRate: 128000,
+            linearPCMBitDepth: 16,
+            linearPCMIsBigEndian: false,
+            linearPCMIsFloat: false,
+          },
+          web: {},
+        });
+        await recording.startAsync();
+        recordingRef.current = recording;
+        setIsRecording(true);
+      }
+    } catch (error) {
+      console.error('Failed to start recording:', error);
+      Alert.alert('Error', 'Failed to start recording');
+    }
+  };
+
+  const stopRecording = async () => {
+    try {
+      setIsRecording(false);
+      setIsTranscribing(true);
+
+      if (Platform.OS === 'web') {
+        const mediaRecorder = mediaRecorderRef.current;
+        if (!mediaRecorder) return;
+
+        await new Promise<void>((resolve) => {
+          mediaRecorder.onstop = () => resolve();
+          mediaRecorder.stop();
+        });
+
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'recording.webm');
+
+        const response = await fetch('https://toolkit.rork.com/stt/transcribe/', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) throw new Error('Transcription failed');
+        const data = await response.json();
+        setInput(prev => prev + (prev ? ' ' : '') + data.text);
+      } else {
+        const recording = recordingRef.current;
+        if (!recording) return;
+
+        await recording.stopAndUnloadAsync();
+        await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+
+        const uri = recording.getURI();
+        if (!uri) throw new Error('No recording URI');
+
+        const uriParts = uri.split('.');
+        const fileType = uriParts[uriParts.length - 1];
+
+        const formData = new FormData();
+        formData.append('audio', {
+          uri,
+          name: 'recording.' + fileType,
+          type: 'audio/' + fileType,
+        } as any);
+
+        const response = await fetch('https://toolkit.rork.com/stt/transcribe/', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) throw new Error('Transcription failed');
+        const data = await response.json();
+        setInput(prev => prev + (prev ? ' ' : '') + data.text);
+      }
+    } catch (error) {
+      console.error('Failed to stop recording:', error);
+      Alert.alert('Error', 'Failed to transcribe audio');
+    } finally {
+      setIsTranscribing(false);
+      recordingRef.current = null;
+      mediaRecorderRef.current = null;
+    }
+  };
+
+  const pickImage = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled) {
+        const newAttachments: AttachmentFile[] = result.assets.map(asset => ({
+          id: Date.now().toString() + Math.random(),
+          type: 'image' as const,
+          uri: asset.uri,
+          name: asset.fileName || 'image.jpg',
+          mimeType: asset.mimeType,
+          size: asset.fileSize,
+        }));
+        setAttachments(prev => [...prev, ...newAttachments]);
+        analyzeAttachments(newAttachments);
+      }
+    } catch (error) {
+      console.error('Failed to pick image:', error);
+      Alert.alert('Error', 'Failed to select image');
+    }
+  };
+
+  const pickVideo = async () => {
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+        allowsMultipleSelection: false,
+        quality: 0.8,
+      });
+
+      if (!result.canceled) {
+        const newAttachments: AttachmentFile[] = result.assets.map(asset => ({
+          id: Date.now().toString() + Math.random(),
+          type: 'video' as const,
+          uri: asset.uri,
+          name: asset.fileName || 'video.mp4',
+          mimeType: asset.mimeType,
+          size: asset.fileSize,
+        }));
+        setAttachments(prev => [...prev, ...newAttachments]);
+        analyzeAttachments(newAttachments);
+      }
+    } catch (error) {
+      console.error('Failed to pick video:', error);
+      Alert.alert('Error', 'Failed to select video');
+    }
+  };
+
+  const pickFile = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: '*/*',
+        copyToCacheDirectory: true,
+        multiple: true,
+      });
+
+      if (!result.canceled) {
+        const newAttachments: AttachmentFile[] = result.assets.map(asset => ({
+          id: Date.now().toString() + Math.random(),
+          type: 'file' as const,
+          uri: asset.uri,
+          name: asset.name,
+          mimeType: asset.mimeType,
+          size: asset.size,
+        }));
+        setAttachments(prev => [...prev, ...newAttachments]);
+        analyzeAttachments(newAttachments);
+      }
+    } catch (error) {
+      console.error('Failed to pick file:', error);
+      Alert.alert('Error', 'Failed to select file');
+    }
+  };
+
+  const analyzeAttachments = async (files: AttachmentFile[]) => {
+    setIsAnalyzingAttachments(true);
+    try {
+      for (const file of files) {
+        let analysis = '';
+
+        if (file.type === 'image') {
+          let base64Data = '';
+          if (Platform.OS === 'web') {
+            const response = await fetch(file.uri);
+            const blob = await response.blob();
+            base64Data = await new Promise<string>((resolve) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+              reader.readAsDataURL(blob);
+            });
+          } else {
+            base64Data = await FileSystem.readAsStringAsync(file.uri, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+          }
+
+          analysis = await generateText({
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  { type: 'text', text: 'You are an expert reverse engineer and senior software architect with 25+ years of experience. Analyze this image in detail. If it contains UI/UX design, describe the layout, components, interactions, color scheme, and provide a structured implementation plan. If it contains code, extract and explain it. If it contains diagrams or architecture, describe the system design.' },
+                  { type: 'image', image: `data:${file.mimeType || 'image/jpeg'};base64,${base64Data}` },
+                ],
+              },
+            ],
+          });
+        } else if (file.type === 'file') {
+          const isTextFile = /\.(txt|js|jsx|ts|tsx|json|md|css|html|xml|yaml|yml|py|java|c|cpp|go|rs|rb|php|swift|kt|sql)$/i.test(file.name);
+
+          if (isTextFile) {
+            let content = '';
+            if (Platform.OS === 'web') {
+              const response = await fetch(file.uri);
+              content = await response.text();
+            } else {
+              content = await FileSystem.readAsStringAsync(file.uri);
+            }
+
+            analysis = await generateText({
+              messages: [
+                {
+                  role: 'user',
+                  content: `You are an expert code reviewer with 25+ years of experience. Analyze this ${file.name} file and provide:\n1. Summary of what it does\n2. Key components/functions\n3. Potential improvements\n4. How to integrate it into a project\n\nFile content:\n${content.slice(0, 10000)}`,
+                },
+              ],
+            });
+          } else {
+            analysis = `File: ${file.name}\nType: ${file.mimeType || 'unknown'}\nSize: ${(file.size || 0 / 1024).toFixed(2)} KB\n\nBinary file detected. Expert analysis available after processing.`;
+          }
+        }
+
+        setAttachments(prev => prev.map(a => a.id === file.id ? { ...a, analysis } : a));
+      }
+    } catch (error) {
+      console.error('Failed to analyze attachments:', error);
+    } finally {
+      setIsAnalyzingAttachments(false);
+    }
+  };
+
+  const removeAttachment = (id: string) => {
+    setAttachments(prev => prev.filter(a => a.id !== id));
+  };
+
   const handleSend = async () => {
-    if (input.trim()) {
-      await sendMessage(input);
+    if (input.trim() || attachments.length > 0) {
+      let messageContent = input;
+
+      if (attachments.length > 0) {
+        messageContent += '\n\n--- Attachments Analysis ---\n';
+        attachments.forEach((att, idx) => {
+          messageContent += `\n${idx + 1}. ${att.name} (${att.type})\n`;
+          if (att.analysis) {
+            messageContent += `Analysis: ${att.analysis}\n`;
+          }
+        });
+      }
+
+      await sendMessage(messageContent);
       setInput('');
+      setAttachments([]);
     }
   };
 
@@ -399,6 +711,36 @@ export default function AgentScreen() {
 
       {/* Input Area */}
       <View style={styles.inputContainer}>
+        {attachments.length > 0 && (
+          <ScrollView horizontal style={styles.attachmentsPreview} showsHorizontalScrollIndicator={false}>
+            {attachments.map((att) => (
+              <View key={att.id} style={styles.attachmentPreview}>
+                <TouchableOpacity style={styles.removeAttachment} onPress={() => removeAttachment(att.id)}>
+                  <X color={Colors.Colors.text.inverse} size={12} />
+                </TouchableOpacity>
+                {att.type === 'image' && (
+                  <Image source={{ uri: att.uri }} style={styles.attachmentImage} />
+                )}
+                {att.type === 'video' && (
+                  <View style={styles.attachmentIcon}>
+                    <Video color={Colors.Colors.cyan.primary} size={24} />
+                  </View>
+                )}
+                {att.type === 'file' && (
+                  <View style={styles.attachmentIcon}>
+                    <File color={Colors.Colors.cyan.primary} size={24} />
+                  </View>
+                )}
+                <Text style={styles.attachmentName} numberOfLines={1}>{att.name}</Text>
+                {att.analysis && (
+                  <View style={styles.analyzedBadge}>
+                    <Text style={styles.analyzedText}>✓</Text>
+                  </View>
+                )}
+              </View>
+            ))}
+          </ScrollView>
+        )}
         <View style={styles.inputRow}>
           <TextInput
             style={styles.textInput}
@@ -407,25 +749,47 @@ export default function AgentScreen() {
             value={input}
             onChangeText={setInput}
             multiline
-            maxLength={1000}
+            maxLength={5000}
+            editable={!isRecording && !isTranscribing}
           />
-          <TouchableOpacity style={styles.micButton}>
-            <Mic color={Colors.Colors.text.muted} size={20} />
+          <TouchableOpacity 
+            style={[styles.micButton, isRecording && styles.micButtonRecording]}
+            onPress={isRecording ? stopRecording : startRecording}
+            disabled={isTranscribing}
+          >
+            {isTranscribing ? (
+              <ActivityIndicator size="small" color={Colors.Colors.cyan.primary} />
+            ) : isRecording ? (
+              <MicOff color={Colors.Colors.error} size={20} />
+            ) : (
+              <Mic color={Colors.Colors.text.muted} size={20} />
+            )}
           </TouchableOpacity>
         </View>
         <View style={styles.inputActions}>
-          <TouchableOpacity style={styles.attachButton}>
-            <ImageIcon color={Colors.Colors.text.muted} size={18} />
-            <Text style={styles.attachText}>Attach</Text>
-          </TouchableOpacity>
+          <View style={styles.attachButtonsRow}>
+            <TouchableOpacity style={styles.attachButton} onPress={pickImage}>
+              <ImageIcon color={Colors.Colors.text.muted} size={18} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.attachButton} onPress={pickVideo}>
+              <Video color={Colors.Colors.text.muted} size={18} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.attachButton} onPress={pickFile}>
+              <Paperclip color={Colors.Colors.text.muted} size={18} />
+            </TouchableOpacity>
+          </View>
           <TouchableOpacity 
-            style={[styles.sendButton, (isAnalyzing || isGenerating) && styles.sendButtonDisabled]} 
+            style={[styles.sendButton, (isAnalyzing || isGenerating || isAnalyzingAttachments) && styles.sendButtonDisabled]} 
             onPress={handleSend}
-            disabled={isAnalyzing || isGenerating}
+            disabled={isAnalyzing || isGenerating || isAnalyzingAttachments}
           >
-            <Send color={Colors.Colors.text.inverse} size={18} />
+            {isAnalyzingAttachments ? (
+              <ActivityIndicator size="small" color={Colors.Colors.text.inverse} />
+            ) : (
+              <Send color={Colors.Colors.text.inverse} size={18} />
+            )}
             <Text style={styles.sendText}>
-              {isAnalyzing ? 'Analyzing...' : isGenerating ? 'Generating...' : 'Send'}
+              {isAnalyzingAttachments ? 'Analyzing...' : isAnalyzing ? 'Analyzing...' : isGenerating ? 'Generating...' : 'Send'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -692,5 +1056,75 @@ const styles = StyleSheet.create({
     color: Colors.Colors.error,
     fontSize: 14,
     textAlign: 'center',
+  },
+  micButtonRecording: {
+    backgroundColor: Colors.Colors.error + '20',
+    borderColor: Colors.Colors.error,
+  },
+  attachButtonsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  attachmentsPreview: {
+    marginBottom: 12,
+    maxHeight: 120,
+  },
+  attachmentPreview: {
+    width: 80,
+    height: 100,
+    marginRight: 8,
+    borderRadius: 8,
+    backgroundColor: Colors.Colors.background.card,
+    borderWidth: 1,
+    borderColor: Colors.Colors.border.muted,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  attachmentImage: {
+    width: '100%',
+    height: 70,
+    resizeMode: 'cover',
+  },
+  attachmentIcon: {
+    width: '100%',
+    height: 70,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.Colors.background.secondary,
+  },
+  attachmentName: {
+    fontSize: 9,
+    color: Colors.Colors.text.secondary,
+    padding: 4,
+    textAlign: 'center',
+  },
+  removeAttachment: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: Colors.Colors.error,
+    borderRadius: 10,
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  analyzedBadge: {
+    position: 'absolute',
+    bottom: 4,
+    left: 4,
+    backgroundColor: Colors.Colors.success,
+    borderRadius: 8,
+    width: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  analyzedText: {
+    fontSize: 10,
+    color: Colors.Colors.text.inverse,
+    fontWeight: 'bold',
   },
 });
