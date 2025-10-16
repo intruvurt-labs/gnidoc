@@ -106,11 +106,46 @@ export default function HomeScreen() {
 
         <FeatureStrip
           items={[
-            { icon: 'bolt', title: 'Dual-Model AI' },
-            { icon: 'shield', title: 'Security Scan' },
-            { icon: 'panel', title: 'Production-Ready' },
+            { icon: 'bolt', title: 'Dual-Model AI', description: 'Claude + Gemini powered generation' },
+            { icon: 'shield', title: 'Security Scan', description: 'Built-in security analysis' },
+            { icon: 'panel', title: 'Production-Ready', description: 'Deploy-ready architecture' },
           ]}
         />
+
+        <View style={styles.platformFeaturesSection}>
+          <Text style={styles.sectionTitle}>Enterprise Features</Text>
+          <View style={styles.platformFeaturesList}>
+            <View style={styles.platformFeatureCard}>
+              <View style={styles.platformFeatureHeader}>
+                <Text style={styles.platformFeatureIcon}>🗄️</Text>
+                <Text style={styles.platformFeatureTitle}>Built-in PostgreSQL</Text>
+              </View>
+              <Text style={styles.platformFeatureDesc}>
+                No lock-in to a Backend-as-a-Service platform
+              </Text>
+            </View>
+
+            <View style={styles.platformFeatureCard}>
+              <View style={styles.platformFeatureHeader}>
+                <Text style={styles.platformFeatureIcon}>☁️</Text>
+                <Text style={styles.platformFeatureTitle}>Your Cloud Deployment</Text>
+              </View>
+              <Text style={styles.platformFeatureDesc}>
+                Deploys to AWS/GCP so your app can grow to any scale
+              </Text>
+            </View>
+
+            <View style={styles.platformFeatureCard}>
+              <View style={styles.platformFeatureHeader}>
+                <Text style={styles.platformFeatureIcon}>⚡</Text>
+                <Text style={styles.platformFeatureTitle}>Modern Architecture</Text>
+              </View>
+              <Text style={styles.platformFeatureDesc}>
+                Microservices & Event-Driven Architectures for flexibility
+              </Text>
+            </View>
+          </View>
+        </View>
 
         <View style={styles.quickActionsSection}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
@@ -279,6 +314,42 @@ const styles = StyleSheet.create({
     fontWeight: '700' as const,
     color: Colors.Colors.cyan.primary,
     textAlign: 'center',
+  },
+  platformFeaturesSection: {
+    paddingHorizontal: 20,
+    marginBottom: 32,
+    marginTop: 16,
+  },
+  platformFeaturesList: {
+    gap: 12,
+  },
+  platformFeatureCard: {
+    backgroundColor: Colors.Colors.background.card,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.Colors.border.muted,
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.Colors.cyan.primary,
+  },
+  platformFeatureHeader: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 8,
+  },
+  platformFeatureIcon: {
+    fontSize: 24,
+  },
+  platformFeatureTitle: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: Colors.Colors.cyan.primary,
+  },
+  platformFeatureDesc: {
+    fontSize: 14,
+    color: Colors.Colors.lime.primary,
+    lineHeight: 20,
   },
   underline: {
     height: 3,
