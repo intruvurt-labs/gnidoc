@@ -164,7 +164,7 @@ export default function AboutScreen() {
 
           <View style={styles.versionInfo}>
             <Text style={styles.versionText}>Version 1.0.0</Text>
-            <Text style={styles.buildText}>Build 2024.10.02</Text>
+            <Text style={styles.buildText}>Build 2025.10.02</Text>
           </View>
         </View>
 
