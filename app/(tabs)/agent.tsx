@@ -598,7 +598,11 @@ export default function AgentScreen() {
 
       {/* Quick Actions */}
       <View style={styles.quickActionsContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.quickActionsScrollContent}
+        >
           {quickActions.map((action) => (
             <TouchableOpacity 
               key={action.id}
@@ -828,16 +832,18 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.Colors.success,
   },
   quickActionsContainer: {
-    paddingHorizontal: 16,
     marginBottom: 12,
+  },
+  quickActionsScrollContent: {
+    paddingHorizontal: 16,
+    gap: 10,
   },
   quickActionButton: {
     backgroundColor: Colors.Colors.background.card,
     borderRadius: 12,
     padding: 12,
-    marginRight: 10,
     alignItems: 'center',
-    width: 85,
+    width: 90,
     borderWidth: 1,
     borderColor: Colors.Colors.border.muted,
   },
