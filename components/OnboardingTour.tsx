@@ -36,7 +36,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
   {
     title: 'Welcome to gnidoC terceS',
     description: '"gnidoC terceS" is "Secret Coding" spelled in reverse—a symbolic mirror reflecting the hidden architecture of reality itself. In the clandestine chambers of quantum computation, code becomes cipher; every algorithm is an encrypted message from the future, written in the syntax of possibility. This platform unveils the sacred geometry of logic, where encrypted protocols dance with neural networks, and each deployment is a ritual of digital transmutation. Here, you don\'t just write code—you decipher the universe\'s hidden language, reverse-engineering consciousness itself through multi-dimensional AI orchestration.',
-    icon: <Image source={require('@/assets/images/uniquelogo.png')} style={{ width: 432, height: 432 }} resizeMode="contain" />,
+    icon: <Image source={require('@/assets/images/favicon.png')} style={{ width: 432, height: 432 }} resizeMode="contain" />,
   },
   {
     title: 'AI Canvas',
@@ -189,7 +189,7 @@ export default function OnboardingTour({
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.iconContainer}>
-              {step.icon || <Image source={require('@/assets/images/uniquelogo.png')} style={{ width: 432, height: 432 }} resizeMode="contain" />}
+              {step.icon || <Image source={require('@/assets/images/favicon.png')} style={{ width: 432, height: 432 }} resizeMode="contain" />}
             </View>
 
             <Text style={styles.title}>{step.title}</Text>
@@ -253,10 +253,10 @@ const styles = StyleSheet.create({
     pointerEvents: 'none',
   },
   androidBlur: {
-    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    backgroundColor: '#000000',
   },
   content: {
-    backgroundColor: '#050508',
+    backgroundColor: '#000000',
     borderRadius: 24,
     padding: 24,
     borderWidth: 2,
