@@ -58,7 +58,6 @@ const queryClient = new QueryClient({
 function RootLayoutNav() {
   return (
     <Stack 
-      initialRouteName="splash"
       screenOptions={{ 
         headerBackTitle: "Back",
         headerStyle: {
