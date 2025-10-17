@@ -1,21 +1,19 @@
-import React, { useMemo, useState } from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, StyleSheet, ColorValue } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Image } from 'expo-image'; // ✅ better caching/perf than ImageBackground
+import { Image } from 'expo-image';
 import Colors from '@/constants/colors';
 
 interface ScreenBackgroundProps {
   children: React.ReactNode;
   variant?: 'default' | 'hero' | 'minimal';
   showPattern?: boolean;
-  /** Optional override for the “blue ball” art */
   imageUri?: string;
-  /** 0 → 1 overlay opacity for the gradient on hero */
   overlayOpacity?: number;
-  /** 0 → 1 opacity for the pattern layer in default */
   patternOpacity?: number;
-  /** Optional gradient color stops */
-  gradientStops?: string[];
+  gradientStops?: readonly [ColorValue, ColorValue, ...ColorValue[]];
+  fallbackAsset?: number;
+  blurhash?: string;
 }
 
 const DEFAULT_IMAGE_URI =
@@ -26,34 +24,34 @@ export default function ScreenBackground({
   variant = 'default',
   showPattern = true,
   imageUri = DEFAULT_IMAGE_URI,
-  overlayOpacity = 0.9, // softer veil over hero image
+  overlayOpacity = 0.9,
   patternOpacity = 0.12,
   gradientStops,
+  fallbackAsset,
+  blurhash,
 }: ScreenBackgroundProps) {
-  // Fallback if remote image fails
   const [imageError, setImageError] = useState(false);
 
-  // Build safe gradient colors (avoid brittle "#hex"+"CC")
-  const bgPrimary = Colors.Colors.background.primary;
-  const bgSecondary = Colors.Colors.background.secondary;
+  const bgPrimary = Colors.Colors?.background?.primary ?? '#0B0E13';
+  const bgSecondary = Colors.Colors?.background?.secondary ?? '#0F1320';
 
   const defaultStops = useMemo(
-    () => [
-      bgPrimary,
-      bgSecondary,
-      bgPrimary,
-    ],
+    () => [bgPrimary, bgSecondary, bgPrimary] as const,
     [bgPrimary, bgSecondary]
   );
 
   const heroStops = useMemo(
     () => [
-      rgbaFromColor(bgPrimary, clamp01(overlayOpacity * 0.8)),
-      rgbaFromColor(bgPrimary, clamp01(overlayOpacity * 0.95)),
+      rgbaFromColor(bgPrimary, clamp01(overlayOpacity * 0.75)),
+      rgbaFromColor(bgPrimary, clamp01(overlayOpacity)),
       bgPrimary,
-    ],
+    ] as const,
     [bgPrimary, overlayOpacity]
   );
+
+  useEffect(() => {
+    setImageError(false);
+  }, [imageUri]);
 
   if (variant === 'minimal') {
     return (
@@ -67,7 +65,7 @@ export default function ScreenBackground({
   if (variant === 'hero') {
     return (
       <View style={styles.container} testID="screen-bg-hero">
-        {!imageError && (
+        {!imageError ? (
           <Image
             source={{ uri: imageUri }}
             style={styles.absoluteFill}
@@ -77,21 +75,34 @@ export default function ScreenBackground({
             accessible={false}
             pointerEvents="none"
             onError={() => setImageError(true)}
-            // Optional: tiny blurhash for instant placeholder
-            // placeholder={BLURHASH}
+            placeholder={blurhash}
           />
-        )}
+        ) : fallbackAsset ? (
+          <Image
+            source={fallbackAsset}
+            style={styles.absoluteFill}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            accessible={false}
+            pointerEvents="none"
+          />
+        ) : null}
         <LinearGradient
           colors={gradientStops ?? heroStops}
           style={styles.absoluteFill}
           pointerEvents="none"
         />
         {children}
+        <View
+          testID="bg-retry-hitbox"
+          pointerEvents="none"
+          style={styles.hitbox}
+          accessibilityElementsHidden
+        />
       </View>
     );
   }
 
-  // default
   return (
     <View style={styles.container} testID="screen-bg-default">
       <LinearGradient
@@ -99,7 +110,7 @@ export default function ScreenBackground({
         style={styles.absoluteFill}
         pointerEvents="none"
       />
-      {showPattern && !imageError && (
+      {showPattern && !imageError ? (
         <Image
           source={{ uri: imageUri }}
           style={styles.absoluteFill}
@@ -109,10 +120,19 @@ export default function ScreenBackground({
           accessible={false}
           pointerEvents="none"
           onError={() => setImageError(true)}
+          placeholder={blurhash}
         />
-      )}
-      {/* subtle pattern veil */}
-      {showPattern && !imageError && (
+      ) : showPattern && fallbackAsset ? (
+        <Image
+          source={fallbackAsset}
+          style={styles.absoluteFill}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          accessible={false}
+          pointerEvents="none"
+        />
+      ) : null}
+      {showPattern && (
         <View
           pointerEvents="none"
           style={[styles.absoluteFill, { backgroundColor: rgbaFromColor(bgPrimary, patternOpacity) }]}
@@ -123,19 +143,11 @@ export default function ScreenBackground({
   );
 }
 
-/** Utilities */
-
 function clamp01(n: number) {
-  'worklet';
   return Math.max(0, Math.min(1, n));
 }
 
-/**
- * Convert a color string to rgba with the provided alpha.
- * Accepts #RGB, #RRGGBB, #RRGGBBAA, or rgb/rgba/ named colors → falls back to given color.
- */
 function rgbaFromColor(color: string, alpha: number) {
-  // Very lightweight parser—enough for #RGB/#RRGGBB and rgba()
   try {
     if (color.startsWith('#')) {
       const hex = color.replace('#', '');
@@ -150,18 +162,17 @@ function rgbaFromColor(color: string, alpha: number) {
         const r = to255(hex.slice(0, 2));
         const g = to255(hex.slice(2, 4));
         const b = to255(hex.slice(4, 6));
-        return `rgba(${r}, ${g}, ${b}, ${clamp01(alpha)})`;
+        const a = hex.length === 8 ? to255(hex.slice(6, 8)) / 255 : clamp01(alpha);
+        return `rgba(${r}, ${g}, ${b}, ${clamp01(a)})`;
       }
     } else if (color.startsWith('rgb')) {
-      // replace alpha if present
-      const comps = color.replace(/[^\d.,]/g, '').split(',');
-      const [r, g, b] = comps;
+      const comps = color.match(/[\d.]+/g) ?? [];
+      const [r, g, b] = comps.map(Number);
       return `rgba(${r}, ${g}, ${b}, ${clamp01(alpha)})`;
     }
   } catch {
     // fall through
   }
-  // fallback overlay using current color (lets RN resolve named colors)
   return `rgba(0,0,0,${clamp01(alpha)})`;
 }
 
@@ -176,5 +187,12 @@ const styles = StyleSheet.create({
   },
   absoluteFill: {
     ...StyleSheet.absoluteFillObject,
+  },
+  hitbox: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    right: 0,
+    bottom: 0,
   },
 });
