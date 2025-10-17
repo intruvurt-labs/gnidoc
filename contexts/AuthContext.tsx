@@ -188,34 +188,39 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
 
         console.log(`[AuthContext] GitHub OAuth successful:`, user.name);
         return { success: true, user };
-      } else {
-        const mockUser: User = {
-          id: `user_${Date.now()}`,
-          email: `demo@${provider}.com`,
-          name: `${provider.charAt(0).toUpperCase() + provider.slice(1)} Demo User`,
-          avatar: 'https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png',
-          provider,
+      } else if (provider === 'google') {
+        const { useGoogleAuth } = await import('@/lib/google-oauth');
+        const { promptAsync } = useGoogleAuth();
+        const result = await promptAsync();
+
+        const user: User = {
+          id: result.user.id,
+          email: result.user.email,
+          name: result.user.name,
+          avatar: result.user.picture,
+          provider: 'google',
           createdAt: new Date().toISOString(),
           subscription: 'free',
           credits: 100,
         };
 
-        const mockToken = `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
         await batchSetItems({
-          [STORAGE_KEYS.USER]: JSON.stringify(mockUser),
-          [STORAGE_KEYS.TOKEN]: mockToken,
+          [STORAGE_KEYS.USER]: JSON.stringify(user),
+          [STORAGE_KEYS.TOKEN]: result.accessToken,
+          'google-access-token': result.accessToken,
         });
 
         setAuthState({
-          user: mockUser,
-          token: mockToken,
+          user,
+          token: result.accessToken,
           isAuthenticated: true,
           isLoading: false,
         });
 
-        console.log(`[AuthContext] OAuth login successful with ${provider}`);
-        return { success: true, user: mockUser };
+        console.log(`[AuthContext] Google OAuth successful:`, user.name);
+        return { success: true, user };
+      } else {
+        throw new Error(`Unsupported OAuth provider: ${provider}`);
       }
     } catch (error) {
       console.error(`[AuthContext] OAuth login failed with ${provider}:`, error);

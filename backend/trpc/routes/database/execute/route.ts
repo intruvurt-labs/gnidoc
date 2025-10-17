@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { protectedProcedure } from "../../../create-context";
+import { query as dbQuery } from '../../../../db/pool';
 
 const connectionSchema = z.object({
   id: z.string(),
@@ -26,19 +27,6 @@ export const executeQueryProcedure = protectedProcedure
     console.log(`[Database] User ${userId} executing query on ${connection.name}`);
 
     try {
-      const { Pool } = await import('pg');
-      
-      const pool = new Pool({
-        host: connection.host,
-        port: connection.port,
-        database: connection.database,
-        user: connection.username,
-        password: connection.password,
-        ssl: connection.ssl ? { rejectUnauthorized: false } : false,
-        connectionTimeoutMillis: 5000,
-        max: 1,
-      });
-
       const sanitizedQuery = query.trim();
       
       const dangerousKeywords = ['DROP', 'DELETE', 'TRUNCATE', 'ALTER', 'CREATE', 'INSERT', 'UPDATE'];
@@ -50,11 +38,13 @@ export const executeQueryProcedure = protectedProcedure
         throw new Error('Dangerous queries (DROP, DELETE, etc.) are not allowed. Use SELECT queries only.');
       }
 
-      const startTime = Date.now();
-      const result = await pool.query(sanitizedQuery);
-      const duration = Date.now() - startTime;
+      if (sanitizedQuery.length > 50000) {
+        throw new Error('Query is too long. Maximum length is 50,000 characters.');
+      }
 
-      await pool.end();
+      const startTime = Date.now();
+      const result = await dbQuery(sanitizedQuery);
+      const duration = Date.now() - startTime;
 
       console.log(`[Database] Query executed successfully in ${duration}ms, ${result.rowCount} rows`);
 
