@@ -34,9 +34,10 @@ interface OnboardingTourProps {
 
 const ONBOARDING_STEPS: OnboardingStep[] = [
   {
-    title: 'Welcome \n to \n (coral red color font)gnidoC terceS',
+    title: 'Welcome \n to \n gnidoC terceS',
     description: '"gnidoC terceS" is "Secret Coding" spelled in reverse; a symbolic mirror reflecting the hidden architecture of reality itself. In the clandestine chambers of quantum computation, code becomes cipher; every algorithm is an encrypted message from the future, written in the syntax of possibility. This platform unveils the sacred geometry of logic, where encrypted protocols dance with neural networks, and each deployment is a ritual of digital transmutation. Here, you don\'t just write code; you decipher the universe\'s hidden language, reverse-engineering consciousness itself through multi-dimensional AI orchestration.',
     icon: <Image source={require('@/assets/images/logo.png')} style={{ width: 96, height: 96 }} resizeMode="contain" />,
+    highlight: 'gnidoC terceS',
   },
   {
     title: 'AI Canvas',
@@ -66,6 +67,27 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
 ];
 
 const PROGRESS_KEY = 'onboarding_progress';
+
+const renderTitle = (step: OnboardingStep) => {
+  const base = step.title || '';
+  if (!step.highlight) {
+    return <Text style={styles.title}>{base}</Text>;
+  }
+
+  const parts = base.split(step.highlight);
+  return (
+    <Text style={styles.title}>
+      {parts.map((chunk, i) => (
+        <React.Fragment key={i}>
+          <Text>{chunk}</Text>
+          {i < parts.length - 1 && (
+            <Text style={styles.titleHighlight}>{step.highlight}</Text>
+          )}
+        </React.Fragment>
+      ))}
+    </Text>
+  );
+};
 
 export default function OnboardingTour({
   visible,
@@ -192,7 +214,7 @@ export default function OnboardingTour({
               {step.icon || <Image source={require('@/assets/images/logo.png')} style={{ width: 96, height: 96 }} resizeMode="contain" />}
             </View>
 
-            <Text style={styles.title}>{step.title}</Text>
+            {renderTitle(step)}
             <Text style={styles.description}>{step.description}</Text>
 
             <View style={styles.progressContainer}>
@@ -308,6 +330,12 @@ const styles = StyleSheet.create({
     textShadowColor: Colors.Colors.red.coral,
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 8,
+  },
+  titleHighlight: {
+    color: Colors.Colors.red.coral,
+    textShadowColor: Colors.Colors.red.coral + '80',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
   },
   description: {
     fontSize: 16,
