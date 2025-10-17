@@ -16,6 +16,7 @@ import { Brain, Send, Mic, MicOff, Image as ImageIcon, FileText, Zap, Code, Shie
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 import { createRorkTool, useRorkAgent, generateText } from '@rork/toolkit-sdk';
+import ParticleFieldEffect from '@/components/ParticleFieldEffect';
 import { z } from 'zod';
 import { useAgent } from '@/contexts/AgentContext';
 import { Audio } from 'expo-av';
@@ -585,7 +586,7 @@ export default function AgentScreen() {
   ];
 
   return (
-    <Animated.View style={[styles.container, { paddingTop: insets.top, opacity: fadeAnim }]}>
+    <Animated.View style={[styles.container, { paddingTop: insets.top, opacity: fadeAnim }]}>      <ParticleFieldEffect particleColor="rgba(100, 200, 255, 0.4)" />
       {/* Header */}
       <View style={styles.header}>
         <Brain color={Colors.Colors.cyan.primary} size={24} />

@@ -27,6 +27,7 @@ import { useGamification } from '@/contexts/GamificationContext';
 import { useAuth } from '@/contexts/AuthContext';
 import BrandedHeader from '@/components/BrandedHeader';
 import ScreenBackground from '@/components/ScreenBackground';
+import ParticleFieldEffect from '@/components/ParticleFieldEffect';
 
 const { width } = Dimensions.get('window');
 
@@ -151,6 +152,7 @@ export default function DashboardScreen() {
 
   return (
     <ScreenBackground variant="default" showPattern>
+      <ParticleFieldEffect />
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <Stack.Screen options={{ headerShown: false }} />
 

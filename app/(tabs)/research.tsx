@@ -28,6 +28,7 @@ import {
 import Colors from '@/constants/colors';
 import { useResearch } from '@/contexts/ResearchContext';
 import type { ResearchResult, ResearchInsight } from '@/contexts/ResearchContext';
+import ParticleFieldEffect from '@/components/ParticleFieldEffect';
 
 const { width } = Dimensions.get('window');
 
@@ -105,7 +106,7 @@ export default function ResearchScreen() {
   ];
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>      <ParticleFieldEffect particleColor="rgba(140, 160, 255, 0.38)" particleCount={60} />
       <View style={styles.header}>
         <Brain color={Colors.Colors.cyanRed.primary} size={24} />
         <Text style={styles.headerTitle}>Multi-Model Research</Text>

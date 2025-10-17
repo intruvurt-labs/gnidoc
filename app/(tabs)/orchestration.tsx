@@ -30,6 +30,7 @@ import {
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useTriModel } from '@/contexts/TriModelContext';
+import ParticleFieldEffect from '@/components/ParticleFieldEffect';
 
 const { width } = Dimensions.get('window');
 
@@ -516,7 +517,7 @@ export default function OrchestrationScreen() {
   };
 
   return (
-    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>      <ParticleFieldEffect particleColor="rgba(120, 170, 255, 0.35)" />
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <View style={styles.headerLeft}>
           <Network color={Colors.Colors.cyan.primary} size={28} />
