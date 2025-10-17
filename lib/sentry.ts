@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/react-native';
+import type { Event, EventHint } from '@sentry/react-native';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
@@ -27,7 +28,7 @@ export function initSentry() {
     enableAutoSessionTracking: true,
     sessionTrackingIntervalMillis: 30000,
     
-    beforeSend(event, hint) {
+    beforeSend(event: Event, hint: EventHint) {
       if (event.exception) {
         console.error('[Sentry] Capturing exception:', hint.originalException);
       }

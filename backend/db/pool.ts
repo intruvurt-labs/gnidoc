@@ -1,4 +1,4 @@
-import { Pool, PoolClient, QueryResult } from 'pg';
+import { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
 import { ENV } from '../lib/env';
 
 const pool = new Pool({
@@ -17,7 +17,7 @@ pool.on('connect', () => {
   console.log('[DB Pool] New client connected');
 });
 
-export async function query<T = any>(
+export async function query<T extends QueryResultRow = QueryResultRow>(
   text: string,
   params?: any[]
 ): Promise<QueryResult<T>> {
