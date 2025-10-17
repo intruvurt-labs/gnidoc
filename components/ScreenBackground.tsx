@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, StyleSheet, ColorValue } from 'react-native';
+import { View, StyleSheet, ColorValue, useColorScheme } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
 import Colors from '@/constants/colors';
@@ -31,6 +31,8 @@ export default function ScreenBackground({
   blurhash,
 }: ScreenBackgroundProps) {
   const [imageError, setImageError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const scheme = useColorScheme();
 
   const bgPrimary = Colors.Colors?.background?.primary ?? '#0B0E13';
   const bgSecondary = Colors.Colors?.background?.secondary ?? '#0F1320';
@@ -51,7 +53,7 @@ export default function ScreenBackground({
 
   useEffect(() => {
     setImageError(false);
-  }, [imageUri]);
+  }, [imageUri, reloadKey]);
 
   if (variant === 'minimal') {
     return (
@@ -189,7 +191,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   hitbox: {
-    position: 'absolute',
+    position: 'absolute' as const,
     width: 1,
     height: 1,
     right: 0,
