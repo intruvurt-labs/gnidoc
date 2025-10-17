@@ -1,5 +1,4 @@
 import * as Sentry from '@sentry/react-native';
-import type { Event, EventHint } from '@sentry/react-native';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
@@ -28,19 +27,12 @@ export function initSentry() {
     enableAutoSessionTracking: true,
     sessionTrackingIntervalMillis: 30000,
     
-    beforeSend(event: Event, hint: EventHint) {
+    beforeSend(event: any, hint: any) {
       if (event.exception) {
-        console.error('[Sentry] Capturing exception:', hint.originalException);
+        console.error('[Sentry] Capturing exception:', hint?.originalException);
       }
       return event;
     },
-    
-    integrations: [
-      new Sentry.ReactNativeTracing({
-        tracingOrigins: ['localhost', 'gnidoc.xyz', 'api.gnidoc.xyz', /^\//],
-        routingInstrumentation: new Sentry.RoutingInstrumentation(),
-      }),
-    ],
   });
 
   console.log('[Sentry] Initialized successfully');

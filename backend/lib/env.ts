@@ -2,7 +2,11 @@ import { z } from 'zod';
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  PORT: z.string().default('8787').regex(/^\d+$/).transform(Number),
+  PORT: z.preprocess((val) => {
+    if (typeof val === 'string') return parseInt(val, 10);
+    if (typeof val === 'number') return val;
+    return 8787;
+  }, z.number().default(8787)),
   DATABASE_URL: z.string().url(),
   JWT_SECRET: z.string().min(32),
   SECRETS_ENC_KEY: z.string(),

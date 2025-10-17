@@ -1,4 +1,4 @@
-import { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
+import { Pool, PoolClient } from 'pg';
 import { ENV } from '../lib/env';
 
 const pool = new Pool({
@@ -17,14 +17,14 @@ pool.on('connect', () => {
   console.log('[DB Pool] New client connected');
 });
 
-export async function query<T extends QueryResultRow = QueryResultRow>(
+export async function query<T = any>(
   text: string,
   params?: any[]
-): Promise<QueryResult<T>> {
+): Promise<{ rows: T[]; rowCount: number | null }> {
   const client = await pool.connect();
   try {
-    const result = await client.query<T>(text, params);
-    return result;
+    const result = await client.query(text, params);
+    return result as { rows: T[]; rowCount: number | null };
   } finally {
     client.release();
   }
@@ -49,7 +49,7 @@ export async function transaction<T>(
 
 export async function healthCheck(): Promise<boolean> {
   try {
-    const result = await query('SELECT 1 as ok');
+    const result = await query<{ ok: number }>('SELECT 1 as ok');
     return result.rows[0]?.ok === 1;
   } catch (error) {
     console.error('[DB Pool] Health check failed:', error);
