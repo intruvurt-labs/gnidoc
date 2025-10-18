@@ -1,6 +1,7 @@
 import { createTRPCClient, httpBatchLink } from '@trpc/client';
 import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
+import SuperJSON from 'superjson';
 import type { AppRouter } from '../../backend/trpc/app-router';
 
 const API_BASE = Constants.expoConfig?.extra?.apiBase || process.env.EXPO_PUBLIC_API_BASE || 'http://localhost:8787';
@@ -21,6 +22,7 @@ export const trpcClient = createTRPCClient<AppRouter>({
         const token = await getAuthToken();
         return token ? { authorization: `Bearer ${token}` } : {};
       },
+      transformer: SuperJSON,
     }),
   ],
 });
@@ -52,12 +54,12 @@ export interface SyncChangesRequest {
 
 export interface SyncChangesResponse {
   cursor: string;
-  changes: Array<{
+  changes: {
     type: string;
     id: string;
     data: any;
     version: number;
-  }>;
+  }[];
 }
 
 export interface ValidationRequest {
@@ -67,7 +69,7 @@ export interface ValidationRequest {
 
 export interface ValidationResponse {
   ok: boolean;
-  errors: Array<{ path: string; message: string }>;
+  errors: { path: string; message: string }[];
 }
 
 export interface RevisionResponse {
@@ -84,15 +86,15 @@ export interface OrchestrationResponse {
   project_id: string;
   blueprint_id: string;
   consensus: number;
-  votes: Array<{
+  votes: {
     model: string;
     output: any;
     confidence: number;
-  }>;
-  critiques: Array<{
+  }[];
+  critiques: {
     model: string;
     text: string;
-  }>;
+  }[];
   status: 'pending' | 'running' | 'completed' | 'failed';
   started_at: string;
   finished_at?: string;
@@ -140,10 +142,18 @@ export interface ExportStatusResponse {
 export class RestClient {
   private async fetch<T>(path: string, init?: RequestInit): Promise<T> {
     const token = await getAuthToken();
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...(init?.headers || {}),
     };
+    
+    if (init?.headers) {
+      Object.entries(init.headers).forEach(([key, value]) => {
+        if (typeof value === 'string') {
+          headers[key] = value;
+        }
+      });
+    }
+    
     if (token) {
       headers.authorization = `Bearer ${token}`;
     }
