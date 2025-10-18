@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Image } from 'react-native';
 import {
   View,
   Text,
@@ -7,10 +6,10 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
-  FileText,
   BarChart3,
   Shield,
   AlertTriangle,
@@ -21,7 +20,7 @@ import {
   Play,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import { useProjectAnalysis } from '@/contexts/AgentContext';
+import { useProjectAnalysis, type CodeIssue } from '@/contexts/AgentContext';
 
 const { width } = Dimensions.get('window');
 
@@ -31,14 +30,6 @@ interface AnalysisMetric {
   change: string;
   status: 'good' | 'warning' | 'error';
   icon: React.ReactNode;
-}
-
-interface CodeIssue {
-  id?: string;
-  type: 'error' | 'warning' | 'info';
-  file: string;
-  line: number;
-  message: string;
 }
 
 export default function AnalysisScreen() {
@@ -99,11 +90,12 @@ export default function AnalysisScreen() {
     }
   };
 
-  const getIssueIcon = (type: 'error' | 'warning' | 'info') => {
+  const getIssueIcon = (type: 'error' | 'warning' | 'info' | 'suggestion') => {
     switch (type) {
       case 'error': return <XCircle color={Colors.Colors.error} size={16} />;
       case 'warning': return <AlertTriangle color={Colors.Colors.warning} size={16} />;
       case 'info': return <CheckCircle color={Colors.Colors.info} size={16} />;
+      case 'suggestion': return <CheckCircle color={Colors.Colors.text.muted} size={16} />;
     }
   };
 
