@@ -28,7 +28,7 @@ export function initSentry() {
     enableAutoSessionTracking: true,
     sessionTrackingIntervalMillis: 30000,
     
-    beforeSend(event: ErrorEvent, hint: EventHint): ErrorEvent | null {
+    beforeSend(event, hint) {
       if (event.exception) {
         console.error('[Sentry] Capturing exception:', hint?.originalException);
       }

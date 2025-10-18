@@ -22,7 +22,6 @@ export const trpcClient = createTRPCClient<AppRouter>({
         const token = await getAuthToken();
         return token ? { authorization: `Bearer ${token}` } : {};
       },
-      transformer: SuperJSON,
     }),
   ],
 });
@@ -142,20 +141,12 @@ export interface ExportStatusResponse {
 export class RestClient {
   private async fetch<T>(path: string, init?: RequestInit): Promise<T> {
     const token = await getAuthToken();
-    const headers: Record<string, string> = {
+    const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
     
-    if (init?.headers) {
-      Object.entries(init.headers).forEach(([key, value]) => {
-        if (typeof value === 'string') {
-          headers[key] = value;
-        }
-      });
-    }
-    
     if (token) {
-      headers.authorization = `Bearer ${token}`;
+      (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
     }
 
     const response = await fetch(`${API_BASE}${path}`, {
