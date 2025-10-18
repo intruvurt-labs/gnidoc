@@ -32,7 +32,7 @@ export function getEnv(): Env {
     return cachedEnv;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error('❌ Invalid environment variables:', JSON.stringify(error.errors, null, 2));
+      console.error('❌ Invalid environment variables:', JSON.stringify(error.issues, null, 2));
       throw new Error('Environment validation failed. Check your .env file.');
     }
     throw error;
