@@ -7,7 +7,8 @@ import { router } from 'expo-router';
 import Colors from '@/constants/colors';
 
 async function startBuild(payload: any, idempotencyKey: string) {
-  const res = await fetch(`${process.env.EXPO_PUBLIC_API_BASE}/orchestrations/start`, {
+  const apiBase = process.env.EXPO_PUBLIC_RORK_API_BASE_URL || 'https://api.gnidoc.xyz';
+  const res = await fetch(`${apiBase}/orchestrations/start`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -23,7 +24,8 @@ async function startBuild(payload: any, idempotencyKey: string) {
 }
 
 function wsUrl(runId: string) {
-  const base = process.env.EXPO_PUBLIC_API_BASE!.replace(/^http/i, 'ws');
+  const apiBase = process.env.EXPO_PUBLIC_RORK_API_BASE_URL || 'https://api.gnidoc.xyz';
+  const base = apiBase.replace(/^http/i, 'ws');
   return `${base}/orchestrations/${runId}/stream`;
 }
 

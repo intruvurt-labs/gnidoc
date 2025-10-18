@@ -32,8 +32,8 @@ const EnvSchema = z.object({
   GOOGLE_API_KEY: requireInProd(z.string().min(1)).optional(),
 
   // Database/Redis
-  DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
-  REDIS_URL: z.string().min(1, 'REDIS_URL is required'),
+  DATABASE_URL: z.string().min(1, 'DATABASE_URL is required').optional(),
+  REDIS_URL: z.string().min(1, 'REDIS_URL is required').optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
