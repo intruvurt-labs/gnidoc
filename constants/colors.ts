@@ -78,6 +78,7 @@ const Colors = {
   background: {
     primary: '#0A0A0F',
     secondary: '#0D0D12',
+    tertiary: '#18181F',
     card: '#16161C',
     modal: '#101014',
     overlay: 'rgba(10, 10, 15, 0.95)',
@@ -88,6 +89,7 @@ const Colors = {
   text: {
     primary: '#00E5FF',
     secondary: '#FFFFFF',
+    tertiary: '#7A7A8E',
     accent: '#00E5FF',
     muted: '#7A7A8E',
     inverse: '#000000',
@@ -107,6 +109,11 @@ const Colors = {
     primary: '#4169E1',
     secondary: '#5B7FFF',
     glow: '#4169E180',
+  },
+  green: {
+    primary: '#00FF88',
+    secondary: '#00CC70',
+    glow: '#00FF8880',
   },
   ide: {
     keyword: '#BFFF00',
@@ -166,7 +173,7 @@ export const Shadows = {
   },
   shadowBlack: {
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 8 },
+    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
     shadowRadius: 30,
     elevation: 12,

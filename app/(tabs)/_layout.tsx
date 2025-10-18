@@ -10,6 +10,9 @@ import {
   Trophy,
   Crown,
   Gift,
+  Inbox,
+  GitMerge,
+  Brain,
 } from "lucide-react-native";
 import React from "react";
 
@@ -147,6 +150,24 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="ai-models"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="queue"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="conflicts"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="console"
         options={{
           href: null,
         }}

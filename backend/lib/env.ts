@@ -6,7 +6,7 @@ const envSchema = z.object({
     if (typeof val === 'string') return parseInt(val, 10);
     if (typeof val === 'number') return val;
     return 8787;
-  }, z.number().default(8787)),
+  }, z.number()).default(8787),
   DATABASE_URL: z.string().url(),
   JWT_SECRET: z.string().min(32),
   SECRETS_ENC_KEY: z.string(),
