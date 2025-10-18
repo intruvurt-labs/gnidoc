@@ -9,7 +9,7 @@ import {
   RefreshControl,
   Image,
 } from 'react-native';
-import { Bot } from 'lucide-react-native';
+import { Bot, Code2 } from 'lucide-react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
@@ -19,6 +19,7 @@ import NeuroCanvas from '@/components/NeuroCanvas';
 import CardRow from '@/components/CardRow';
 import FeatureStrip from '@/components/FeatureStrip';
 import MatrixGridBackground from '@/components/MatrixGridBackground';
+import GenerateAppCTA from '@/components/GenerateAppCTA';
 
 const { width } = Dimensions.get('window');
 
@@ -26,6 +27,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
+  const [promptText, setPromptText] = useState('');
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -89,12 +91,25 @@ export default function HomeScreen() {
           <NeuroCanvas
             placeholder="Describe your app…"
             assistChips={['Claude+Gemini', 'TypeScript', 'expo-router']}
-            cta={{
-              label: 'Generate App',
-              style: 'primary',
-              onPress: () => router.push('/app-generator' as any),
-            }}
+            onTextChange={setPromptText}
           />
+          <View style={styles.actionRow}>
+            <GenerateAppCTA
+              blueprint={{ prompt: promptText }}
+              label="Generate App"
+              style={styles.generateButton}
+              testID="home-generate-app"
+            />
+            <TouchableOpacity
+              style={styles.studioButton}
+              onPress={() => router.push('/app-generator' as any)}
+              accessibilityRole="button"
+              accessibilityLabel="Open Creator Studio"
+            >
+              <Code2 color={Colors.Colors.cyan.primary} size={20} />
+              <Text style={styles.studioButtonText}>Creator Studio</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <CardRow
@@ -266,6 +281,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 24,
   },
+  actionRow: {
+    flexDirection: 'row' as const,
+    gap: 12,
+    marginTop: 16,
+  },
+  studioButton: {
+    flex: 1,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    backgroundColor: Colors.Colors.background.card,
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+    borderWidth: 2,
+    borderColor: Colors.Colors.cyan.primary,
+  },
+  studioButtonText: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: Colors.Colors.cyan.primary,
+  },
   promptSection: {
     paddingHorizontal: 20,
     marginBottom: 32,
@@ -391,13 +428,7 @@ const styles = StyleSheet.create({
     color: Colors.Colors.lime.primary,
   },
   generateButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.Colors.cyan.primary,
-    paddingVertical: 16,
-    borderRadius: 12,
-    gap: 12,
+    flex: 1,
   },
   generateButtonDisabled: {
     opacity: 0.6,
