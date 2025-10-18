@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Image } from 'react-native';
 import {
   View,
   Text,
@@ -116,7 +117,11 @@ export default function AnalysisScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <FileText color={Colors.Colors.cyan.primary} size={24} />
+        <Image 
+          source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/sebbcbl3qyfm3upp7u2ct' }}
+          style={{ width: 28, height: 28 }}
+          resizeMode="contain"
+        />
         <Text style={styles.headerTitle}>Project Analysis</Text>
         <TouchableOpacity 
           style={[styles.refreshButton, isAnalyzing && styles.refreshButtonActive]} 

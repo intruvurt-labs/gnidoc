@@ -589,7 +589,11 @@ export default function AgentScreen() {
     <Animated.View style={[styles.container, { paddingTop: insets.top, opacity: fadeAnim }]}>      <ParticleFieldEffect particleColor="rgba(100, 200, 255, 0.4)" />
       {/* Header */}
       <View style={styles.header}>
-        <Brain color={Colors.Colors.cyan.primary} size={24} />
+        <Image 
+          source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/kkl0l99nywl3q9e7lvn34' }}
+          style={{ width: 28, height: 28 }}
+          resizeMode="contain"
+        />
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle}>AI Coding Agent</Text>
           <Text style={styles.headerSubtitle}>10 Specialized Agents • 25+ Years Experience</Text>

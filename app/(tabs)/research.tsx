@@ -9,6 +9,7 @@ import {
   Dimensions,
   ActivityIndicator,
   Modal,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -108,7 +109,11 @@ export default function ResearchScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>      <ParticleFieldEffect particleColor="rgba(140, 160, 255, 0.38)" particleCount={60} />
       <View style={styles.header}>
-        <Brain color={Colors.Colors.cyanRed.primary} size={24} />
+        <Image 
+          source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/npeif2ub9mueslh71ok6x' }}
+          style={{ width: 28, height: 28 }}
+          resizeMode="contain"
+        />
         <Text style={styles.headerTitle}>Multi-Model Research</Text>
       </View>
 
@@ -181,7 +186,11 @@ export default function ResearchScreen() {
 
         {researchHistory.length === 0 ? (
           <View style={styles.emptyState}>
-            <Brain color={Colors.Colors.text.muted} size={48} />
+            <Image 
+              source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/npeif2ub9mueslh71ok6x' }}
+              style={{ width: 48, height: 48 }}
+              resizeMode="contain"
+            />
             <Text style={styles.emptyText}>No research yet</Text>
             <Text style={styles.emptySubtext}>Start by entering a research query above</Text>
           </View>

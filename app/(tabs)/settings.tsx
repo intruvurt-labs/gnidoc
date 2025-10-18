@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { Image } from 'react-native';
 import {
   View,
   Text,
@@ -309,7 +310,11 @@ export default function SettingsScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <SettingsIcon color={Colors.Colors.cyan.primary} size={24} />
+        <Image 
+          source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/k69ewzdro8cevfeouev3i' }}
+          style={{ width: 28, height: 28 }}
+          resizeMode="contain"
+        />
         <Text style={styles.headerTitle}>Settings</Text>
       </View>
 

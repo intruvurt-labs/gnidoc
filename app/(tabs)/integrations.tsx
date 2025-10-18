@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Image } from 'react-native';
 import {
   View,
   Text,
@@ -99,6 +100,11 @@ export default function IntegrationsScreen() {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
+        <Image 
+          source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/4puwv5v8qgnp6l6rhll0q' }}
+          style={{ width: 28, height: 28, marginRight: 12 }}
+          resizeMode="contain"
+        />
         <Text style={styles.headerTitle}>Integrations</Text>
         <View style={styles.headerStats}>
           <Text style={styles.statsText}>
