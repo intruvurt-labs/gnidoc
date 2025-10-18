@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
 import { TRPCError } from "@trpc/server";
+import { query } from "@/backend/db/pool";
 
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -18,8 +19,6 @@ interface User {
   credits: number;
 }
 
-const users: Map<string, User> = new Map();
-
 export default publicProcedure
   .input(
     z.object({
@@ -31,7 +30,12 @@ export default publicProcedure
     console.log('[tRPC] Login attempt:', input.email);
 
     try {
-      const user = users.get(input.email.toLowerCase());
+      const result = await query<User>(
+        'SELECT * FROM users WHERE email = $1 LIMIT 1',
+        [input.email.toLowerCase()]
+      );
+
+      const user = result.rows[0];
 
       if (!user) {
         throw new TRPCError({
@@ -39,6 +43,11 @@ export default publicProcedure
           message: 'Invalid email or password',
         });
       }
+
+      await query(
+        'UPDATE users SET last_login_at = NOW() WHERE id = $1',
+        [user.id]
+      );
 
       const isPasswordValid = await bcrypt.compare(input.password, user.password_hash);
 
@@ -82,4 +91,4 @@ export default publicProcedure
     }
   });
 
-export { users };
+

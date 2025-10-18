@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { publicProcedure } from "../../../create-context";
 import { TRPCError } from "@trpc/server";
-import { users } from "../login/route";
+import { query } from "@/backend/db/pool";
 
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -22,7 +22,12 @@ export default publicProcedure
     try {
       const emailLower = input.email.toLowerCase();
 
-      if (users.has(emailLower)) {
+      const existingUser = await query(
+        'SELECT id FROM users WHERE email = $1 LIMIT 1',
+        [emailLower]
+      );
+
+      if (existingUser.rows.length > 0) {
         throw new TRPCError({
           code: 'CONFLICT',
           message: 'An account with this email already exists',
@@ -31,18 +36,16 @@ export default publicProcedure
 
       const passwordHash = await bcrypt.hash(input.password, 10);
 
-      const newUser = {
-        id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        email: emailLower,
-        password_hash: passwordHash,
-        name: input.name,
-        provider: 'email',
-        created_at: new Date().toISOString(),
-        subscription: 'free',
-        credits: 100,
-      };
+      const referralCode = `REF${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
 
-      users.set(emailLower, newUser);
+      const result = await query<any>(
+        `INSERT INTO users (email, password_hash, name, provider, subscription, credits, referral_code)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING id, email, name, provider, created_at, subscription, credits`,
+        [emailLower, passwordHash, input.name, 'email', 'free', 100, referralCode]
+      );
+
+      const newUser = result.rows[0];
 
       const token = jwt.sign(
         { userId: newUser.id, email: newUser.email },
