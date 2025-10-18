@@ -2,7 +2,10 @@ import { z } from 'zod';
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  PORT: z.string().pipe(z.coerce.number()).default('8787'),
+  PORT: z.preprocess(
+    (val) => (val ? parseInt(String(val), 10) : 8787),
+    z.number().int().positive()
+  ),
   DATABASE_URL: z.string().url(),
   JWT_SECRET: z.string().min(32),
   SECRETS_ENC_KEY: z.string(),
@@ -32,7 +35,7 @@ export function getEnv(): Env {
     return cachedEnv;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      console.error('❌ Invalid environment variables:', JSON.stringify(error.format(), null, 2));
+      console.error('❌ Invalid environment variables:', JSON.stringify(error.issues, null, 2));
       throw new Error('Environment validation failed. Check your .env file.');
     }
     throw error;

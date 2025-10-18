@@ -1,7 +1,6 @@
 import { createTRPCClient, httpBatchLink } from '@trpc/client';
 import * as SecureStore from 'expo-secure-store';
 import Constants from 'expo-constants';
-import superjson from 'superjson';
 import type { AppRouter } from '../../backend/trpc/app-router';
 
 const API_BASE = Constants.expoConfig?.extra?.apiBase || process.env.EXPO_PUBLIC_API_BASE || 'http://localhost:8787';
@@ -18,12 +17,11 @@ export const trpcClient = createTRPCClient<AppRouter>({
   links: [
     httpBatchLink({
       url: `${API_BASE}/api/trpc`,
-      transformer: superjson,
       async headers() {
         const token = await getAuthToken();
         return token ? { authorization: `Bearer ${token}` } : {};
       },
-    }),
+    }) as any,
   ],
 });
 
@@ -142,13 +140,10 @@ export interface ExportStatusResponse {
 export class RestClient {
   private async fetch<T>(path: string, init?: RequestInit): Promise<T> {
     const token = await getAuthToken();
-    const headers: Record<string, string> = {
+    const headers: HeadersInit = {
       'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     };
-    
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
 
     const response = await fetch(`${API_BASE}${path}`, {
       ...init,
