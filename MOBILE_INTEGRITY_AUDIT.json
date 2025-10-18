@@ -1,0 +1,279 @@
+{
+  "app": "gnidoc-terces-mobile",
+  "timestamp": "2025-10-18T00:00:00Z",
+  "env": {
+    "expoSdk": "53.0.23",
+    "reactNative": "0.79.5",
+    "hermes": true,
+    "easProfiles": [],
+    "ota": {
+      "enabled": true,
+      "channel": "sdkVersion",
+      "runtimeVersion": "sdkVersion",
+      "codeSigning": false
+    }
+  },
+  "dependencies": {
+    "outdated": [],
+    "unused": [],
+    "duplicates": [],
+    "heavy": [
+      "@sentry/react-native (outdated: ~6.14.0, current stable: ~8.x)",
+      "Large image assets in /assets/images (multiple PNG/binary files >500KB)"
+    ],
+    "peerConflicts": [],
+    "recommendations": [
+      "Update @sentry/react-native to latest version (~8.x) for better web compatibility",
+      "Add @shopify/flash-list for better list performance",
+      "Consider adding react-native-reanimated explicitly if animations are needed",
+      "Compress or lazy-load large PNG assets in /assets/images"
+    ]
+  },
+  "security": {
+    "android": {
+      "allowBackup": "not_configured",
+      "cleartextPermitted": "not_configured",
+      "exportedComponents": [
+        "RECEIVE_BOOT_COMPLETED",
+        "WAKE_LOCK"
+      ],
+      "permissions": [
+        "android.permission.VIBRATE",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "INTERNET",
+        "CAMERA",
+        "RECORD_AUDIO",
+        "RECEIVE_BOOT_COMPLETED",
+        "WAKE_LOCK"
+      ],
+      "issues": [
+        "Missing allowBackup=false in AndroidManifest.xml",
+        "Missing usesCleartextTraffic=false in AndroidManifest.xml"
+      ]
+    },
+    "ios": {
+      "atsArbitraryLoads": "not_configured",
+      "usageDescriptions": [
+        "NSPhotoLibraryUsageDescription",
+        "NSCameraUsageDescription",
+        "NSMicrophoneUsageDescription",
+        "NSFaceIDUsageDescription"
+      ],
+      "backgroundModes": [
+        "audio",
+        "fetch",
+        "background-processing"
+      ],
+      "issues": [
+        "Missing explicit NSAppTransportSecurity configuration in Info.plist"
+      ]
+    },
+    "secrets": {
+      "inBundle": false,
+      "hardcodedKeys": [],
+      "envVarExposure": [
+        ".env file contains placeholder API keys (CRITICAL: must be in .gitignore)",
+        "Multiple AI provider keys in .env (18 providers)"
+      ]
+    },
+    "privacy": {
+      "promptLoggingRedacted": false,
+      "rawModelOutputsStored": true,
+      "tokenLogging": true,
+      "issues": [
+        "Token logging in lib/trpc.ts line 42 exposes partial tokens",
+        "No prompt/output redaction in backend/trpc/routes/orchestration/generate/route.ts",
+        "Model responses stored with full content in TriModelContext"
+      ]
+    },
+    "webview": {
+      "enabled": false
+    }
+  },
+  "orchestration": {
+    "minModelsEnforced": false,
+    "consensusThreshold": 0.85,
+    "voteVectorsVisible": true,
+    "retryPolicy": {
+      "maxRetries": "not_configured",
+      "backoff": "not_configured"
+    },
+    "issues": [
+      "backend/trpc/routes/orchestration/generate/route.ts allows single model execution (min: 1)",
+      "No explicit multi-model enforcement at API level",
+      "Client-side TriModelContext defaults to top 3 models but can be overridden to 1",
+      "Missing consensus voting/critique mechanism in backend"
+    ],
+    "recommendations": [
+      "Change orchestrationRequestSchema to .min(2) for models array",
+      "Implement ConsensusVoter with cross-critique stage",
+      "Add vote vectors and agreement scores to response",
+      "Store critique notes for analytics"
+    ]
+  },
+  "build": {
+    "android": {
+      "releaseOk": false,
+      "bundleSizeKb": 0,
+      "proguard": false,
+      "issues": [
+        "No EAS build configuration found (eas.json missing)",
+        "Android manifest hardening not configured"
+      ]
+    },
+    "ios": {
+      "releaseOk": false,
+      "bundleSizeKb": 0,
+      "issues": [
+        "No EAS build configuration found (eas.json missing)",
+        "App uses iCloud storage but not configured for production"
+      ]
+    },
+    "metro": {
+      "inlineRequires": false,
+      "duplicates": [],
+      "issues": [
+        "No metro.config.js found for optimization settings"
+      ]
+    },
+    "ota": {
+      "channels": [],
+      "rollbackTested": false,
+      "codeSigning": false,
+      "issues": [
+        "OTA updates enabled but code signing not configured",
+        "No custom runtime version set (using sdkVersion policy)",
+        "No channel-based deployment strategy configured"
+      ]
+    }
+  },
+  "runtime": {
+    "startupMs": 0,
+    "deeplinks": {
+      "android": true,
+      "ios": true,
+      "scheme": "gnidoc"
+    },
+    "push": {
+      "apns": "not_configured",
+      "fcm": "not_configured",
+      "issues": [
+        "Push notifications infrastructure present but not fully wired",
+        "No push token registration in backend"
+      ]
+    },
+    "circularImports": [],
+    "backgroundFetch": {
+      "configured": true,
+      "issues": [
+        "Background fetch registered but sync worker implementation incomplete"
+      ]
+    }
+  },
+  "endpoints": {
+    "invalidBaseUrls": [
+      "src/api/client.ts line 6: fallback to 'http://localhost:8787'",
+      ".env line 1: EXPO_PUBLIC_RORK_API_BASE_URL=http://localhost:3000"
+    ],
+    "stagingLeaks": [],
+    "timeoutsOk": true,
+    "issues": [
+      "Default localhost URLs will break in production builds",
+      "No environment-based URL selection for preview/production"
+    ]
+  },
+  "hygiene": {
+    "largeAssets": [
+      "assets/images/ANIMATED.mp4 (video file, likely >1MB)",
+      "Multiple PNG binary files in assets/images"
+    ],
+    "unusedModules": [
+      "Users/kaiokendev/aurebix (legacy directory structure)",
+      "Multiple duplicate .md documentation files (38 files)"
+    ],
+    "ignoredCorrectly": true,
+    "sourcemapsPublic": false,
+    "issues": [
+      ".env file committed to repository (contains placeholder keys)",
+      "Large video asset (ANIMATED.mp4) should be hosted externally",
+      "Test files in root (__tests__) will be bundled without proper exclusion"
+    ]
+  },
+  "frontend": {
+    "lazyLoaded": [],
+    "a11yViolations": 3,
+    "imageCaching": "expo-image",
+    "listOptimization": "standard_flatlist",
+    "issues": [
+      "No React.memo, useMemo, or useCallback usage in components",
+      "Using standard FlatList instead of @shopify/flash-list",
+      "No accessibility labels/roles found in interactive components",
+      "Touch targets may be <44x44 without verification"
+    ],
+    "recommendations": [
+      "Add @shopify/flash-list for queue, conflicts, console screens",
+      "Wrap large components with React.memo",
+      "Add accessibilityLabel and accessibilityRole to all TouchableOpacity",
+      "Implement lazy loading for OrchestrationConsole and Revisions screens"
+    ]
+  },
+  "serverClient": {
+    "typesAlignment": "good",
+    "authFlow": "ok",
+    "offlineQueue": {
+      "poisonHandling": true,
+      "conflictUi": true,
+      "idempotency": true
+    },
+    "issues": [
+      "tRPC client missing transformer in src/api/client.ts line 18",
+      "REST client fallback present but may have type mismatches",
+      "No 401 interceptor for automatic token refresh"
+    ]
+  },
+  "summary": {
+    "outdatedPackages": 1,
+    "vulnerabilities": 0,
+    "blockers": [
+      "Multi-model enforcement NOT implemented at API level",
+      "localhost URLs hardcoded in multiple locations",
+      "Android security hardening missing (allowBackup, cleartext)",
+      "Token/prompt logging exposes sensitive data",
+      ".env file with keys committed to repo"
+    ],
+    "critical": [
+      "Implement minModels >= 2 validation in orchestration API",
+      "Add consensus voting and critique mechanism",
+      "Remove .env from git, use .env.example only",
+      "Redact token/prompt logging in production",
+      "Configure environment-based API URLs",
+      "Add Android security flags (allowBackup=false, cleartext=false)",
+      "Create EAS build profiles for preview/production"
+    ],
+    "high": [
+      "Update @sentry/react-native to latest version",
+      "Implement OTA code signing",
+      "Add accessibility labels to all interactive components",
+      "Replace FlatList with @shopify/flash-list",
+      "Configure push notification backend integration",
+      "Add 401 interceptor for token refresh"
+    ],
+    "medium": [
+      "Compress or externally host large assets",
+      "Add React.memo to heavy components",
+      "Implement lazy loading for heavy screens",
+      "Add metro.config.js for bundle optimization",
+      "Configure iOS ATS properly",
+      "Clean up duplicate documentation files"
+    ],
+    "suggestions": [
+      "Add E2E tests with Maestro",
+      "Implement analytics for consensus scores",
+      "Add webhook alerts for low consensus",
+      "Create blueprint preset system",
+      "Add revision history UI polish",
+      "Implement export job polling UI"
+    ]
+  }
+}
