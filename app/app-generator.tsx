@@ -15,7 +15,7 @@ import {
   Animated,
   Easing,
 } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -24,7 +24,6 @@ import {
   Code,
   Play,
   Download,
-  Eye,
   Settings,
   X,
   CheckCircle,
@@ -428,12 +427,6 @@ export default function AppGeneratorScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]} testID="creator-studio-screen">
-      <Stack.Screen
-        options={{
-          headerShown: false,
-        }}
-      />
-
       <View style={styles.header} testID="creator-studio-header">
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <X color={Colors.Colors.text.primary} size={24} />
