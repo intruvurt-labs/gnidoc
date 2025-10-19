@@ -3,6 +3,9 @@ import { protectedProcedure } from "../../../create-context";
 import { generateText } from "@rork/toolkit-sdk";
 import { getAvailableModels } from "../../../../../lib/ai-providers";
 import { enforceNoDemo } from "../../../../../lib/noDemoEnforcement";
+import { orchestrateModels } from "../../../../../lib/multi-model";
+import { analyzeConsensus } from "../../../../../lib/consensus";
+import { parseGeneratedCode, extractDependencies } from "../../../../../lib/code-parser";
 
 const orchestrationRequestSchema = z.object({
   prompt: z.string().min(1).max(5000),
@@ -38,6 +41,73 @@ export const orchestrateGenerationProcedure = protectedProcedure
       throw new Error('No valid models selected');
     }
 
+    if (input.models.length >= 2 && input.selectionStrategy === 'quality') {
+      console.log('[Orchestration] Using multi-model consensus mode');
+      
+      try {
+        const orchestrationResults = await orchestrateModels({
+          models: input.models,
+          prompt: input.prompt,
+          system: input.systemPrompt,
+          maxParallel: 3,
+          timeout: 120000,
+        });
+
+        const consensus = await analyzeConsensus(orchestrationResults, input.prompt);
+        
+        console.log('[Orchestration] Consensus analysis complete');
+        console.log(`[Orchestration] Winner: ${consensus.winner.model}, Score: ${consensus.consensusScore}%`);
+        
+        const responses = orchestrationResults.map(r => ({
+          modelId: r.model,
+          content: r.output,
+          qualityScore: Math.round(r.score * 100),
+          responseTime: r.responseTime,
+          tokensUsed: r.tokensUsed,
+          cost: (r.tokensUsed / 1000) * 0.02,
+          timestamp: new Date(),
+          error: r.error,
+        }));
+
+        const files = parseGeneratedCode(consensus.mergedOutput, 'expo');
+        const dependencies = extractDependencies(files);
+        
+        let policyResult = null;
+        if (input.enforcePolicyCheck && input.tier && input.tier >= 3) {
+          console.log(`[Orchestration] Running policy check for tier ${input.tier}...`);
+          policyResult = enforceNoDemo(consensus.mergedOutput, input.tier);
+        }
+
+        const totalTime = Date.now() - startTime;
+        const totalCost = responses.reduce((sum, r) => sum + r.cost, 0);
+
+        return {
+          id: `orch-${Date.now()}`,
+          prompt: input.prompt,
+          models: input.models,
+          responses,
+          selectedResponse: responses.find(r => r.modelId === consensus.winner.model) || responses[0],
+          totalCost,
+          totalTime,
+          createdAt: new Date(),
+          policyCheck: policyResult,
+          consensus: {
+            winner: consensus.winner.model,
+            consensusScore: consensus.consensusScore,
+            agreements: consensus.agreements,
+            conflicts: consensus.conflicts,
+            reasoning: consensus.reasoning,
+          },
+          files,
+          dependencies,
+        };
+      } catch (error) {
+        console.error('[Orchestration] Multi-model orchestration failed:', error);
+      }
+    }
+
+    console.log('[Orchestration] Using sequential generation mode');
+    
     const responses: {
       modelId: string;
       content: string;
