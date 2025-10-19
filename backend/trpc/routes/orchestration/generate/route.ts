@@ -70,11 +70,17 @@ ${input.context ? `CONTEXT:\n${JSON.stringify(input.context, null, 2)}` : ''}
 
 Generate ONLY valid code without markdown formatting.`;
 
+        console.log(`[Orchestration] Generating with model: ${model.name}...`);
+        
         const content = await generateText({
           messages: [
             { role: 'user', content: `${systemPrompt}\n\nUser Request: ${input.prompt}` }
           ]
         });
+        
+        if (!content || typeof content !== 'string' || content.length < 10) {
+          throw new Error(`Invalid response from ${model.name}: empty or too short`);
+        }
 
         const responseTime = Date.now() - modelStartTime;
         const tokensUsed = Math.ceil(content.length / 4);

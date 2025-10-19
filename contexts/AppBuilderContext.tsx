@@ -349,6 +349,7 @@ Generate a COMPLETE, PRODUCTION-READY application. No placeholders, no TODOs, no
       pushLog('info', `Calling AI to generate ${config.useTypeScript ? 'TypeScript' : 'JavaScript'} app...`, 'generation');
       setGenerationProgress(30);
 
+      logger.info('[AppBuilder] Sending request to AI...');
       const aiResponse = await generateText({
         messages: [
           { role: 'user', content: systemPrompt + '\n\nUser Prompt:\n' + prompt }
@@ -358,6 +359,10 @@ Generate a COMPLETE, PRODUCTION-READY application. No placeholders, no TODOs, no
       if (!aiResponse || typeof aiResponse !== 'string') {
         throw new Error('Invalid AI response: no content generated');
       }
+      
+      logger.info(`[AppBuilder] AI response received: ${aiResponse.length} characters`);
+      pushLog('info', `AI returned ${aiResponse.length} characters`, 'generation');
+      setGenerationProgress(50);
 
       pushLog('info', 'Parsing AI-generated app structure...', 'generation');
       setGenerationProgress(60);
@@ -383,7 +388,8 @@ Generate a COMPLETE, PRODUCTION-READY application. No placeholders, no TODOs, no
       }
 
       if (!parsed.files || !Array.isArray(parsed.files) || parsed.files.length === 0) {
-        throw new Error('AI response missing required "files" array');
+        logger.error('[AppBuilder] AI response:', cleanedResponse.substring(0, 500));
+        throw new Error('AI response missing required "files" array. The AI must return a JSON object with a "files" array.');
       }
 
       pushLog('info', `AI generated ${parsed.files.length} files`, 'generation');
