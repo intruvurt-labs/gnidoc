@@ -346,167 +346,48 @@ Generate a COMPLETE, PRODUCTION-READY application. No placeholders, no TODOs, no
       pushLog('info', `Using AI model: ${config.aiModel}`, 'generation');
       setGenerationProgress(20);
 
-      pushLog('info', `Using ${config.aiModel} orchestration...`, 'generation');
+      pushLog('info', `Calling AI to generate ${config.useTypeScript ? 'TypeScript' : 'JavaScript'} app...`, 'generation');
       setGenerationProgress(30);
 
-      pushLog('info', 'Generating app structure...', 'generation');
-      await new Promise(r => setTimeout(r, 1000));
-      setGenerationProgress(50);
+      const aiResponse = await generateText({
+        messages: [
+          { role: 'user', content: systemPrompt + '\n\nUser Prompt:\n' + prompt }
+        ]
+      });
 
-      pushLog('info', 'Synthesizing components...', 'generation');
-      await new Promise(r => setTimeout(r, 1000));
+      if (!aiResponse || typeof aiResponse !== 'string') {
+        throw new Error('Invalid AI response: no content generated');
+      }
+
+      pushLog('info', 'Parsing AI-generated app structure...', 'generation');
+      setGenerationProgress(60);
+
+      let cleanedResponse = String(aiResponse).trim();
+      if (cleanedResponse.startsWith('```')) {
+        const match = cleanedResponse.match(/```(?:json)?\s*\n([\s\S]*?)```/m);
+        if (match && match[1]) cleanedResponse = match[1].trim();
+        else cleanedResponse = cleanedResponse.replace(/^```[\w-]*\s*\n?/m, '').replace(/\n?```$/m, '').trim();
+      }
+
+      let parsed: any;
+      try {
+        parsed = JSON.parse(cleanedResponse);
+      } catch (jsonErr) {
+        logger.warn('[AppBuilder] AI returned non-JSON response, attempting best-effort extraction');
+        const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          parsed = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error('AI did not return valid JSON structure. Please try again.');
+        }
+      }
+
+      if (!parsed.files || !Array.isArray(parsed.files) || parsed.files.length === 0) {
+        throw new Error('AI response missing required "files" array');
+      }
+
+      pushLog('info', `AI generated ${parsed.files.length} files`, 'generation');
       setGenerationProgress(70);
-
-      const demoAppCode = `import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-
-export default function ${app.name.replace(/[^a-zA-Z0-9]/g, '')}() {
-  const [count, setCount] = useState(0);
-  const [text, setText] = useState('');
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.title}>${app.name}</Text>
-          <Text style={styles.subtitle}>${app.description}</Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Counter Example</Text>
-          <View style={styles.counterContainer}>
-            <TouchableOpacity
-              style={styles.button}
-              onPress={() => setCount(count - 1)}
-            >
-              <Text style={styles.buttonText}>-</Text>
-            </TouchableOpacity>
-            <Text style={styles.counterText}>{count}</Text>
-            <TouchableOpacity
-              style={styles.button}
-              onPress={() => setCount(count + 1)}
-            >
-              <Text style={styles.buttonText}>+</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Text Input Example</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter text..."
-            placeholderTextColor="#666"
-            value={text}
-            onChangeText={setText}
-          />
-          {text ? (
-            <Text style={styles.previewText}>You typed: {text}</Text>
-          ) : null}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000000',
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-  },
-  header: {
-    marginBottom: 32,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#00FFFF',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#999',
-    textAlign: 'center',
-  },
-  section: {
-    marginBottom: 32,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    padding: 20,
-    borderWidth: 2,
-    borderColor: '#FF0040',
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#00FFFF',
-    marginBottom: 16,
-  },
-  counterContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 20,
-  },
-  counterText: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    minWidth: 80,
-    textAlign: 'center',
-  },
-  button: {
-    backgroundColor: '#00FFFF',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonText: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#000000',
-  },
-  input: {
-    backgroundColor: '#000000',
-    borderWidth: 2,
-    borderColor: '#00FFFF',
-    borderRadius: 8,
-    padding: 16,
-    fontSize: 16,
-    color: '#FFFFFF',
-    marginBottom: 12,
-  },
-  previewText: {
-    fontSize: 14,
-    color: '#00FFFF',
-    fontWeight: '600',
-  },
-});`;
-
-      const parsed = {
-        files: [
-          {
-            path: `app/index.${config.useTypeScript ? 'tsx' : 'jsx'}`,
-            content: demoAppCode,
-            language: config.useTypeScript ? 'typescript' : 'javascript',
-          },
-          {
-            path: 'app/_layout.' + (config.useTypeScript ? 'tsx' : 'jsx'),
-            content: `import { Stack } from 'expo-router';\n\nexport default function Layout() {\n  return <Stack />;\n}`,
-            language: config.useTypeScript ? 'typescript' : 'javascript',
-          },
-        ],
-        dependencies: ['expo', 'react-native', 'expo-router', 'react-native-safe-area-context'],
-        instructions: 'Run: npx expo start',
-      };
 
       const files: GeneratedFile[] = (parsed.files || []).map((file: any, index: number) => ({
         id: uuid('file-'),

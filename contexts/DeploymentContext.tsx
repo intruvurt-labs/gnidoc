@@ -2,6 +2,7 @@
 import createContextHook from '@nkzw/create-context-hook';
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { trpc } from '@/lib/trpc';
 
 // Lazy import to avoid bundling cost or runtime crashes where @rork/toolkit-sdk isn't present
 async function safeGenerateText(prompt: string) {
@@ -238,12 +239,13 @@ Return ONLY JSON in this schema:
 
     for (const parse of tryParses) {
       const obj = parse();
-      if (obj && typeof obj === 'object') {
+      if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+        const typedObj = obj as any;
         return {
-          title: String(obj.title || projectName).slice(0, 60),
-          description: String(obj.description || projectDescription).slice(0, 160),
-          keywords: Array.isArray(obj.keywords) ? obj.keywords.map((k: any) => String(k)).slice(0, 15) : features.slice(0, 10),
-          videoScript: obj.videoScript ? String(obj.videoScript) : undefined,
+          title: String(typedObj.title || projectName).slice(0, 60),
+          description: String(typedObj.description || projectDescription).slice(0, 160),
+          keywords: Array.isArray(typedObj.keywords) ? typedObj.keywords.map((k: any) => String(k)).slice(0, 15) : features.slice(0, 10),
+          videoScript: typedObj.videoScript ? String(typedObj.videoScript) : undefined,
         };
       }
     }
@@ -316,26 +318,46 @@ Return ONLY JSON in this schema:
     const step = async (pct: number, msg: string, ms = 600) => {
       if (cancelRef.current) throw new Error('Deployment cancelled');
       deployment.buildLogs.push(msg);
+      deployment.lastUpdated = new Date();
       setDeployProgress(pct);
+      const updated = deployments.map(d => d.id === deployment.id ? deployment : d);
+      if (!updated.find(d => d.id === deployment.id)) updated.push(deployment);
+      await saveDeployments(updated);
       await new Promise(r => setTimeout(r, ms));
     };
 
     try {
       await step(8, '[1/7] Initializing deployment environment…', 400);
       await step(18, '[2/7] Validating artifacts and environment…', 500);
-      await step(32, '[3/7] Building project (multi-engine validation)…', 900);
-      await step(46, '[4/7] Optimizing assets & bundling…', 700);
 
       if (config.features.seoGeneration) {
-        await step(58, '[5/7] Generating SEO content (Claude + Gemini)…', 400);
+        await step(32, '[3/7] Generating SEO content (Claude + Gemini)…', 400);
         deployment.seoContent = await generateSEOContent(projectName, projectDescription, features);
         deployment.buildLogs.push('✓ SEO content generated');
       } else {
-        await step(58, '[5/7] Skipping SEO generation (upgrade to Professional) …', 350);
+        await step(32, '[3/7] Skipping SEO generation (tier limitation)…', 200);
       }
 
+      await step(45, '[4/7] Preparing project bundle...', 600);
+
       deployment.status = 'deploying';
-      await step(74, '[6/7] Deploying to edge & configuring DNS…', 1200);
+      await step(58, '[5/7] Calling deploy API...', 200);
+
+      logger.info('[Deployment] Calling tRPC deploy endpoint...');
+      const trpcClient = (await import('@/lib/trpc')).trpcClient;
+      const deployResult = await trpcClient.deploy.create.mutate({
+        projectId,
+        projectName,
+        subdomain,
+        customDomain,
+        buildOutput: buildOutput || 'built-app-bundle',
+        tier: currentTier,
+      });
+
+      deployment.url = deployResult.url;
+      deployment.buildLogs.push(`✓ Deployed to ${deployResult.url}`);
+
+      await step(74, '[6/7] Configuring domain & SSL...', 800);
 
       if (config.features.ssl) deployment.buildLogs.push('✓ SSL certificate provisioned');
       if (config.features.cdn) deployment.buildLogs.push('✓ CDN enabled for global distribution');
@@ -349,7 +371,7 @@ Return ONLY JSON in this schema:
         deployment.buildLogs.push('✓ YouTube video script generated');
       }
 
-      const updated = [...deployments, deployment];
+      const updated = [...deployments.filter(d => d.id !== deployment.id), deployment];
       await saveDeployments(updated);
       setDeployProgress(100);
       logger.info('[Deployment] Project deployed:', deployment.url);
