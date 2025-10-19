@@ -90,7 +90,7 @@ export default function AnalysisScreen() {
     }
   };
 
-  const getIssueIcon = (type: 'error' | 'warning' | 'info' | 'suggestion') => {
+  const getIssueIcon = (type: CodeIssue['type']) => {
     switch (type) {
       case 'error': return <XCircle color={Colors.Colors.error} size={16} />;
       case 'warning': return <AlertTriangle color={Colors.Colors.warning} size={16} />;
