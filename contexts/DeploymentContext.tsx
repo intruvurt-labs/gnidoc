@@ -354,7 +354,13 @@ Return ONLY JSON in this schema:
         tier: currentTier,
       });
 
+      if (deployResult.status === 'failed') {
+        deployment.buildLogs.push(...deployResult.logs);
+        throw new Error('Deployment failed on server');
+      }
+
       deployment.url = deployResult.url;
+      deployment.buildLogs.push(...deployResult.logs);
       deployment.buildLogs.push(`✓ Deployed to ${deployResult.url}`);
 
       await step(74, '[6/7] Configuring domain & SSL...', 800);
