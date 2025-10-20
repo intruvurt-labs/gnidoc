@@ -344,11 +344,22 @@ export default function AppGeneratorScreen() {
 
       await proceedWithGeneration();
     } catch (error) {
-      Alert.alert(
-        'Generation Failed',
-        error instanceof Error ? error.message : 'Failed to generate app'
-      );
       console.error('[CreatorStudio] Generation error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate app';
+      
+      Alert.alert(
+        '⚠️ Generation Failed',
+        errorMessage,
+        [
+          {
+            text: 'Try Again',
+            onPress: () => {
+              setPrompt(prompt);
+            },
+          },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
     }
   };
 

@@ -25,10 +25,11 @@ export const orchestrateGenerationProcedure = protectedProcedure
     const startTime = Date.now();
     const token = ctx.token;
 
-    console.log(`[Orchestration] Token ${token.substring(0, 10)}... starting orchestration with ${input.models.length} models`);
+    console.log(`[Orchestration] Token ${token?.substring(0, 10) || 'none'}... starting orchestration with ${input.models.length} models`);
 
     if (!process.env.EXPO_PUBLIC_TOOLKIT_URL) {
-      throw new Error('EXPO_PUBLIC_TOOLKIT_URL environment variable is not set. Please configure it in your .env file.');
+      console.error('[Orchestration] EXPO_PUBLIC_TOOLKIT_URL not configured');
+      throw new Error('AI service is not configured. Please check your environment variables.');
     }
 
     const availableModels = getAvailableModels();
@@ -142,11 +143,18 @@ Generate ONLY valid code without markdown formatting.`;
 
         console.log(`[Orchestration] Generating with model: ${model.name}...`);
         
-        const content = await generateText({
-          messages: [
-            { role: 'user', content: `${systemPrompt}\n\nUser Request: ${input.prompt}` }
-          ]
-        });
+        let content: string;
+        try {
+          const response = await generateText({
+            messages: [
+              { role: 'user', content: `${systemPrompt}\n\nUser Request: ${input.prompt}` }
+            ]
+          });
+          content = String(response || '');
+        } catch (genError) {
+          console.error(`[Orchestration] ${model.name} generation error:`, genError);
+          throw new Error(`${model.name} failed: ${genError instanceof Error ? genError.message : 'Network or API error'}`);
+        }
         
         if (!content || typeof content !== 'string' || content.length < 10) {
           throw new Error(`Invalid response from ${model.name}: empty or too short`);

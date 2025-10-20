@@ -303,9 +303,14 @@ export const [AppBuilderProvider, useAppBuilder] = createContextHook(() => {
 
       let generateText: any;
       try {
-        ({ generateText } = await import('@rork/toolkit-sdk'));
+        const sdk = await import('@rork/toolkit-sdk');
+        generateText = sdk.generateText;
+        if (!generateText) {
+          throw new Error('generateText not found in @rork/toolkit-sdk');
+        }
       } catch (e) {
-        throw new Error('Missing @rork/toolkit-sdk or unsupported runtime. Install/provide it before generation.');
+        console.error('[AppBuilder] Failed to load @rork/toolkit-sdk:', e);
+        throw new Error('AI SDK is not available. Please check your environment configuration and ensure @rork/toolkit-sdk is properly set up.');
       }
 
       const systemPrompt = `You are an expert full-stack developer with 25+ years of experience building production-ready applications.
@@ -350,15 +355,25 @@ Generate a COMPLETE, PRODUCTION-READY application. No placeholders, no TODOs, no
       setGenerationProgress(30);
 
       logger.info('[AppBuilder] Sending request to AI...');
-      const aiResponse = await generateText({
-        messages: [
-          { role: 'user', content: systemPrompt + '\n\nUser Prompt:\n' + prompt }
-        ]
-      });
-
-      if (!aiResponse || typeof aiResponse !== 'string') {
-        throw new Error('Invalid AI response: no content generated');
+      
+      let aiResponse: string;
+      try {
+        const response = await generateText({
+          messages: [
+            { role: 'user', content: systemPrompt + '\n\nUser Prompt:\n' + prompt }
+          ]
+        });
+        aiResponse = String(response || '');
+        
+        if (!aiResponse || aiResponse.length < 50) {
+          throw new Error('AI returned empty or invalid response');
+        }
+      } catch (aiError) {
+        console.error('[AppBuilder] AI request failed:', aiError);
+        throw new Error(`AI generation failed: ${aiError instanceof Error ? aiError.message : 'Unknown error'}. Please check your network connection and API configuration.`);
       }
+
+
       
       logger.info(`[AppBuilder] AI response received: ${aiResponse.length} characters`);
       pushLog('info', `AI returned ${aiResponse.length} characters`, 'generation');
