@@ -46,11 +46,16 @@ interface GamificationState {
   iterationStats: IterationStats;
   streak: number;
   lastActiveDate: string; // ISO
+  dailyCredits: number;
+  dailyCreditsMax: number;
+  lastRegenDate: string; // ISO
 }
 
 /** ───────────────────────── Constants ───────────────────────── **/
 const STORAGE_KEY = 'gamification-state';
 const SAVE_DEBOUNCE_MS = 150;
+const DAILY_CREDITS_MAX = 50;
+const DAILY_CREDITS_REGEN_RATE = 5; // credits per day
 
 const initialAchievements: Achievement[] = [
   { id: 'first-build',    title: 'First Build',    description: 'Generate your first app', icon: '🎯', points: 100,  progress: 0, maxProgress: 1 },
@@ -81,13 +86,27 @@ function calculateXPForLevel(level: number): number {
 }
 
 function seedReferralCode(seed: string | undefined): string {
-  // deterministic 8-char code based on user id/email, fallback to random
   if (!seed) return randomReferralCode();
-  let h = 2166136261; // FNV-1a
-  for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+  // FNV-1a 32-bit hash with better distribution
+  let h = 0x811c9dc5; // 2166136261
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // 32 chars (no I/O/0/1)
   let code = '';
-  for (let i = 0; i < 8; i++) { code += chars[(h >>> (i * 4)) & 31 % chars.length]; }
+  for (let i = 0; i < 8; i++) {
+    // mix & spread: rotate + xor-shift for better distribution
+    h ^= h >>> 13;
+    h = Math.imul(h, 0x5bd1e995);
+    h ^= h >>> 15;
+    const idx = Math.abs(h) % chars.length;
+    code += chars[idx];
+    // advance with rotation
+    h = (h << 5) | (h >>> 27);
+  }
   return code;
 }
 
@@ -128,21 +147,23 @@ export const [GamificationProvider, useGamification] = createContextHook(() => {
     },
     streak: 0,
     lastActiveDate: new Date().toISOString(),
+    dailyCredits: DAILY_CREDITS_MAX,
+    dailyCreditsMax: DAILY_CREDITS_MAX,
+    lastRegenDate: new Date().toISOString(),
   }));
 
-  // Avoid concurrent saves
-  const saveQueued = useRef(false);
+  // Keep latest state in a ref so the debounced callback always reads fresh data
+  const stateRef = useRef<GamificationState>(state);
+  useEffect(() => { stateRef.current = state; }, [state]);
 
-  /** ───────── Debounced save ───────── **/
-  const persist = useCallback(
-    debounce(async (s: GamificationState) => {
-      try {
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(s));
-      } catch (e) { logger.error('[Gamification] Save failed:', e); }
-      finally { saveQueued.current = false; }
-    }, SAVE_DEBOUNCE_MS),
-    []
-  );
+  /** ───────── Debounced save (always-fresh) ───────── **/
+  const persist = useMemo(() => debounce(async () => {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(stateRef.current));
+    } catch (e) {
+      logger.error('[Gamification] Save failed:', e);
+    }
+  }, SAVE_DEBOUNCE_MS), []);
 
   /** ───────── Load on mount ───────── **/
   const loadState = useCallback(async () => {
@@ -171,6 +192,9 @@ export const [GamificationProvider, useGamification] = createContextHook(() => {
         },
         streak: parsed.streak ?? prev.streak,
         lastActiveDate: parsed.lastActiveDate ?? prev.lastActiveDate,
+        dailyCredits: parsed.dailyCredits ?? DAILY_CREDITS_MAX,
+        dailyCreditsMax: parsed.dailyCreditsMax ?? DAILY_CREDITS_MAX,
+        lastRegenDate: parsed.lastRegenDate ?? new Date().toISOString(),
       }));
 
       logger.info('[Gamification] State loaded');
@@ -183,9 +207,7 @@ export const [GamificationProvider, useGamification] = createContextHook(() => {
 
   /** ───────── Auto-save on change (debounced) ───────── **/
   useEffect(() => {
-    if (saveQueued.current) return;
-    saveQueued.current = true;
-    persist(state);
+    persist();
   }, [state, persist]);
 
   /** ───────── Sync credits from Auth (one-way) ───────── **/
@@ -205,13 +227,16 @@ export const [GamificationProvider, useGamification] = createContextHook(() => {
   }, [state.credits, updateCredits]);
 
   const spendCredits = useCallback(async (amount: number, reason: string) => {
-    if (amount < 0) amount = Math.abs(amount);
+    amount = Math.abs(Number(amount) || 0);
+    if (amount === 0) return state.credits;
+
     let allowed = true;
     setState(prev => {
       if (prev.credits < amount) { allowed = false; return prev; }
       return { ...prev, credits: prev.credits - amount };
     });
     if (!allowed) throw new Error('Insufficient credits');
+
     if (updateCredits) { try { await updateCredits(-amount); } catch {} }
     logger.info(`[Gamification] -${amount} credits (${reason})`);
     return state.credits - amount;
@@ -224,7 +249,7 @@ export const [GamificationProvider, useGamification] = createContextHook(() => {
       let level = prev.level;
       let xpToNext = prev.xpToNextLevel;
 
-      const logs: Array<() => void> = []; // delayed credit grants
+      const logs: (() => void)[] = []; // delayed credit grants
 
       while (xp >= xpToNext) {
         xp -= xpToNext;
@@ -281,17 +306,22 @@ export const [GamificationProvider, useGamification] = createContextHook(() => {
   }, [unlockAchievement]);
 
   const addReferral = useCallback(async (email: string, name: string) => {
+    const cleanEmail = String(email || '').trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cleanEmail)) {
+      throw new Error('Please provide a valid email.');
+    }
+
     const referral: Referral = {
       id: `ref_${Date.now()}`,
       code: state.referralCode,
-      referredEmail: email,
-      referredName: name,
+      referredEmail: cleanEmail,
+      referredName: String(name || '').trim(),
       creditsEarned: 0,
       status: 'pending',
       createdAt: new Date().toISOString(),
     };
     setState(prev => ({ ...prev, referrals: [...prev.referrals, referral] }));
-    logger.info('[Gamification] Referral added:', email);
+    logger.info('[Gamification] Referral added:', cleanEmail);
     return referral;
   }, [state.referralCode]);
 
@@ -360,6 +390,32 @@ export const [GamificationProvider, useGamification] = createContextHook(() => {
     logger.info('[Gamification] Iteration recorded:', { success, buildTime, creditsSpent });
   }, [addXP, updateAchievementProgress]);
 
+  const regenerateDailyCredits = useCallback(() => {
+    const nowISO = new Date().toISOString();
+    setState(prev => {
+      const delta = diffInCalendarDays(nowISO, prev.lastRegenDate);
+      if (delta === 0) return prev; // already regenerated today
+
+      // Regenerate based on streak (bonus for consecutive days)
+      const streakBonus = Math.min(prev.streak, 7) * 2; // +2 per day, max 7 days
+      const regenAmount = DAILY_CREDITS_REGEN_RATE + streakBonus;
+      const newDailyCredits = Math.min(prev.dailyCredits + regenAmount, prev.dailyCreditsMax);
+
+      logger.info(`[Gamification] Daily credits regenerated: +${regenAmount} (streak bonus: ${streakBonus})`);
+
+      // Award the regenerated credits
+      setTimeout(() => {
+        addCredits(regenAmount, `Daily regen (+${streakBonus} streak bonus)`);
+      }, 0);
+
+      return {
+        ...prev,
+        dailyCredits: newDailyCredits,
+        lastRegenDate: nowISO,
+      };
+    });
+  }, [addCredits]);
+
   const updateStreak = useCallback(() => {
     const nowISO = new Date().toISOString();
     setState(prev => {
@@ -380,8 +436,12 @@ export const [GamificationProvider, useGamification] = createContextHook(() => {
     });
   }, [addXP, updateAchievementProgress]);
 
-  // Run once on mount
-  useEffect(() => { updateStreak(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  // Run on mount: check streak & regen daily credits
+  useEffect(() => {
+    regenerateDailyCredits();
+    updateStreak();
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, []);
 
   /** ───────── Import/Export & Reset (DX helpers) ───────── **/
   const exportState = useCallback(() => JSON.stringify(state, null, 2), [state]);
@@ -412,6 +472,9 @@ export const [GamificationProvider, useGamification] = createContextHook(() => {
       iterationStats: { totalIterations: 0, successfulBuilds: 0, failedBuilds: 0, totalCreditsSpent: 0, averageBuildTime: 0 },
       streak: 0,
       lastActiveDate: new Date().toISOString(),
+      dailyCredits: DAILY_CREDITS_MAX,
+      dailyCreditsMax: DAILY_CREDITS_MAX,
+      lastRegenDate: new Date().toISOString(),
     };
     setState(fresh);
     logger.warn('[Gamification] State reset.');
@@ -429,6 +492,7 @@ export const [GamificationProvider, useGamification] = createContextHook(() => {
     completeReferral,
     recordIteration,
     updateStreak,
+    regenerateDailyCredits,
     exportState,
     importState,
     resetState,
@@ -443,6 +507,7 @@ export const [GamificationProvider, useGamification] = createContextHook(() => {
     completeReferral,
     recordIteration,
     updateStreak,
+    regenerateDailyCredits,
     exportState,
     importState,
     resetState,
@@ -479,5 +544,8 @@ function mergeStateDefaults(s: GamificationState): GamificationState {
     },
     streak: s.streak ?? 0,
     lastActiveDate: s.lastActiveDate ?? new Date().toISOString(),
+    dailyCredits: s.dailyCredits ?? DAILY_CREDITS_MAX,
+    dailyCreditsMax: s.dailyCreditsMax ?? DAILY_CREDITS_MAX,
+    lastRegenDate: s.lastRegenDate ?? new Date().toISOString(),
   };
 }
