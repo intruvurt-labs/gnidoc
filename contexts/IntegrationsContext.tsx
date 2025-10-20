@@ -5,12 +5,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
 
 /** ───────────────────────── Secure storage (lazy) ───────────────────────── */
-type SecureStoreMod = typeof import('expo-secure-store');
+type SecureStoreMod = {
+  setItemAsync?: (k: string, v: string, opts?: any) => Promise<void>;
+  getItemAsync?: (k: string) => Promise<string | null>;
+  deleteItemAsync?: (k: string, opts?: any) => Promise<void>;
+};
 let _secureStore: SecureStoreMod | null | undefined;
 async function getSecureStore(): Promise<SecureStoreMod | null> {
   if (_secureStore !== undefined) return _secureStore!;
   try {
-    _secureStore = await import('expo-secure-store');
+    const mod = await import('expo-secure-store');
+    _secureStore = (mod as any)?.default ?? mod;
   } catch {
     _secureStore = null;
   }
@@ -21,6 +26,7 @@ async function getSecureStore(): Promise<SecureStoreMod | null> {
 export type IntegrationCategory =
   | 'creator-tools'
   | 'web3-blockchain'
+  | 'payments'
   | 'crypto-payments'
   | 'productivity'
   | 'b2b-saas'
@@ -70,7 +76,7 @@ export interface IntegrationsContextValue {
   updateIntegrationSettings: (integrationId: string, settings: Record<string, any>) => Promise<void>;
   syncIntegration: (integrationId: string) => Promise<void>;
   getIntegrationConnection: (integrationId: string) => IntegrationConnection | undefined;
-  checkHealth: (integrationId: string) => Promise<{ ok: boolean; latencyMs: number }>;
+  checkHealth: (integrationId: string) => Promise<{ ok: boolean; latencyMs: number; error?: string }>;
   exportState: () => string;
   importState: (json: string) => Promise<void>;
   /** utility */
@@ -84,7 +90,7 @@ const STORAGE_VERSION = 1;
 const SAVE_DEBOUNCE_MS = 160;
 
 const DEFAULT_INTEGRATIONS: Integration[] = [
-  { id: 'stripe', name: 'Stripe', description: 'Accept payments, subscriptions, and manage billing', category: 'crypto-payments', icon: '💳', status: 'disconnected', config: {}, features: ['Payments','Subscriptions','Invoicing','Webhooks'], pricing: 'paid' },
+  { id: 'stripe', name: 'Stripe', description: 'Accept payments, subscriptions, and manage billing', category: 'payments', icon: '💳', status: 'disconnected', config: {}, features: ['Payments','Subscriptions','Invoicing','Webhooks'], pricing: 'paid' },
   { id: 'metamask', name: 'MetaMask', description: 'Web3 wallet integration for crypto transactions', category: 'web3-blockchain', icon: '🦊', status: 'disconnected', config: {}, features: ['Wallet Connect','NFT Support','Token Transfers','Smart Contracts'], pricing: 'free' },
   { id: 'opensea', name: 'OpenSea', description: 'NFT marketplace integration', category: 'web3-blockchain', icon: '🌊', status: 'disconnected', config: {}, features: ['NFT Listings','Collections','Trading','Analytics'], pricing: 'free' },
   { id: 'alchemy', name: 'Alchemy', description: 'Web3 development platform and blockchain APIs', category: 'web3-blockchain', icon: '⚗️', status: 'disconnected', config: {}, features: ['Blockchain APIs','NFT APIs','Enhanced APIs','Webhooks'], pricing: 'freemium' },
@@ -171,13 +177,7 @@ const validateCredentials = async (
   integrationId: string,
   creds: Record<string, string>
 ): Promise<{ ok: boolean; reason?: string }> => {
-  const headers: Record<string, string> = {};
-  if (creds.apiKey) headers['Authorization'] = `Bearer ${creds.apiKey}`;
-  if (creds.token) headers['Authorization'] = `Bearer ${creds.token}`;
-  if (creds.secret) headers['Authorization'] = `Bearer ${creds.secret}`;
-  if (creds['X-API-Key']) headers['X-API-Key'] = creds['X-API-Key'];
-
-  const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs = 4000) => {
+  const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeoutMs = 5000) => {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -193,38 +193,70 @@ const validateCredentials = async (
   try {
     switch (integrationId) {
       case 'stripe': {
+        const headers: Record<string, string> = {
+          Authorization: `Bearer ${creds.apiKey || creds.secret || ''}`,
+        };
         const res = await fetchWithTimeout('https://api.stripe.com/v1/account', { headers });
-        return res.ok
-          ? { ok: true }
-          : { ok: false, reason: `HTTP ${res.status}` };
+        return res.ok ? { ok: true } : { ok: false, reason: `HTTP ${res.status}` };
       }
+
       case 'supabase': {
-        const url = creds.url || '';
+        const url = (creds.url || '').replace(/\/+$/, '');
+        if (!url) return { ok: false, reason: 'missing url' };
+        const headers: Record<string, string> = {};
+        if (creds.apikey || creds.apiKey) headers['apikey'] = creds.apikey || creds.apiKey;
+        if (creds.service_role || creds.token) headers['Authorization'] = `Bearer ${creds.service_role || creds.token}`;
         const res = await fetchWithTimeout(`${url}/rest/v1/`, { headers });
         return res.ok ? { ok: true } : { ok: false, reason: `HTTP ${res.status}` };
       }
+
       case 'openai': {
+        const headers: Record<string, string> = {
+          Authorization: `Bearer ${creds.apiKey || creds.token || ''}`,
+        };
+        if (creds.organization) headers['OpenAI-Organization'] = creds.organization;
         const res = await fetchWithTimeout('https://api.openai.com/v1/models', { headers });
         return res.ok ? { ok: true } : { ok: false, reason: `HTTP ${res.status}` };
       }
+
       case 'anthropic': {
+        const headers: Record<string, string> = {
+          'x-api-key': creds.apiKey || creds.token || creds.key || '',
+          'anthropic-version': '2023-06-01',
+        };
         const res = await fetchWithTimeout('https://api.anthropic.com/v1/models', { headers });
         return res.ok ? { ok: true } : { ok: false, reason: `HTTP ${res.status}` };
       }
+
       case 'vercel': {
+        const headers: Record<string, string> = {
+          Authorization: `Bearer ${creds.apiKey || creds.token || ''}`,
+        };
         const res = await fetchWithTimeout('https://api.vercel.com/v2/user', { headers });
         return res.ok ? { ok: true } : { ok: false, reason: `HTTP ${res.status}` };
       }
+
       case 'github': {
+        const headers: Record<string, string> = {
+          Authorization: `Bearer ${creds.apiKey || creds.token || ''}`,
+          'User-Agent': 'gnidoc-integrations',
+          Accept: 'application/vnd.github+json',
+        };
         const res = await fetchWithTimeout('https://api.github.com/user', { headers });
         return res.ok ? { ok: true } : { ok: false, reason: `HTTP ${res.status}` };
       }
-      default:
-        await new Promise(r => setTimeout(r, 150));
+
+      default: {
+        if (creds.url) {
+          const res = await fetchWithTimeout(String(creds.url), {}, 3500);
+          return res.ok ? { ok: true } : { ok: false, reason: `HTTP ${res.status}` };
+        }
+        await new Promise(r => setTimeout(r, 120));
         return { ok: true };
+      }
     }
   } catch (e: any) {
-    return { ok: false, reason: e.name === 'AbortError' ? 'timeout' : e.message };
+    return { ok: false, reason: e?.name === 'AbortError' ? 'timeout' : (e?.message || 'network error') };
   }
 };
 
@@ -408,11 +440,7 @@ export const [IntegrationsProvider, useIntegrations] = createContextHook<Integra
     const validation = await validateCredentials(integrationId, creds);
     const latencyMs = Date.now() - start;
 
-    return { 
-      ok: validation.ok, 
-      latencyMs,
-      ...(validation.reason && { error: validation.reason })
-    };
+    return { ok: validation.ok, latencyMs, ...(validation.reason ? { error: validation.reason } : {}) };
   }, [integrations, connections]);
 
   /** Derived lists */
@@ -428,7 +456,7 @@ export const [IntegrationsProvider, useIntegrations] = createContextHook<Integra
 
   const integrationsByCategory = useMemo(() => {
     const grouped: Record<IntegrationCategory, Integration[]> = {
-      'creator-tools': [], 'web3-blockchain': [], 'crypto-payments': [], productivity: [],
+      'creator-tools': [], 'web3-blockchain': [], payments: [], 'crypto-payments': [], productivity: [],
       'b2b-saas': [], 'b2c-commerce': [], 'ai-ml': [], analytics: [], communication: [], storage: [],
     };
     integrations.forEach(int => { grouped[int.category].push(int); });
@@ -472,8 +500,8 @@ export const [IntegrationsProvider, useIntegrations] = createContextHook<Integra
 
   /** Background Auto-Flush */
   useEffect(() => {
-    const sub = AppState.addEventListener('change', (state: string) => {
-      if (state === 'background') {
+    const sub = AppState.addEventListener('change', (status: string) => {
+      if (status === 'background') {
         flush().catch((e) => logger.error('[Integrations] Flush on background failed', e));
       }
     });
