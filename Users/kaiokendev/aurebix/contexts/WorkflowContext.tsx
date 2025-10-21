@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { z } from 'zod';
 
@@ -7,7 +7,7 @@ const WorkflowNodeSchema = z.object({
   type: z.enum(['trigger','action','condition','ai-agent','code','api','database','transform','weather']),
   label: z.string().min(1),
   position: z.object({ x: z.number(), y: z.number() }),
-  data: z.record(z.any()).default({}),
+  data: z.record(z.string(), z.any()).optional().default({}),
   config: z.object({
     icon: z.string().optional(),
     color: z.string().optional(),
@@ -51,7 +51,7 @@ const WorkflowExecutionSchema = z.object({
     message: z.string(),
     data: z.any().optional(),
   })),
-  results: z.record(z.any()),
+  results: z.record(z.string(), z.any()),
 });
 
 export type WorkflowNode = z.infer<typeof WorkflowNodeSchema>;
@@ -78,6 +78,24 @@ const STORAGE_KEY = `gnidoc-workflows:v${SCHEMA_VERSION}`;
 const EXECUTIONS_KEY = `gnidoc-workflow-executions:v${SCHEMA_VERSION}`;
 const MAX_EXECS = 100;
 const MAX_CODE_LENGTH = 8_192;
+const SAVE_DEBOUNCE_MS = 400;
+
+function makeDebounce<T extends (...args: any[]) => any>(fn: T, ms = 300) {
+  let t: any = null;
+  let lastArgs: Parameters<T> | null = null;
+  const debounced = (...args: Parameters<T>) => {
+    lastArgs = args;
+    clearTimeout(t);
+    t = setTimeout(() => {
+      const a = lastArgs as Parameters<T>;
+      lastArgs = null;
+      fn(...a);
+    }, ms);
+  };
+  debounced.cancel = () => { clearTimeout(t); t = null; lastArgs = null; };
+  debounced.flush = () => { if (t && lastArgs) { clearTimeout(t); const a = lastArgs as Parameters<T>; lastArgs = null; fn(...a); } };
+  return debounced as T & { cancel: () => void; flush: () => void };
+}
 
 function reviveDates(key: string, value: any) {
   if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)) {
@@ -117,6 +135,11 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
   const [currentWorkflow, setCurrentWorkflow] = useState<Workflow | null>(null);
   const [executions, setExecutions] = useState<WorkflowExecution[]>([]);
 
+  const workflowsRef = useRef<Workflow[]>([]);
+  const executionsRef = useRef<WorkflowExecution[]>([]);
+  useEffect(() => { workflowsRef.current = workflows; }, [workflows]);
+  useEffect(() => { executionsRef.current = executions; }, [executions]);
+
   const loadWorkflows = useCallback(async () => {
     try {
       const [wfRaw, exRaw] = await Promise.all([
@@ -153,27 +176,38 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const saveWorkflows = useCallback(async (updated: Workflow[]) => {
+  const persistWorkflows = useMemo(() => makeDebounce(async () => {
     try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      setWorkflows(updated);
-      console.log(`[WorkflowContext] Saved ${updated.length} workflows`);
+      const validated = z.array(WorkflowSchema).parse(workflowsRef.current);
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(validated));
+      console.log(`[WorkflowContext] Persisted ${validated.length} workflows`);
     } catch (error) {
-      console.error('[WorkflowContext] Failed to save workflows:', error);
+      console.error('[WorkflowContext] Persist workflows failed:', error);
     }
-  }, []);
+  }, SAVE_DEBOUNCE_MS), []);
 
-  const saveExecutions = useCallback(async (updated: WorkflowExecution[]) => {
+  const persistExecutions = useMemo(() => makeDebounce(async () => {
     try {
-      const pruned = updated
+      const pruned = executionsRef.current
         .sort((a,b) => +b.startTime - +a.startTime)
         .slice(0, MAX_EXECS);
-      await AsyncStorage.setItem(EXECUTIONS_KEY, JSON.stringify(pruned));
-      setExecutions(pruned);
+      const validated = z.array(WorkflowExecutionSchema).parse(pruned);
+      await AsyncStorage.setItem(EXECUTIONS_KEY, JSON.stringify(validated));
+      console.log(`[WorkflowContext] Persisted ${pruned.length} executions`);
     } catch (error) {
-      console.error('[WorkflowContext] Failed to save executions:', error);
+      console.error('[WorkflowContext] Persist executions failed:', error);
     }
-  }, []);
+  }, SAVE_DEBOUNCE_MS), []);
+
+  useEffect(() => { persistWorkflows(); }, [workflows, persistWorkflows]);
+  useEffect(() => { persistExecutions(); }, [executions, persistExecutions]);
+
+  useEffect(() => () => {
+    persistWorkflows.flush?.();
+    persistExecutions.flush?.();
+    persistWorkflows.cancel?.();
+    persistExecutions.cancel?.();
+  }, [persistWorkflows, persistExecutions]);
 
   const createWorkflow = useCallback(async (workflow: Omit<Workflow, 'id' | 'createdAt' | 'updatedAt'>) => {
     const newWorkflow: Workflow = {
@@ -183,37 +217,48 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       updatedAt: new Date(),
     };
     const validated = WorkflowSchema.parse(newWorkflow);
-    await saveWorkflows([...workflows, validated]);
+    setWorkflows(prev => [...prev, validated]);
     setCurrentWorkflow(validated);
-  }, [workflows, saveWorkflows]);
+    console.log(`[WorkflowContext] Created workflow: ${validated.name}`);
+  }, []);
 
   const updateWorkflow = useCallback(async (id: string, updates: Partial<Workflow>) => {
-    const updated = workflows.map(w => {
-      if (w.id !== id) return w;
-      const next = { ...w, ...updates, updatedAt: new Date() };
-      const ids = new Set(next.nodes.map(n => n.id));
-      if (ids.size !== next.nodes.length) throw new Error('Duplicate node IDs are not allowed');
-      next.connections.forEach(c => {
-        if (!ids.has(c.source) || !ids.has(c.target)) {
-          throw new Error(`Invalid connection ${c.id} (${c.source}->${c.target})`);
+    setWorkflows(prev => {
+      const updated = prev.map(w => {
+        if (w.id !== id) return w;
+        const next = { ...w, ...updates, updatedAt: new Date() };
+        const ids = new Set(next.nodes.map(n => n.id));
+        if (ids.size !== next.nodes.length) {
+          console.error('[WorkflowContext] Duplicate node IDs detected');
+          return w;
         }
+        for (const c of next.connections) {
+          if (!ids.has(c.source) || !ids.has(c.target)) {
+            console.error(`[WorkflowContext] Invalid connection ${c.id}`);
+            return w;
+          }
+        }
+        return WorkflowSchema.parse(next);
       });
-      return WorkflowSchema.parse(next);
+      return updated;
     });
-    await saveWorkflows(updated);
     if (currentWorkflow?.id === id) {
-      const updatedCurrent = updated.find(w => w.id === id);
-      setCurrentWorkflow(updatedCurrent ?? null);
+      setCurrentWorkflow(prev => {
+        if (!prev || prev.id !== id) return prev;
+        const found = workflowsRef.current.find(w => w.id === id);
+        return found ?? prev;
+      });
     }
-  }, [workflows, currentWorkflow, saveWorkflows]);
+    console.log(`[WorkflowContext] Updated workflow: ${id}`);
+  }, [currentWorkflow]);
 
   const deleteWorkflow = useCallback(async (id: string) => {
-    const updated = workflows.filter(w => w.id !== id);
-    await saveWorkflows(updated);
+    setWorkflows(prev => prev.filter(w => w.id !== id));
     if (currentWorkflow?.id === id) {
-      setCurrentWorkflow(updated[0] ?? null);
+      setCurrentWorkflow(workflowsRef.current[0] ?? null);
     }
-  }, [workflows, currentWorkflow, saveWorkflows]);
+    console.log(`[WorkflowContext] Deleted workflow: ${id}`);
+  }, [currentWorkflow]);
 
   const executeWorkflow = useCallback(async (id: string, opts: ExecuteOptions = {}) => {
     const workflow = workflows.find(w => w.id === id);
@@ -232,7 +277,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
     };
 
     const validated = WorkflowExecutionSchema.parse(execution);
-    await saveExecutions([validated, ...executions]);
+    setExecutions(prev => [validated, ...prev]);
 
     try {
       console.log(`[WorkflowContext] Executing workflow: ${workflow.name}`);
@@ -287,7 +332,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
       };
 
       const completedValidated = WorkflowExecutionSchema.parse(completedExecution);
-      await saveExecutions([completedValidated, ...executions.filter(e => e.id !== validated.id)]);
+      setExecutions(prev => [completedValidated, ...prev.filter(e => e.id !== validated.id)]);
 
       await updateWorkflow(id, {
         lastRun: new Date(),
@@ -311,9 +356,9 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         ],
       };
       const failedValidated = WorkflowExecutionSchema.parse(failedExecution);
-      await saveExecutions([failedValidated, ...executions.filter(e => e.id !== validated.id)]);
+      setExecutions(prev => [failedValidated, ...prev.filter(e => e.id !== validated.id)]);
     }
-  }, [workflows, executions, saveExecutions, updateWorkflow]);
+  }, [workflows, updateWorkflow]);
 
   useEffect(() => {
     loadWorkflows();
@@ -400,11 +445,11 @@ async function executeNodeReal(
       return { triggered: true, timestamp: new Date() };
 
     case 'action':
-      return { action: node.data.action || 'default', executed: true };
+      return { action: node.data?.action || 'default', executed: true };
 
     case 'code': {
-      const code = String(node.data.code || '');
-      const allow = Boolean(node.data.allowExecution === true);
+      const code = String(node.data?.code || '');
+      const allow = Boolean(node.data?.allowExecution === true);
       if (!allow) throw new Error('Code node blocked (allowExecution=false).');
       guardSource(code, 'Code');
       if (opts.signal?.aborted) throw new Error('Execution cancelled');
@@ -415,7 +460,7 @@ async function executeNodeReal(
     }
 
     case 'condition': {
-      const expr = String(node.data.condition ?? 'true');
+      const expr = String(node.data?.condition ?? 'true');
       guardSource(expr, 'Condition');
       const fn = new Function('ctx', `return !!(${expr});`);
       const passed = !!fn(context);
@@ -423,19 +468,19 @@ async function executeNodeReal(
     }
 
     case 'transform': {
-      const expr = String(node.data.transform ?? 'ctx');
+      const expr = String(node.data?.transform ?? 'ctx');
       guardSource(expr, 'Transform');
       const fn = new Function('ctx', `return (${expr});`);
       return fn(context);
     }
 
     case 'api': {
-      const url: string = node.data.url;
+      const url = String(node.data?.url || '');
       if (!url) throw new Error('API node requires a URL');
-      const method = (node.data.method || 'GET').toUpperCase();
-      const headers: Record<string, string> = node.data.headers || {};
-      const bodyData = node.data.body;
-      const timeout = Number(node.data.timeout) || 30000;
+      const method = String(node.data?.method || 'GET').toUpperCase();
+      const headers: Record<string, string> = (node.data?.headers as Record<string, string>) || {};
+      const bodyData = node.data?.body;
+      const timeout = Number(node.data?.timeout) || 30000;
 
       const controller = new AbortController();
       const t = setTimeout(() => controller.abort(), timeout);
@@ -456,10 +501,10 @@ async function executeNodeReal(
     }
 
     case 'database':
-      return { query: node.data.query || 'SELECT 1', result: [] };
+      return { query: node.data?.query || 'SELECT 1', result: [] };
 
     case 'ai-agent':
-      return { agent: node.data.agent || 'default', response: 'AI response' };
+      return { agent: node.data?.agent || 'default', response: 'AI response' };
 
     case 'weather':
       return { weather: 'sunny', temp: 72 };
