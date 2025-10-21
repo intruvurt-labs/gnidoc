@@ -30,10 +30,10 @@ export async function runXAI(
     });
 
     if (!response.ok) {
-      throw new Error(`xAI API error: ${response.status} ${response.statusText}`);
+      throw new Error(`xAI API error: ${response.status}`);
     }
 
-    const json: any = await response.json();
+    const json = await response.json();
     const output = json.choices?.[0]?.message?.content ?? '';
     const tokensUsed = json.usage?.total_tokens ?? Math.ceil(output.length / 4);
 

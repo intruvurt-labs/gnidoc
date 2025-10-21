@@ -10,9 +10,9 @@ export async function runHuggingFace(
   if (!process.env.HF_API_KEY) throw new Error('Hugging Face API key not configured');
 
   const started = Date.now();
-  const url = `https://api-inference.huggingface.co/models/${modelId}`;
 
   try {
+    const url = `https://api-inference.huggingface.co/models/${modelId}`;
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -30,20 +30,19 @@ export async function runHuggingFace(
     });
 
     if (!response.ok) {
-      throw new Error(`HF API error: ${response.status} ${response.statusText}`);
+      throw new Error(`Hugging Face API error: ${response.status}`);
     }
 
-    const json: any = await response.json();
+    const json = await response.json();
     const output = Array.isArray(json)
       ? (json[0]?.generated_text ?? '')
       : (json.generated_text ?? JSON.stringify(json));
-
     const tokensUsed = Math.ceil((prompt.length + output.length) / 4);
 
     return {
       model: modelId,
       output,
-      score: output.length > 20 ? 0.6 : 0.25,
+      score: output.length > 20 ? 0.65 : 0.3,
       responseTime: Date.now() - started,
       tokensUsed,
     };

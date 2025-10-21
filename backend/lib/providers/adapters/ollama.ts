@@ -3,37 +3,36 @@ import type { ModelResult } from '../types';
 export async function runOllama(
   model: string,
   prompt: string,
-  system?: string,
+  _system?: string,
   temperature = 0.7,
-  _maxTokens = 2048
+  _maxTokens = 4096
 ): Promise<ModelResult> {
   const started = Date.now();
-  const baseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
 
   try {
-    const response = await fetch(`${baseUrl}/api/generate`, {
+    const response = await fetch('http://localhost:11434/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model,
-        prompt: system ? `${system}\n\n${prompt}` : prompt,
+        prompt,
         stream: false,
         options: { temperature },
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`Ollama API error: ${response.status} ${response.statusText}`);
+      throw new Error(`Ollama API error: ${response.status}`);
     }
 
-    const json: any = await response.json();
+    const json = await response.json();
     const output = json.response ?? '';
     const tokensUsed = Math.ceil((prompt.length + output.length) / 4);
 
     return {
       model,
       output,
-      score: output.length > 20 ? 0.5 : 0.2,
+      score: output.length > 20 ? 0.6 : 0.3,
       responseTime: Date.now() - started,
       tokensUsed,
     };
@@ -44,7 +43,7 @@ export async function runOllama(
       score: 0,
       responseTime: Date.now() - started,
       tokensUsed: 0,
-      error: error?.message || 'Ollama request failed (ensure service is running)',
+      error: error?.message || 'Ollama request failed (is server running?)',
     };
   }
 }

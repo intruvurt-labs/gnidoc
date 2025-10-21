@@ -30,17 +30,17 @@ export async function runDeepSeek(
     });
 
     if (!response.ok) {
-      throw new Error(`DeepSeek API error: ${response.status} ${response.statusText}`);
+      throw new Error(`DeepSeek API error: ${response.status}`);
     }
 
-    const json: any = await response.json();
+    const json = await response.json();
     const output = json.choices?.[0]?.message?.content ?? '';
     const tokensUsed = json.usage?.total_tokens ?? Math.ceil(output.length / 4);
 
     return {
       model,
       output,
-      score: output.length > 20 ? 0.75 : 0.3,
+      score: output.length > 20 ? 0.7 : 0.3,
       responseTime: Date.now() - started,
       tokensUsed,
     };
