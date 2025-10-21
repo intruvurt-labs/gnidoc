@@ -30,6 +30,10 @@ import { checkCodeProcedure } from "./routes/policy/check-code/route";
 import { manualFlagProcedure } from "./routes/policy/manual-flag/route";
 import { awardCreditsProcedure } from "./routes/policy/award-credits/route";
 import { generateProcedure, generateStreamProcedure, getGenerationStatusProcedure } from "./routes/generation/generate/route";
+import { scanInferProcedure } from "./routes/generation/scan-infer/route";
+import { dryRunProcedure } from "./routes/generation/dry-run/route";
+import { specProcedure } from "./routes/generation/spec/route";
+import { buildProcedure } from "./routes/generation/build/route";
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -89,6 +93,10 @@ export const appRouter = createTRPCRouter({
     generate: generateProcedure,
     stream: generateStreamProcedure,
     status: getGenerationStatusProcedure,
+    scanInfer: scanInferProcedure,
+    dryRun: dryRunProcedure,
+    spec: specProcedure,
+    build: buildProcedure,
   }),
 });
 
