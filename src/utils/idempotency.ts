@@ -1,4 +1,4 @@
-import { createHash } from 'crypto';
+import { sha256 } from 'js-sha256';
 
 export function generateIdempotencyKey(
   op: string,
@@ -8,7 +8,7 @@ export function generateIdempotencyKey(
   payload: any
 ): string {
   const data = JSON.stringify({ op, targetType, targetId, baseVersion, payload });
-  return createHash('sha256').update(data).digest('hex');
+  return sha256(data);
 }
 
 export function generateId(): string {
