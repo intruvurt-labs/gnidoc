@@ -29,6 +29,7 @@ import { getFileUrlProcedure } from "./routes/files/get-url/route";
 import { checkCodeProcedure } from "./routes/policy/check-code/route";
 import { manualFlagProcedure } from "./routes/policy/manual-flag/route";
 import { awardCreditsProcedure } from "./routes/policy/award-credits/route";
+import { generateProcedure, generateStreamProcedure, getGenerationStatusProcedure } from "./routes/generation/generate/route";
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -83,6 +84,11 @@ export const appRouter = createTRPCRouter({
     checkCode: checkCodeProcedure,
     manualFlag: manualFlagProcedure,
     awardCredits: awardCreditsProcedure,
+  }),
+  generation: createTRPCRouter({
+    generate: generateProcedure,
+    stream: generateStreamProcedure,
+    status: getGenerationStatusProcedure,
   }),
 });
 
