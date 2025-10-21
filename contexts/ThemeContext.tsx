@@ -110,6 +110,8 @@ const DEFAULT_SETTINGS: ThemeSettings = {
 export const [ThemeProvider, useTheme] = createContextHook(() => {
   const [settings, setSettingsState] = useState<ThemeSettings>(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const settingsRef = useRef(settings);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
 
   useEffect(() => {
     (async () => {
@@ -131,13 +133,16 @@ export const [ThemeProvider, useTheme] = createContextHook(() => {
   const setSettings = useCallback(async (updates: Partial<ThemeSettings>) => {
     setSettingsState(prev => {
       const next = { ...prev, ...updates };
-      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(err => {
-        console.error('[ThemeContext] Failed to persist theme:', err);
-      });
       console.log('[ThemeContext] Theme updated:', updates);
       return next;
     });
   }, []);
+
+  useEffect(() => {
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(settingsRef.current)).catch(err => {
+      console.error('[ThemeContext] Failed to persist theme:', err);
+    });
+  }, [settings]);
 
   const currentTheme = useMemo(() => {
     return THEMES.find(t => t.id === settings.themeId) ?? THEMES[0];

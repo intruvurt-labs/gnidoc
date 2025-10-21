@@ -1,5 +1,5 @@
 import createContextHook from '@nkzw/create-context-hook';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
 
@@ -122,21 +122,10 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     autoRenew: true,
   });
 
-  useEffect(() => {
-    loadState();
-  }, []);
+  const stateRef = useRef(state);
+  useEffect(() => { stateRef.current = state; }, [state]);
 
-  useEffect(() => {
-    saveState();
-  }, [state]);
-
-  useEffect(() => {
-    if (user?.subscription && user.subscription !== state.currentTier) {
-      setState(prev => ({ ...prev, currentTier: user.subscription as SubscriptionTier }));
-    }
-  }, [user?.subscription]);
-
-  const loadState = async () => {
+  const loadState = useCallback(async () => {
     try {
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored) {
@@ -151,15 +140,29 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     } catch (error) {
       console.error('[Subscription] Failed to load state:', error);
     }
-  };
+  }, [user?.subscription]);
 
-  const saveState = async () => {
+  const saveState = useCallback(async () => {
     try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(stateRef.current));
     } catch (error) {
       console.error('[Subscription] Failed to save state:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadState();
+  }, [loadState]);
+
+  useEffect(() => {
+    saveState();
+  }, [state, saveState]);
+
+  useEffect(() => {
+    if (user?.subscription && user.subscription !== state.currentTier) {
+      setState(prev => ({ ...prev, currentTier: user.subscription as SubscriptionTier }));
+    }
+  }, [user?.subscription, state.currentTier]);
 
   const getCurrentPlan = useCallback(() => {
     return subscriptionPlans.find(plan => plan.id === state.currentTier) || subscriptionPlans[0];
@@ -182,7 +185,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
 
     const allowedTiers = featureMap[feature] || [];
     return allowedTiers.includes(state.currentTier);
-  }, [state.currentTier, getCurrentPlan]);
+  }, [state.currentTier]);
 
   const getCollaborationSeats = useCallback((): number => {
     const seatMap: Record<SubscriptionTier, number> = {

@@ -113,12 +113,21 @@ function clampNumber(v: any, min: number, max: number, fallback: number) {
   return fallback;
 }
 
-function debounce<T extends (...args: any[]) => void>(fn: T, ms = 200) {
-  let t: any;
-  return (...args: Parameters<T>) => {
+function makeDebounce<T extends (...args: any[]) => any>(fn: T, ms = 200) {
+  let t: any = null;
+  let lastArgs: Parameters<T> | null = null;
+  const debounced = (...args: Parameters<T>) => {
+    lastArgs = args;
     clearTimeout(t);
-    t = setTimeout(() => fn(...args), ms);
+    t = setTimeout(() => {
+      const a = lastArgs as Parameters<T>;
+      lastArgs = null;
+      fn(...a);
+    }, ms);
   };
+  debounced.cancel = () => { clearTimeout(t); t = null; lastArgs = null; };
+  debounced.flush = () => { if (t && lastArgs) { clearTimeout(t); const a = lastArgs as Parameters<T>; lastArgs = null; fn(...a); } };
+  return debounced as T & { cancel: () => void; flush: () => void };
 }
 
 const generateId = (p = 'ctx') => `${p}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -141,16 +150,23 @@ export const [PreferencesProvider, usePreferences] = createContextHook(() => {
     contexts: [],
   });
 
+  // Keep freshest snapshots
+  const preferencesRef = useRef(preferences);
+  const contextsRef = useRef(savedContexts);
+  useEffect(() => { preferencesRef.current = preferences; }, [preferences]);
+  useEffect(() => { contextsRef.current = savedContexts; }, [savedContexts]);
+
   /** Debounced persistence **/
   const persistPrefs = useMemo(
     () =>
-      debounce(async (p: BuilderPreferences) => {
+      makeDebounce(async () => {
         try {
+          const p = preferencesRef.current;
           await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(p));
           memoryBackup.current.prefs = p;
         } catch (e) {
           log.error('Persist preferences failed; keeping in-memory fallback.', e);
-          memoryBackup.current.prefs = p;
+          memoryBackup.current.prefs = preferencesRef.current;
         }
       }, SAVE_DEBOUNCE_MS),
     []
@@ -158,18 +174,31 @@ export const [PreferencesProvider, usePreferences] = createContextHook(() => {
 
   const persistContexts = useMemo(
     () =>
-      debounce(async (list: SavedContext[]) => {
+      makeDebounce(async () => {
         try {
+          const list = contextsRef.current;
           const serializable = list.map((c) => ({ ...c, timestamp: c.timestamp.toISOString() }));
-        await AsyncStorage.setItem(CONTEXTS_KEY, JSON.stringify(serializable));
+          await AsyncStorage.setItem(CONTEXTS_KEY, JSON.stringify(serializable));
           memoryBackup.current.contexts = list;
         } catch (e) {
           log.error('Persist contexts failed; keeping in-memory fallback.', e);
-          memoryBackup.current.contexts = list;
+          memoryBackup.current.contexts = contextsRef.current;
         }
       }, SAVE_DEBOUNCE_MS),
     []
   );
+
+  // Call persisters on state changes
+  useEffect(() => { persistPrefs(); }, [preferences, persistPrefs]);
+  useEffect(() => { persistContexts(); }, [savedContexts, persistContexts]);
+
+  // Cleanup
+  useEffect(() => () => {
+    persistPrefs.flush?.();
+    persistContexts.flush?.();
+    persistPrefs.cancel?.();
+    persistContexts.cancel?.();
+  }, [persistPrefs, persistContexts]);
 
   /** Load **/
   const loadPreferences = useCallback(async () => {
@@ -219,17 +248,15 @@ export const [PreferencesProvider, usePreferences] = createContextHook(() => {
     async (updates: Partial<BuilderPreferences>) => {
       const next: BuilderPreferences = migratePreferences({ ...preferences, ...updates });
       setPreferences(next);
-      persistPrefs(next);
       log.info('Updated preferences:', updates);
     },
-    [preferences, persistPrefs]
+    [preferences]
   );
 
   const resetPreferences = useCallback(async () => {
     setPreferences(DEFAULT_PREFERENCES);
-    persistPrefs(DEFAULT_PREFERENCES);
     log.info('Reset to defaults');
-  }, [persistPrefs]);
+  }, []);
 
   /** Contexts CRUD & helpers **/
   const saveContext = useCallback(
@@ -245,11 +272,10 @@ export const [PreferencesProvider, usePreferences] = createContextHook(() => {
       // enforce cap
       const capped = [newContext, ...savedContexts].slice(0, preferences.maxContextHistory);
       setSavedContexts(capped);
-      persistContexts(capped);
       log.info('Saved context:', newContext.title);
       return newContext;
     },
-    [savedContexts, preferences.maxContextHistory, persistContexts]
+    [savedContexts, preferences.maxContextHistory]
   );
 
   const loadContext = useCallback(
@@ -265,10 +291,9 @@ export const [PreferencesProvider, usePreferences] = createContextHook(() => {
     async (contextId: string) => {
       const updated = savedContexts.filter((c) => c.id !== contextId);
       setSavedContexts(updated);
-      persistContexts(updated);
       log.info('Deleted context:', contextId);
     },
-    [savedContexts, persistContexts]
+    [savedContexts]
   );
 
   // New: edit/duplicate/toggle pin/add tags/search/export/import
@@ -286,9 +311,8 @@ export const [PreferencesProvider, usePreferences] = createContextHook(() => {
           : c
       );
       setSavedContexts(updated);
-      persistContexts(updated);
     },
-    [savedContexts, persistContexts]
+    [savedContexts]
   );
 
   const duplicateContext = useCallback(
@@ -304,19 +328,17 @@ export const [PreferencesProvider, usePreferences] = createContextHook(() => {
       };
       const capped = [dupe, ...savedContexts].slice(0, preferences.maxContextHistory);
       setSavedContexts(capped);
-      persistContexts(capped);
       return dupe;
     },
-    [savedContexts, preferences.maxContextHistory, persistContexts]
+    [savedContexts, preferences.maxContextHistory]
   );
 
   const togglePin = useCallback(
     async (contextId: string) => {
       const updated = savedContexts.map((c) => (c.id === contextId ? { ...c, pinned: !c.pinned } : c));
       setSavedContexts(updated);
-      persistContexts(updated);
     },
-    [savedContexts, persistContexts]
+    [savedContexts]
   );
 
   const addTags = useCallback(
@@ -326,9 +348,8 @@ export const [PreferencesProvider, usePreferences] = createContextHook(() => {
         c.id === contextId ? { ...c, tags: normalizeTags([...(c.tags || []), ...norm]) } : c
       );
       setSavedContexts(updated);
-      persistContexts(updated);
     },
-    [savedContexts, persistContexts]
+    [savedContexts]
   );
 
   const searchContexts = useCallback(
@@ -348,7 +369,8 @@ export const [PreferencesProvider, usePreferences] = createContextHook(() => {
         })
         .sort((a, b) => {
           // pinned first, then recent
-          if (!!b.pinned - !!a.pinned !== 0) return Number(b.pinned) - Number(a.pinned);
+          const pinnedDiff = (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0);
+          if (pinnedDiff !== 0) return pinnedDiff;
           return b.timestamp.getTime() - a.timestamp.getTime();
         });
     },
@@ -373,14 +395,13 @@ export const [PreferencesProvider, usePreferences] = createContextHook(() => {
           .forEach((c) => { if (!byId.has(c.id)) byId.set(c.id, c); });
         const final = Array.from(byId.values()).slice(0, preferences.maxContextHistory);
         setSavedContexts(final);
-        persistContexts(final);
         return final.length;
       } catch (e) {
         log.error('Import contexts failed:', e);
         throw new Error('Invalid import file');
       }
     },
-    [savedContexts, preferences.maxContextHistory, persistContexts]
+    [savedContexts, preferences.maxContextHistory]
   );
 
   /** Persona/Discipline/SVA system prompts (kept from your design) **/

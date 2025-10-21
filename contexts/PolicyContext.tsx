@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import createContextHook from '@nkzw/create-context-hook';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { trpc } from '@/lib/trpc';
@@ -35,6 +35,11 @@ export const [PolicyProvider, usePolicy] = createContextHook(() => {
   const [violations, setViolations] = useState<ViolationRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const settingsRef = useRef(settings);
+  const violationsRef = useRef(violations);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
+  useEffect(() => { violationsRef.current = violations; }, [violations]);
+
   const checkCodeMutation = trpc.policy.checkCode.useMutation();
   const manualFlagMutation = trpc.policy.manualFlag.useMutation();
   const awardCreditsMutation = trpc.policy.awardCredits.useMutation();
@@ -69,7 +74,7 @@ export const [PolicyProvider, usePolicy] = createContextHook(() => {
   };
 
   const saveSettings = async (newSettings: Partial<PolicySettings>) => {
-    const updated = { ...settings, ...newSettings };
+    const updated = { ...settingsRef.current, ...newSettings };
     setSettings(updated);
     try {
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
@@ -79,7 +84,7 @@ export const [PolicyProvider, usePolicy] = createContextHook(() => {
   };
 
   const saveViolation = async (violation: ViolationRecord) => {
-    const updated = [violation, ...violations].slice(0, 100);
+    const updated = [violation, ...violationsRef.current].slice(0, 100);
     setViolations(updated);
     try {
       await AsyncStorage.setItem(VIOLATIONS_KEY, JSON.stringify(updated));
@@ -184,21 +189,21 @@ export const [PolicyProvider, usePolicy] = createContextHook(() => {
     async (tier: SubscriptionTier) => {
       await saveSettings({ tier });
     },
-    [settings]
+    []
   );
 
   const togglePolicy = useCallback(
     async (enabled: boolean) => {
       await saveSettings({ enabled });
     },
-    [settings]
+    []
   );
 
   const setMode = useCallback(
     async (mode: PolicyMode) => {
       await saveSettings({ mode });
     },
-    [settings]
+    []
   );
 
   return useMemo(

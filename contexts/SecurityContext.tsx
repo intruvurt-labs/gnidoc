@@ -102,11 +102,25 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
   const [isEncryptionEnabled, setIsEncryptionEnabled] = useState(true);
   const [nimRevProtocolActive, setNimRevProtocolActive] = useState(false);
 
+  const scanHistoryRef = React.useRef(scanHistory);
+  const collaborationLinksRef = React.useRef(collaborationLinks);
+  React.useEffect(() => { scanHistoryRef.current = scanHistory; }, [scanHistory]);
+  React.useEffect(() => { collaborationLinksRef.current = collaborationLinks; }, [collaborationLinks]);
+
   useEffect(() => {
-    loadSettings();
-    loadScans();
-    loadLinks();
+    const init = async () => {
+      await loadSettings();
+      await loadScans();
+      await loadLinks();
+    };
+    init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const settingsStateRef = React.useRef({ securityLevel, obfuscationConfig, isEncryptionEnabled, nimRevProtocolActive });
+  React.useEffect(() => {
+    settingsStateRef.current = { securityLevel, obfuscationConfig, isEncryptionEnabled, nimRevProtocolActive };
+  }, [securityLevel, obfuscationConfig, isEncryptionEnabled, nimRevProtocolActive]);
 
   useEffect(() => {
     saveSettings();
@@ -130,7 +144,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     try {
       await AsyncStorage.setItem(
         SETTINGS_KEY,
-        JSON.stringify({ securityLevel, obfuscationConfig, isEncryptionEnabled, nimRevProtocolActive })
+        JSON.stringify(settingsStateRef.current)
       );
     } catch (e) {
       console.error('[Security] save settings failed', e);
@@ -146,9 +160,9 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const saveScans = async (history: SecurityScan[]) => {
+  const saveScans = async () => {
     try {
-      await AsyncStorage.setItem(SCAN_HISTORY_KEY, JSON.stringify(history));
+      await AsyncStorage.setItem(SCAN_HISTORY_KEY, JSON.stringify(scanHistoryRef.current));
     } catch (e) {
       console.error('[Security] save scans failed', e);
     }
@@ -166,9 +180,9 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const saveLinks = async (links: CollaborationLink[]) => {
+  const saveLinks = async () => {
     try {
-      await AsyncStorage.setItem(LINKS_KEY, JSON.stringify(links));
+      await AsyncStorage.setItem(LINKS_KEY, JSON.stringify(collaborationLinksRef.current));
     } catch (e) {
       console.error('[Security] save links failed', e);
     }
@@ -270,7 +284,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
 
     const history = [scan, ...scanHistory].slice(0, 50);
     setScanHistory(history);
-    await saveScans(history);
+    await saveScans();
     return scan;
   };
 
@@ -309,7 +323,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
 
     const updated = [...collaborationLinks, link];
     setCollaborationLinks(updated);
-    await saveLinks(updated);
+    await saveLinks();
 
     return link;
   };
@@ -317,7 +331,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
   const revokeCollaborationLink = async (linkId: string) => {
     const updated = collaborationLinks.filter(l => l.id !== linkId);
     setCollaborationLinks(updated);
-    await saveLinks(updated);
+    await saveLinks();
   };
 
   const validateCollaborationLink = async (token: string): Promise<CollaborationLink | null> => {
@@ -331,7 +345,7 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
 
     const updated = collaborationLinks.map(l => (l.id === link.id ? { ...l, usedCount: l.usedCount + 1 } : l));
     setCollaborationLinks(updated);
-    await saveLinks(updated);
+    await saveLinks();
 
     return updated.find(l => l.id === link.id) || null;
   };
