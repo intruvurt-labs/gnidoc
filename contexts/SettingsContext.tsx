@@ -1,7 +1,5 @@
 import createContextHook from '@nkzw/create-context-hook';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { debounce } from '@/lib/performance';
 import { batchSetItems, batchGetItems } from '@/lib/storage';
 import { z } from 'zod';
 
@@ -85,12 +83,21 @@ const DEFAULT_PROFILE: UserProfile = {
 
 /** ───────────────────────── Utils ───────────────────────── */
 
-function deepEqual(a: unknown, b: unknown) {
-  try {
-    return JSON.stringify(a) === JSON.stringify(b);
-  } catch {
-    return false;
-  }
+function makeDebounce<T extends (...args: any[]) => any>(fn: T, ms = 300) {
+  let t: any = null;
+  let lastArgs: Parameters<T> | null = null;
+  const debounced = (...args: Parameters<T>) => {
+    lastArgs = args;
+    clearTimeout(t);
+    t = setTimeout(() => {
+      const a = lastArgs as Parameters<T>;
+      lastArgs = null;
+      fn(...a);
+    }, ms);
+  };
+  debounced.cancel = () => { clearTimeout(t); t = null; lastArgs = null; };
+  debounced.flush = () => { if (t && lastArgs) { clearTimeout(t); const a = lastArgs as Parameters<T>; lastArgs = null; fn(...a); } };
+  return debounced as T & { cancel: () => void; flush: () => void };
 }
 
 /** ───────────────────────── Context ───────────────────────── */
@@ -100,42 +107,42 @@ export const [SettingsProvider, useSettings] = createContextHook(() => {
   const [profile, setProfile] = useState<UserProfile>(DEFAULT_PROFILE);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Debounced persistors
-  const debouncedSaveSettings = useRef(
-    debounce(async (next: AppSettings) => {
-      try {
-        // validate before persisting
-        const parsed = SettingsSchema.parse(next);
-        await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(parsed));
-        // console.log('[SettingsContext] Settings persisted');
-      } catch (err) {
-        console.error('[SettingsContext] Persist settings failed:', err);
-      }
-    }, 400)
-  ).current;
+  // Keep freshest snapshots
+  const settingsRef = useRef(settings);
+  const profileRef = useRef(profile);
+  useEffect(() => { settingsRef.current = settings; }, [settings]);
+  useEffect(() => { profileRef.current = profile; }, [profile]);
 
-  const debouncedSaveProfile = useRef(
-    debounce(async (next: UserProfile) => {
-      try {
-        const parsed = ProfileSchema.parse(next);
-        await AsyncStorage.setItem(PROFILE_KEY, JSON.stringify(parsed));
-        // console.log('[SettingsContext] Profile persisted');
-      } catch (err) {
-        console.error('[SettingsContext] Persist profile failed:', err);
-      }
-    }, 400)
-  ).current;
+  // Unified persisters (batched)
+  const persistSettings = useMemo(() => makeDebounce(async () => {
+    try {
+      const parsed = SettingsSchema.parse(settingsRef.current);
+      await batchSetItems({ [SETTINGS_KEY]: JSON.stringify(parsed) });
+    } catch (err) {
+      console.error('[SettingsContext] Persist settings failed:', err);
+    }
+  }, 400), []);
 
-  // Cleanup debouncers on unmount to avoid post-unmount state updates
-  useEffect(() => {
-    return () => {
-      // if your debounce util exposes cancel/flush, call it here:
-      // @ts-ignore
-      debouncedSaveSettings.cancel?.();
-      // @ts-ignore
-      debouncedSaveProfile.cancel?.();
-    };
-  }, [debouncedSaveSettings, debouncedSaveProfile]);
+  const persistProfile = useMemo(() => makeDebounce(async () => {
+    try {
+      const parsed = ProfileSchema.parse(profileRef.current);
+      await batchSetItems({ [PROFILE_KEY]: JSON.stringify(parsed) });
+    } catch (err) {
+      console.error('[SettingsContext] Persist profile failed:', err);
+    }
+  }, 400), []);
+
+  // Call them whenever state changes (they read from refs at flush time)
+  useEffect(() => { persistSettings(); }, [settings, persistSettings]);
+  useEffect(() => { persistProfile(); }, [profile, persistProfile]);
+
+  // Cleanup
+  useEffect(() => () => {
+    persistSettings.flush?.();
+    persistProfile.flush?.();
+    persistSettings.cancel?.();
+    persistProfile.cancel?.();
+  }, [persistSettings, persistProfile]);
 
   /** Load once */
   const loadSettings = useCallback(async () => {
@@ -191,24 +198,20 @@ export const [SettingsProvider, useSettings] = createContextHook(() => {
     async (updates: Partial<AppSettings>) => {
       setSettings(prev => {
         const next = { ...prev, ...updates };
-        if (!deepEqual(prev, next)) debouncedSaveSettings(next);
         return next;
       });
-      // console.log('[SettingsContext] Settings updated:', updates);
     },
-    [debouncedSaveSettings]
+    []
   );
 
   const updateProfile = useCallback(
     async (updates: Partial<UserProfile>) => {
       setProfile(prev => {
         const next = { ...prev, ...updates };
-        if (!deepEqual(prev, next)) debouncedSaveProfile(next);
         return next;
       });
-      // console.log('[SettingsContext] Profile updated:', updates);
     },
-    [debouncedSaveProfile]
+    []
   );
 
   const resetSettings = useCallback(async () => {
