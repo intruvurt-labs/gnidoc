@@ -278,25 +278,21 @@ export const [SettingsProvider, useSettings] = createContextHook(() => {
     }
   }, []);
 
-  /** Migrations (no-ops for now; extend when you add fields) */
-  function migrateSettings(input: any): AppSettings {
-    // Example: supply defaults for newly added fields
-    const merged: AppSettings = {
-      ...DEFAULT_SETTINGS,
-      ...input,
-    };
-    // clamp numerics just in case
-    merged.fontSize = Math.min(32, Math.max(8, merged.fontSize));
-    merged.tabSize = Math.min(8, Math.max(2, merged.tabSize));
+  /** Migrations with version-aware upgrades */
+  function migrateSettings(input: any, fromVersion?: string): AppSettings {
+    const merged: AppSettings = { ...DEFAULT_SETTINGS, ...input };
+    merged.fontSize = Math.min(32, Math.max(8, Number(merged.fontSize) || DEFAULT_SETTINGS.fontSize));
+    merged.tabSize = Math.min(8, Math.max(2, Number(merged.tabSize) || DEFAULT_SETTINGS.tabSize));
+    
+    if (fromVersion && fromVersion < '1.1.0' && typeof merged.minimap !== 'boolean') {
+      merged.minimap = DEFAULT_SETTINGS.minimap;
+    }
+    
     return merged;
-    // Add per-version transforms here using `input.__version` if you store one.
   }
 
-  function migrateProfile(input: any): UserProfile {
-    return {
-      ...DEFAULT_PROFILE,
-      ...input,
-    };
+  function migrateProfile(input: any, _fromVersion?: string): UserProfile {
+    return { ...DEFAULT_PROFILE, ...input };
   }
 
   return useMemo(
