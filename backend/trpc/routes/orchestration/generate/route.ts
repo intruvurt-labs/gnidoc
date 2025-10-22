@@ -3,9 +3,9 @@ import { protectedProcedure } from "../../../create-context";
 import { generateText } from "@rork/toolkit-sdk";
 import { getAvailableModels } from "../../../../../lib/ai-providers";
 import { enforceNoDemo } from "../../../../../lib/noDemoEnforcement";
-import { orchestrateModels } from "../../../../../lib/multi-model";
-import { analyzeConsensus } from "../../../../../lib/consensus";
 import { parseGeneratedCode, extractDependencies } from "../../../../../lib/code-parser";
+import { runOrchestrator } from "../../../../lib/providers/orchestrator";
+import { GenInput } from "../../../../lib/providers/types";
 
 const orchestrationRequestSchema = z.object({
   prompt: z.string().min(1).max(5000),
@@ -46,37 +46,29 @@ export const orchestrateGenerationProcedure = protectedProcedure
       console.log('[Orchestration] Using multi-model consensus mode');
       
       try {
-        const orchestrationResults = await orchestrateModels({
-          models: input.models,
-          prompt: input.prompt,
-          system: input.systemPrompt,
-          maxParallel: 3,
-          timeout: 120000,
-        });
+        const { results, consensus } = await runOrchestrator(input.models, GenInput.parse({ prompt: input.prompt, system: input.systemPrompt }), 'code');
 
-        const consensus = await analyzeConsensus(orchestrationResults, input.prompt);
-        
         console.log('[Orchestration] Consensus analysis complete');
-        console.log(`[Orchestration] Winner: ${consensus.winner.model}, Score: ${consensus.consensusScore}%`);
+        console.log(`[Orchestration] Winner: ${consensus.winner.provider}/${consensus.winner.model}, Agreement: ${(consensus.agreement*100).toFixed(1)}%`);
         
-        const responses = orchestrationResults.map(r => ({
-          modelId: r.model,
-          content: r.output,
+        const responses = results.map(r => ({
+          modelId: `${r.provider}:${r.model}`,
+          content: r.text || '',
           qualityScore: Math.round(r.score * 100),
-          responseTime: r.responseTime,
-          tokensUsed: r.tokensUsed,
-          cost: (r.tokensUsed / 1000) * 0.02,
+          responseTime: r.responseTime || 0,
+          tokensUsed: r.tokensUsed || 0,
+          cost: ((r.tokensUsed || 0) / 1000) * 0.02,
           timestamp: new Date(),
-          error: r.error,
+          error: r.status === 'ok' ? undefined : (r.error || 'error'),
         }));
 
-        const files = parseGeneratedCode(consensus.mergedOutput, 'expo');
+        const files = parseGeneratedCode(consensus.consensus, 'expo');
         const dependencies = extractDependencies(files);
         
         let policyResult = null;
         if (input.enforcePolicyCheck && input.tier && input.tier >= 3) {
           console.log(`[Orchestration] Running policy check for tier ${input.tier}...`);
-          policyResult = enforceNoDemo(consensus.mergedOutput, input.tier);
+          policyResult = enforceNoDemo(consensus.consensus, input.tier);
         }
 
         const totalTime = Date.now() - startTime;
@@ -87,16 +79,16 @@ export const orchestrateGenerationProcedure = protectedProcedure
           prompt: input.prompt,
           models: input.models,
           responses,
-          selectedResponse: responses.find(r => r.modelId === consensus.winner.model) || responses[0],
+          selectedResponse: responses.find(r => r.modelId === `${consensus.winner.provider}:${consensus.winner.model}`) || responses[0],
           totalCost,
           totalTime,
           createdAt: new Date(),
           policyCheck: policyResult,
           consensus: {
-            winner: consensus.winner.model,
-            consensusScore: consensus.consensusScore,
-            agreements: consensus.agreements,
-            conflicts: consensus.conflicts,
+            winner: `${consensus.winner.provider}:${consensus.winner.model}`,
+            consensusScore: Math.round(consensus.confidence * 100),
+            agreements: [],
+            conflicts: [],
             reasoning: consensus.reasoning,
           },
           files,
