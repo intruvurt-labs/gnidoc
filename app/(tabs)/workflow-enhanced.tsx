@@ -14,6 +14,7 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Path, Circle } from 'react-native-svg';
 import {
   Workflow as WorkflowIcon,
   Play,
@@ -34,12 +35,16 @@ import {
   Eye,
   Pause,
   RotateCw,
+  Cloud,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
 import { useWorkflow, WorkflowNode, WorkflowConnection } from '@/contexts/WorkflowContext';
 import * as Haptics from 'expo-haptics';
 
 const { width, height } = Dimensions.get('window');
+const CANVAS_WIDTH = width * 3;
+const CANVAS_HEIGHT = height * 3;
+const SNAP_DISTANCE = 30;
 
 const NODE_TYPES = [
   { type: 'trigger' as const, label: 'Trigger', icon: Zap, color: Colors.Colors.cyan.primary },
@@ -50,9 +55,129 @@ const NODE_TYPES = [
   { type: 'database' as const, label: 'Database', icon: Database, color: Colors.Colors.red.primary },
   { type: 'transform' as const, label: 'Transform', icon: Filter, color: Colors.Colors.success },
   { type: 'action' as const, label: 'Action', icon: Box, color: Colors.Colors.warning },
+  { type: 'weather' as const, label: 'Weather', icon: Cloud, color: Colors.Colors.cyan.primary },
 ];
 
-export default function WorkflowScreen() {
+interface DraggableNodeProps {
+  node: WorkflowNode;
+  onPress: () => void;
+  onLongPress: () => void;
+  onPositionChange: (x: number, y: number) => void;
+  isSelected: boolean;
+  isConnecting: boolean;
+  zoom: number;
+  canvasOffset: { x: number; y: number };
+  onStartConnection: () => void;
+  onEndConnection: () => void;
+}
+
+const DraggableNode: React.FC<DraggableNodeProps> = ({
+  node,
+  onPress,
+  onLongPress,
+  onPositionChange,
+  isSelected,
+  isConnecting,
+  zoom,
+  canvasOffset,
+  onStartConnection,
+  onEndConnection,
+}) => {
+  const pan = useRef(new Animated.ValueXY({ x: node.position.x, y: node.position.y })).current;
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const currentPosition = useRef({ x: node.position.x, y: node.position.y });
+
+  React.useEffect(() => {
+    currentPosition.current = { x: node.position.x, y: node.position.y };
+    pan.setValue({ x: node.position.x, y: node.position.y });
+  }, [node.position.x, node.position.y, pan]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        setIsDragging(true);
+        pan.setOffset({
+          x: currentPosition.current.x,
+          y: currentPosition.current.y,
+        });
+        pan.setValue({ x: 0, y: 0 });
+      },
+      onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], {
+        useNativeDriver: false,
+      }),
+      onPanResponderRelease: (_, gesture) => {
+        pan.flattenOffset();
+        setIsDragging(false);
+
+        const newX = currentPosition.current.x + gesture.dx;
+        const newY = currentPosition.current.y + gesture.dy;
+
+        const boundedX = Math.max(0, Math.min(CANVAS_WIDTH - 120, newX));
+        const boundedY = Math.max(0, Math.min(CANVAS_HEIGHT - 100, newY));
+
+        currentPosition.current = { x: boundedX, y: boundedY };
+        pan.setValue({ x: boundedX, y: boundedY });
+        onPositionChange(boundedX, boundedY);
+
+        if (Math.abs(gesture.dx) < 5 && Math.abs(gesture.dy) < 5) {
+          onPress();
+        }
+      },
+    })
+  ).current;
+
+  const nodeTypeConfig = NODE_TYPES.find((nt) => nt.type === node.type);
+  const Icon = nodeTypeConfig?.icon || Box;
+
+  return (
+    <Animated.View
+      {...panResponder.panHandlers}
+      style={[
+        styles.node,
+        {
+          transform: [{ translateX: pan.x }, { translateY: pan.y }, { scale: isDragging ? 1.1 : 1 }],
+          borderColor: node.config.color || Colors.Colors.border.primary,
+          backgroundColor: isSelected
+            ? Colors.Colors.background.card
+            : Colors.Colors.background.secondary,
+          borderWidth: isSelected ? 2 : 1,
+          opacity: isDragging ? 0.8 : 1,
+          zIndex: isDragging ? 1000 : 1,
+        },
+      ]}
+    >
+      <View style={styles.nodeHeader}>
+        <Icon color={node.config.color || Colors.Colors.text.primary} size={16} />
+        <Text style={styles.nodeLabel} numberOfLines={1}>
+          {node.label}
+        </Text>
+      </View>
+      <Text style={styles.nodeType}>{node.type}</Text>
+
+      {node.config.inputs && node.config.inputs.length > 0 && (
+        <TouchableOpacity
+          style={[styles.nodePort, styles.nodePortInput]}
+          onPress={onEndConnection}
+        >
+          <View style={[styles.nodePortDot, { backgroundColor: node.config.color }]} />
+        </TouchableOpacity>
+      )}
+
+      {node.config.outputs && node.config.outputs.length > 0 && (
+        <TouchableOpacity
+          style={[styles.nodePort, styles.nodePortOutput]}
+          onPress={onStartConnection}
+        >
+          <View style={[styles.nodePortDot, { backgroundColor: node.config.color }]} />
+        </TouchableOpacity>
+      )}
+    </Animated.View>
+  );
+};
+
+export default function WorkflowEnhancedScreen() {
   const insets = useSafeAreaInsets();
   const {
     workflows,
@@ -112,7 +237,7 @@ export default function WorkflowScreen() {
       await Haptics.selectionAsync();
     }
 
-    const nodeTypeConfig = NODE_TYPES.find(nt => nt.type === nodeType);
+    const nodeTypeConfig = NODE_TYPES.find((nt) => nt.type === nodeType);
     const newNode: WorkflowNode = {
       id: `node-${Date.now()}`,
       type: nodeType,
@@ -144,20 +269,16 @@ export default function WorkflowScreen() {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
 
-    Alert.alert(
-      node.label,
-      'What would you like to do?',
-      [
-        { text: 'Configure', onPress: () => handleNodePress(node) },
-        { text: 'Duplicate', onPress: () => handleDuplicateNode(node) },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => handleDeleteNode(node.id),
-        },
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
+    Alert.alert(node.label, 'What would you like to do?', [
+      { text: 'Configure', onPress: () => handleNodePress(node) },
+      { text: 'Duplicate', onPress: () => handleDuplicateNode(node) },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => handleDeleteNode(node.id),
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
   };
 
   const handleDuplicateNode = async (node: WorkflowNode) => {
@@ -180,32 +301,28 @@ export default function WorkflowScreen() {
   const handleDeleteNode = async (nodeId: string) => {
     if (!currentWorkflow) return;
 
-    Alert.alert(
-      'Delete Node',
-      'Are you sure you want to delete this node?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            await deleteNode(currentWorkflow.id, nodeId);
-            if (selectedNode?.id === nodeId) {
-              setSelectedNode(null);
-              setShowNodeConfig(false);
-            }
-            console.log(`[Workflow] Deleted node: ${nodeId}`);
-          },
+    Alert.alert('Delete Node', 'Are you sure you want to delete this node?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          await deleteNode(currentWorkflow.id, nodeId);
+          if (selectedNode?.id === nodeId) {
+            setSelectedNode(null);
+            setShowNodeConfig(false);
+          }
+          console.log(`[Workflow] Deleted node: ${nodeId}`);
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleConnectNodes = async (sourceId: string, targetId: string) => {
     if (!currentWorkflow) return;
 
     const existingConnection = currentWorkflow.connections.find(
-      c => c.source === sourceId && c.target === targetId
+      (c) => c.source === sourceId && c.target === targetId
     );
 
     if (existingConnection) {
@@ -222,6 +339,11 @@ export default function WorkflowScreen() {
     await addConnection(currentWorkflow.id, newConnection);
     setConnectingFrom(null);
     console.log(`[Workflow] Connected ${sourceId} to ${targetId}`);
+  };
+
+  const handleNodePositionChange = async (nodeId: string, x: number, y: number) => {
+    if (!currentWorkflow) return;
+    await updateNode(currentWorkflow.id, nodeId, { position: { x, y } });
   };
 
   const handleExecuteWorkflow = async () => {
@@ -242,12 +364,12 @@ export default function WorkflowScreen() {
     try {
       console.log(`[Workflow] Executing workflow: ${currentWorkflow.name}`);
       const execution = await executeWorkflow(currentWorkflow.id);
-      
+
       if (execution) {
         setShowExecutionLogs(true);
         Alert.alert(
           'Execution Complete',
-          `Workflow "${currentWorkflow.name}" executed successfully!\n\nStatus: ${execution.status}\nNodes executed: ${currentWorkflow.nodes.length}\nDuration: ${execution.endTime && execution.startTime ? Math.round((execution.endTime.getTime() - execution.startTime.getTime()) / 1000) : 0}s`,
+          `Workflow "${currentWorkflow.name}" executed successfully!\\n\\nStatus: ${execution.status}\\nNodes executed: ${currentWorkflow.nodes.length}\\nDuration: ${execution.endTime && execution.startTime ? Math.round((execution.endTime.getTime() - execution.startTime.getTime()) / 1000) : 0}s`,
           [
             { text: 'View Logs', onPress: () => setShowExecutionLogs(true) },
             { text: 'OK' },
@@ -271,93 +393,42 @@ export default function WorkflowScreen() {
     console.log(`[Workflow] Saved workflow: ${currentWorkflow.name}`);
   };
 
-  const renderNode = (node: WorkflowNode) => {
-    const nodeTypeConfig = NODE_TYPES.find(nt => nt.type === node.type);
-    const Icon = nodeTypeConfig?.icon || Box;
-    const isSelected = selectedNode?.id === node.id;
-    const isConnecting = connectingFrom === node.id;
-
-    return (
-      <TouchableOpacity
-        key={node.id}
-        style={[
-          styles.node,
-          {
-            left: node.position.x * zoom + canvasOffset.x,
-            top: node.position.y * zoom + canvasOffset.y,
-            borderColor: node.config.color || Colors.Colors.border.primary,
-            backgroundColor: isSelected
-              ? Colors.Colors.background.card
-              : Colors.Colors.background.secondary,
-            borderWidth: isSelected ? 2 : 1,
-            transform: [{ scale: isConnecting ? 1.1 : 1 }],
-          },
-        ]}
-        onPress={() => handleNodePress(node)}
-        onLongPress={() => handleNodeLongPress(node)}
-      >
-        <View style={styles.nodeHeader}>
-          <Icon color={node.config.color || Colors.Colors.text.primary} size={16} />
-          <Text style={styles.nodeLabel} numberOfLines={1}>
-            {node.label}
-          </Text>
-        </View>
-        <Text style={styles.nodeType}>{node.type}</Text>
-
-        {node.config.inputs && node.config.inputs.length > 0 && (
-          <TouchableOpacity
-            style={[styles.nodePort, styles.nodePortInput]}
-            onPress={() => {
-              if (connectingFrom && connectingFrom !== node.id) {
-                handleConnectNodes(connectingFrom, node.id);
-              }
-            }}
-          >
-            <View style={[styles.nodePortDot, { backgroundColor: node.config.color }]} />
-          </TouchableOpacity>
-        )}
-
-        {node.config.outputs && node.config.outputs.length > 0 && (
-          <TouchableOpacity
-            style={[styles.nodePort, styles.nodePortOutput]}
-            onPress={() => {
-              setConnectingFrom(connectingFrom === node.id ? null : node.id);
-            }}
-          >
-            <View style={[styles.nodePortDot, { backgroundColor: node.config.color }]} />
-          </TouchableOpacity>
-        )}
-      </TouchableOpacity>
-    );
-  };
-
   const renderConnection = (connection: WorkflowConnection) => {
-    const sourceNode = currentWorkflow?.nodes.find(n => n.id === connection.source);
-    const targetNode = currentWorkflow?.nodes.find(n => n.id === connection.target);
+    const sourceNode = currentWorkflow?.nodes.find((n) => n.id === connection.source);
+    const targetNode = currentWorkflow?.nodes.find((n) => n.id === connection.target);
 
     if (!sourceNode || !targetNode) return null;
 
-    const startX = (sourceNode.position.x + 60) * zoom + canvasOffset.x;
-    const startY = (sourceNode.position.y + 30) * zoom + canvasOffset.y;
-    const endX = (targetNode.position.x) * zoom + canvasOffset.x;
-    const endY = (targetNode.position.y + 30) * zoom + canvasOffset.y;
+    const startX = sourceNode.position.x + 120;
+    const startY = sourceNode.position.y + 50;
+    const endX = targetNode.position.x;
+    const endY = targetNode.position.y + 50;
+
+    const midX = (startX + endX) / 2;
+
+    const pathData = `M ${startX} ${startY} C ${midX} ${startY}, ${midX} ${endY}, ${endX} ${endY}`;
 
     return (
-      <View
+      <Svg
         key={connection.id}
-        style={[
-          styles.connection,
-          {
-            left: startX,
-            top: startY,
-            width: Math.abs(endX - startX),
-            height: 2,
-            transform: [
-              { rotate: `${Math.atan2(endY - startY, endX - startX)}rad` },
-            ],
-          },
-        ]}
-      />
+        style={StyleSheet.absoluteFill}
+        width={CANVAS_WIDTH}
+        height={CANVAS_HEIGHT}
+      >
+        <Path
+          d={pathData}
+          stroke={Colors.Colors.cyan.primary}
+          strokeWidth={2}
+          fill="none"
+          opacity={0.6}
+        />
+        <Circle
+          cx={endX}
+          cy={endY}
+          r={4}
+          fill={Colors.Colors.cyan.primary}
+        />
+      </Svg>
     );
   };
 
@@ -381,10 +452,16 @@ export default function WorkflowScreen() {
           <View style={{ flex: 1 }}>
             <Text style={styles.workflowName}>{currentWorkflow.name}</Text>
             <Text style={styles.workflowMeta}>
-              {currentWorkflow.nodes.length} nodes • {currentWorkflow.connections.length} connections • {currentWorkflow.runCount} runs
+              {currentWorkflow.nodes.length} nodes • {currentWorkflow.connections.length}{' '}
+              connections • {currentWorkflow.runCount} runs
             </Text>
           </View>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(currentWorkflow.status) }]}>
+          <View
+            style={[
+              styles.statusBadge,
+              { backgroundColor: getStatusColor(currentWorkflow.status) },
+            ]}
+          >
             <Text style={styles.statusText}>{currentWorkflow.status}</Text>
           </View>
         </View>
@@ -405,9 +482,7 @@ export default function WorkflowScreen() {
           disabled={isExecuting}
         >
           <Play color={Colors.Colors.success} size={18} />
-          <Text style={styles.toolbarButtonText}>
-            {isExecuting ? 'Running...' : 'Run'}
-          </Text>
+          <Text style={styles.toolbarButtonText}>{isExecuting ? 'Running...' : 'Run'}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.toolbarButton} onPress={handleSaveWorkflow}>
@@ -426,62 +501,82 @@ export default function WorkflowScreen() {
         )}
       </View>
 
-      <ScrollView
-        style={styles.canvas}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        showsVerticalScrollIndicator={false}
-      >
+      <View style={styles.canvas}>
         <ScrollView
-          style={styles.canvasInner}
+          horizontal
           showsHorizontalScrollIndicator={false}
-          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ width: CANVAS_WIDTH }}
         >
-          <View style={styles.canvasContent}>
-            {currentWorkflow?.connections.map(renderConnection)}
-            {currentWorkflow?.nodes.map(renderNode)}
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ height: CANVAS_HEIGHT }}
+          >
+            <View style={styles.canvasContent}>
+              {currentWorkflow?.connections.map(renderConnection)}
+              {currentWorkflow?.nodes.map((node) => (
+                <DraggableNode
+                  key={node.id}
+                  node={node}
+                  onPress={() => handleNodePress(node)}
+                  onLongPress={() => handleNodeLongPress(node)}
+                  onPositionChange={(x, y) => handleNodePositionChange(node.id, x, y)}
+                  isSelected={selectedNode?.id === node.id}
+                  isConnecting={connectingFrom === node.id}
+                  zoom={zoom}
+                  canvasOffset={canvasOffset}
+                  onStartConnection={() => {
+                    setConnectingFrom(connectingFrom === node.id ? null : node.id);
+                  }}
+                  onEndConnection={() => {
+                    if (connectingFrom && connectingFrom !== node.id) {
+                      handleConnectNodes(connectingFrom, node.id);
+                    }
+                  }}
+                />
+              ))}
 
-            {!currentWorkflow && (
-              <View style={styles.emptyState}>
-                <WorkflowIcon color={Colors.Colors.text.muted} size={64} />
-                <Text style={styles.emptyStateTitle}>No Workflow Selected</Text>
-                <Text style={styles.emptyStateText}>
-                  Create a new workflow to start building automation
-                </Text>
-                <TouchableOpacity
-                  style={styles.emptyStateButton}
-                  onPress={() => setShowWorkflowList(true)}
-                >
-                  <Plus color={Colors.Colors.text.inverse} size={20} />
-                  <Text style={styles.emptyStateButtonText}>Create Workflow</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+              {!currentWorkflow && (
+                <View style={styles.emptyState}>
+                  <WorkflowIcon color={Colors.Colors.text.muted} size={64} />
+                  <Text style={styles.emptyStateTitle}>No Workflow Selected</Text>
+                  <Text style={styles.emptyStateText}>
+                    Create a new workflow to start building automation
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.emptyStateButton}
+                    onPress={() => setShowWorkflowList(true)}
+                  >
+                    <Plus color={Colors.Colors.text.inverse} size={20} />
+                    <Text style={styles.emptyStateButtonText}>Create Workflow</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
 
-            {currentWorkflow && currentWorkflow.nodes.length === 0 && (
-              <View style={styles.emptyState}>
-                <Box color={Colors.Colors.text.muted} size={64} />
-                <Text style={styles.emptyStateTitle}>Empty Canvas</Text>
-                <Text style={styles.emptyStateText}>
-                  Add nodes to start building your workflow
-                </Text>
-                <TouchableOpacity
-                  style={styles.emptyStateButton}
-                  onPress={() => setShowNodePalette(true)}
-                >
-                  <Plus color={Colors.Colors.text.inverse} size={20} />
-                  <Text style={styles.emptyStateButtonText}>Add First Node</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
+              {currentWorkflow && currentWorkflow.nodes.length === 0 && (
+                <View style={styles.emptyState}>
+                  <Box color={Colors.Colors.text.muted} size={64} />
+                  <Text style={styles.emptyStateTitle}>Empty Canvas</Text>
+                  <Text style={styles.emptyStateText}>
+                    Add nodes to start building your workflow
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.emptyStateButton}
+                    onPress={() => setShowNodePalette(true)}
+                  >
+                    <Plus color={Colors.Colors.text.inverse} size={20} />
+                    <Text style={styles.emptyStateButtonText}>Add First Node</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </ScrollView>
         </ScrollView>
-      </ScrollView>
+      </View>
 
       {connectingFrom && (
         <View style={styles.connectingBanner}>
           <Text style={styles.connectingText}>
-            Connecting from node... Tap target node to connect
+            Connecting from node... Tap target node input port to connect
           </Text>
           <TouchableOpacity onPress={() => setConnectingFrom(null)}>
             <X color={Colors.Colors.text.inverse} size={20} />
@@ -499,7 +594,7 @@ export default function WorkflowScreen() {
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.nodePalette}>
-              {NODE_TYPES.map(nodeType => {
+              {NODE_TYPES.map((nodeType) => {
                 const Icon = nodeType.icon;
                 return (
                   <TouchableOpacity
@@ -555,7 +650,7 @@ export default function WorkflowScreen() {
             </View>
 
             <ScrollView style={styles.workflowList}>
-              {workflows.map(workflow => (
+              {workflows.map((workflow) => (
                 <TouchableOpacity
                   key={workflow.id}
                   style={[
@@ -596,7 +691,7 @@ export default function WorkflowScreen() {
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.logsList}>
-              {latestExecution?.logs.map(log => (
+              {latestExecution?.logs.map((log) => (
                 <View key={log.id} style={styles.logItem}>
                   <View
                     style={[
@@ -606,9 +701,7 @@ export default function WorkflowScreen() {
                   />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.logMessage}>{log.message}</Text>
-                    <Text style={styles.logTime}>
-                      {log.timestamp.toLocaleTimeString()}
-                    </Text>
+                    <Text style={styles.logTime}>{log.timestamp.toLocaleTimeString()}</Text>
                   </View>
                 </View>
               ))}
@@ -664,8 +757,8 @@ const styles = StyleSheet.create({
   headerTitle: {
     flex: 1,
     fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.Colors.cyanOrange.primary,
+    fontWeight: 'bold' as const,
+    color: Colors.Colors.text.primary,
   },
   headerButton: {
     padding: 8,
@@ -682,8 +775,8 @@ const styles = StyleSheet.create({
   },
   workflowName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: Colors.Colors.cyanRed.primary,
+    fontWeight: '600' as const,
+    color: Colors.Colors.text.primary,
   },
   workflowMeta: {
     fontSize: 12,
@@ -697,9 +790,9 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '600' as const,
     color: Colors.Colors.text.inverse,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
   },
   toolbar: {
     flexDirection: 'row',
@@ -726,23 +819,20 @@ const styles = StyleSheet.create({
   },
   toolbarButtonText: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '600' as const,
     color: Colors.Colors.text.secondary,
   },
   canvas: {
     flex: 1,
     backgroundColor: Colors.Colors.background.primary,
   },
-  canvasInner: {
-    flex: 1,
-  },
   canvasContent: {
-    width: width * 3,
-    height: height * 3,
-    position: 'relative',
+    width: CANVAS_WIDTH,
+    height: CANVAS_HEIGHT,
+    position: 'relative' as const,
   },
   node: {
-    position: 'absolute',
+    position: 'absolute' as const,
     width: 120,
     backgroundColor: Colors.Colors.background.card,
     borderRadius: 8,
@@ -763,16 +853,16 @@ const styles = StyleSheet.create({
   nodeLabel: {
     flex: 1,
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '600' as const,
     color: Colors.Colors.text.primary,
   },
   nodeType: {
     fontSize: 10,
     color: Colors.Colors.text.muted,
-    textTransform: 'uppercase',
+    textTransform: 'uppercase' as const,
   },
   nodePort: {
-    position: 'absolute',
+    position: 'absolute' as const,
     width: 16,
     height: 16,
     justifyContent: 'center',
@@ -795,14 +885,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: Colors.Colors.background.card,
   },
-  connection: {
-    position: 'absolute',
-    height: 2,
-    backgroundColor: Colors.Colors.cyan.primary,
-    opacity: 0.6,
-  },
   connectingBanner: {
-    position: 'absolute',
+    position: 'absolute' as const,
     bottom: 20,
     left: 20,
     right: 20,
@@ -817,7 +901,7 @@ const styles = StyleSheet.create({
   connectingText: {
     flex: 1,
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '600' as const,
     color: Colors.Colors.text.inverse,
   },
   emptyState: {
@@ -828,8 +912,8 @@ const styles = StyleSheet.create({
   },
   emptyStateTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: Colors.Colors.cyanRed.primary,
+    fontWeight: 'bold' as const,
+    color: Colors.Colors.text.primary,
     marginTop: 16,
   },
   emptyStateText: {
@@ -851,7 +935,7 @@ const styles = StyleSheet.create({
   },
   emptyStateButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '600' as const,
     color: Colors.Colors.text.inverse,
   },
   modalOverlay: {
@@ -876,8 +960,8 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: Colors.Colors.cyanOrange.primary,
+    fontWeight: 'bold' as const,
+    color: Colors.Colors.text.primary,
   },
   nodePalette: {
     padding: 20,
@@ -900,7 +984,7 @@ const styles = StyleSheet.create({
   },
   nodePaletteLabel: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '600' as const,
     color: Colors.Colors.text.primary,
   },
   nodePaletteType: {
@@ -954,7 +1038,7 @@ const styles = StyleSheet.create({
   },
   workflowListName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '600' as const,
     color: Colors.Colors.text.primary,
   },
   workflowListMeta: {
