@@ -16,6 +16,8 @@ import deleteDeployProcedure from './routes/deploy/delete/route';
 import seoDeployProcedure from './routes/deploy/seo/route';
 import { getFileUrlProcedure } from './routes/files/get-url/route';
 import { orchestrateGenerationProcedure } from './routes/orchestration/generate/route';
+import { compareModelsProcedure } from './routes/orchestration/compare/route';
+import { getModelStatsProcedure } from './routes/orchestration/stats/route';
 import { getOrchestrationHistoryProcedure } from './routes/orchestration/history/route';
 import orchestrationRunProcedure from './routes/orchestration/run/route';
 import orchestrationSingleProcedure from './routes/orchestration/single/route';
@@ -64,6 +66,8 @@ export const appRouter = createTRPCRouter({
     run: orchestrationRunProcedure,
     single: orchestrationSingleProcedure,
     providers: orchestrationProvidersProcedure,
+    compare: compareModelsProcedure,
+    stats: getModelStatsProcedure,
   }),
   policy: createTRPCRouter({
     checkCode: checkCodeProcedure,
