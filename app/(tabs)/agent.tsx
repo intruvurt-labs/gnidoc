@@ -374,7 +374,13 @@ export default function AgentScreen() {
       });
 
       if (!result.canceled) {
-        const newAttachments: AttachmentFile[] = result.assets.map(asset => ({
+        const maxBytes = 3 * 1024 * 1024;
+        const allowed = result.assets.filter(a => (a.fileSize ?? maxBytes) <= maxBytes);
+        const skipped = result.assets.length - allowed.length;
+        if (skipped > 0) {
+          Alert.alert('Image too large', `Skipped ${skipped} file(s) over 3MB to keep latency low.`);
+        }
+        const newAttachments: AttachmentFile[] = allowed.map(asset => ({
           id: Date.now().toString() + Math.random(),
           type: 'image' as const,
           uri: asset.uri,
@@ -382,8 +388,10 @@ export default function AgentScreen() {
           mimeType: asset.mimeType,
           size: asset.fileSize,
         }));
-        setAttachments(prev => [...prev, ...newAttachments]);
-        analyzeAttachments(newAttachments);
+        if (newAttachments.length > 0) {
+          setAttachments(prev => [...prev, ...newAttachments]);
+          analyzeAttachments(newAttachments);
+        }
       }
     } catch (error) {
       console.error('Failed to pick image:', error);

@@ -15,6 +15,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import { trpc, trpcClient } from "@/lib/trpc";
 import AISupportChat from "@/components/AISupportChat";
 import UniversalFooter from "@/components/UniversalFooter";
+import GAWebLoader from "@/components/GAWebLoader";
 import OnboardingTour from "@/components/OnboardingTour";
 
 const AgentProvider = lazy(() => import("@/contexts/AgentContext").then(m => ({ default: m.AgentProvider })));
@@ -262,6 +263,7 @@ export default function RootLayout() {
               <AuthProvider>
                 <SettingsProvider>
                   <ThemeProvider>
+                  <GAWebLoader />
                   <Suspense fallback={<LoadingFallback />}>
                     <GamificationProvider>
                       <SubscriptionProvider>

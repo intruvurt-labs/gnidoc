@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
+  Platform,
+  Linking,
 } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,6 +22,7 @@ import {
   Layers,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
+import { useSubscription } from '@/contexts/SubscriptionContext';
 
 
 
@@ -40,6 +44,9 @@ export default function PricingScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [selectedTier, setSelectedTier] = useState<string>('premium');
+  const [checkoutLoading, setCheckoutLoading] = useState<boolean>(false);
+  const [errorText, setErrorText] = useState<string>('');
+  const { upgradeTier, currentTier, plans } = useSubscription();
 
   const pricingTiers: PricingTier[] = [
     {
@@ -134,6 +141,26 @@ export default function PricingScreen() {
     },
   ];
 
+  const handleCheckout = async (tierId: string) => {
+    setErrorText('');
+    setCheckoutLoading(true);
+    try {
+      const next = tierId as any;
+      await upgradeTier(next);
+      if (Platform.OS === 'web') {
+        window.location.href = '/';
+      } else {
+        await Linking.openURL('/');
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Checkout failed';
+      setErrorText(msg);
+      console.error('[Pricing] Checkout error', msg);
+    } finally {
+      setCheckoutLoading(false);
+    }
+  };
+
   const renderPricingCard = (tier: PricingTier) => (
     <TouchableOpacity
       key={tier.id}
@@ -184,10 +211,12 @@ export default function PricingScreen() {
       </View>
 
       <TouchableOpacity
+        testID={`select-plan-${tier.id}`}
         style={[
           styles.selectButton,
           selectedTier === tier.id && { backgroundColor: tier.color },
         ]}
+        onPress={() => setSelectedTier(tier.id)}
       >
         <Text
           style={[
@@ -198,11 +227,26 @@ export default function PricingScreen() {
           {selectedTier === tier.id ? 'Selected' : 'Select Plan'}
         </Text>
       </TouchableOpacity>
+
+      <TouchableOpacity
+        testID={`checkout-${tier.id}`}
+        disabled={checkoutLoading}
+        onPress={() => handleCheckout(tier.id)}
+        style={[styles.checkoutButton, checkoutLoading && styles.checkoutDisabled, { borderColor: tier.color }]}
+      >
+        {checkoutLoading ? (
+          <ActivityIndicator color={tier.color} />
+        ) : (
+          <Text style={[styles.checkoutText, { color: tier.color }]}>Upgrade</Text>
+        )}
+      </TouchableOpacity>
     </TouchableOpacity>
   );
 
+  const selectedPlan = useMemo(() => pricingTiers.find(t => t.id === selectedTier), [pricingTiers, selectedTier]);
+
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top }]} testID="pricing-screen">
       <Stack.Screen
         options={{
           headerShown: false,
@@ -220,6 +264,11 @@ export default function PricingScreen() {
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {errorText ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorTextLabel}>{errorText}</Text>
+          </View>
+        ) : null}
         <View style={styles.heroSection}>
           <View style={styles.heroIcon}>
             <Layers color={Colors.Colors.cyan.primary} size={48} />
@@ -234,6 +283,16 @@ export default function PricingScreen() {
         <View style={styles.pricingGrid}>
           {pricingTiers.map(renderPricingCard)}
         </View>
+
+        <BenefitsGrid />
+
+        {selectedPlan ? (
+          <UsagePreview
+            tierId={selectedPlan.id}
+            requests={selectedPlan.id === 'free' ? '100' : selectedPlan.id === 'starter' ? '1000' : selectedPlan.id === 'professional' ? '5000' : 'Unlimited'}
+            models={selectedPlan.id === 'free' ? 1 : selectedPlan.id === 'starter' ? 2 : selectedPlan.id === 'professional' ? 3 : 4}
+          />
+        ) : null}
 
         <View style={styles.comparisonSection}>
           <Text style={styles.sectionTitle}>Why Multi-Model Orchestration?</Text>
@@ -286,6 +345,47 @@ export default function PricingScreen() {
           </View>
         </View>
       </ScrollView>
+    </View>
+  );
+}
+
+function BenefitsGrid() {
+  const items = [
+    { icon: '⚡', title: 'Faster Results', description: 'Parallel model execution reduces latency' },
+    { icon: '🎯', title: 'Higher Accuracy', description: 'Multi-model consensus improves quality' },
+    { icon: '🛡️', title: 'Better Safety', description: 'Cross-validation catches harmful content' },
+    { icon: '💸', title: 'Cost Optimization', description: 'Use cheaper models for appropriate tasks' },
+  ];
+  return (
+    <View style={benefitStyles.container}>
+      {items.map(b => (
+        <View key={b.title} style={benefitStyles.card}>
+          <Text style={benefitStyles.icon}>{b.icon}</Text>
+          <Text style={benefitStyles.title}>{b.title}</Text>
+          <Text style={benefitStyles.desc}>{b.description}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+type UsagePreviewProps = { tierId: string; requests: string; models: number };
+function UsagePreview({ tierId, requests, models }: UsagePreviewProps) {
+  return (
+    <View style={usageStyles.container}>
+      <Text style={usageStyles.title}>Monthly Usage Estimate</Text>
+      <View style={usageStyles.row}>
+        <Text style={usageStyles.label}>API Requests</Text>
+        <Text style={usageStyles.value}>{requests}</Text>
+      </View>
+      <View style={usageStyles.row}>
+        <Text style={usageStyles.label}>Active Models</Text>
+        <Text style={usageStyles.value}>Up to {models}</Text>
+      </View>
+      <View style={usageStyles.row}>
+        <Text style={usageStyles.label}>Team Members</Text>
+        <Text style={usageStyles.value}>{tierId === 'premium' ? 'Unlimited' : tierId === 'professional' ? '10' : tierId === 'starter' ? '3' : '1'}</Text>
+      </View>
     </View>
   );
 }
@@ -476,6 +576,34 @@ const styles = StyleSheet.create({
   selectButtonTextActive: {
     color: Colors.Colors.text.inverse,
   },
+  checkoutButton: {
+    marginTop: 10,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 2,
+  },
+  checkoutDisabled: {
+    opacity: 0.6,
+  },
+  checkoutText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  errorBox: {
+    backgroundColor: Colors.Colors.error + '20',
+    borderColor: Colors.Colors.error,
+    borderWidth: 1,
+    marginHorizontal: 20,
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 8,
+  },
+  errorTextLabel: {
+    color: Colors.Colors.error,
+    fontSize: 13,
+    fontWeight: '600',
+  },
   comparisonSection: {
     paddingHorizontal: 20,
     marginBottom: 32,
@@ -538,5 +666,70 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.Colors.text.secondary,
     lineHeight: 20,
+  },
+});
+
+const benefitStyles = StyleSheet.create({
+  container: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  card: {
+    flexBasis: '48%',
+    backgroundColor: Colors.Colors.background.card,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.Colors.border.muted,
+  },
+  icon: {
+    fontSize: 20,
+    marginBottom: 8,
+  },
+  title: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.Colors.text.primary,
+    marginBottom: 4,
+  },
+  desc: {
+    fontSize: 12,
+    color: Colors.Colors.text.secondary,
+  },
+});
+
+const usageStyles = StyleSheet.create({
+  container: {
+    marginHorizontal: 20,
+    marginBottom: 24,
+    backgroundColor: Colors.Colors.background.card,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: Colors.Colors.border.muted,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.Colors.text.primary,
+    marginBottom: 8,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+  },
+  label: {
+    fontSize: 12,
+    color: Colors.Colors.text.secondary,
+  },
+  value: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.Colors.text.primary,
   },
 });
