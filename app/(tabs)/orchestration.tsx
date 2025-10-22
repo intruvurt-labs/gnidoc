@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -68,7 +68,6 @@ export default function OrchestrationScreen() {
   const [isComparing, setIsComparing] = useState(false);
   const [modelNodes, setModelNodes] = useState<ModelNode[]>([]);
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const maxSlots = 4;
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -141,38 +140,6 @@ export default function OrchestrationScreen() {
     }
   };
 
-  const MODEL_COSTS = useMemo<Record<string, number>>(() => {
-    const base: Record<string, number> = {};
-    availableModels.forEach(m => { base[m.id] = m.provider === 'openai' ? 0.004 : m.provider === 'anthropic' ? 0.005 : 0.003; });
-    return base;
-  }, [availableModels]);
-
-  const calculateSpeedScore = useCallback((ids: string[]) => {
-    if (ids.length === 0) return 0;
-    const avg = ids.reduce((acc, id) => acc + (MODEL_COSTS[id] ? 1 / MODEL_COSTS[id] : 200), 0) / ids.length;
-    return Math.min(10, Math.max(1, Math.round((avg / 250) * 10)));
-  }, [MODEL_COSTS]);
-
-  const calculateAccuracyScore = useCallback((ids: string[]) => {
-    if (ids.length === 0) return 0;
-    const score = ids.reduce((acc, id) => acc + (id.toLowerCase().includes('4') ? 9 : 7), 0) / ids.length;
-    return Math.min(10, Math.max(1, Math.round(score)));
-  }, []);
-
-  const presetLineups = useMemo(() => {
-    const ids = availableModels.map(m => m.id);
-    return [
-      { name: 'Reasoning Powerhouse', slots: ids.slice(0, Math.min(3, maxSlots)) },
-      { name: 'Creative Studio', slots: ids.slice(-Math.min(3, ids.length)) },
-    ];
-  }, [availableModels]);
-
-  const applyPreset = (slots: string[]) => {
-    const limited = slots.slice(0, maxSlots);
-    updateConfig({ models: limited });
-    setModelNodes(prev => prev.map(n => ({ ...n, selected: limited.includes(n.id) })));
-  };
-
   const toggleModelSelection = (modelId: string) => {
     const currentModels = config.models;
     const newModels = currentModels.includes(modelId)
@@ -194,16 +161,6 @@ export default function OrchestrationScreen() {
       <View style={styles.graphContainer}>
         <Text style={styles.graphTitle}>Model Orchestration Graph</Text>
         <Text style={styles.graphSubtitle}>Tap models to add/remove from orchestration</Text>
-        
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetRow}>
-          {presetLineups
-            .filter(p => p.slots.length <= maxSlots)
-            .map(p => (
-              <TouchableOpacity key={p.name} testID={`preset-${p.name}`} style={styles.presetButton} onPress={() => applyPreset(p.slots)}>
-                <Text style={styles.presetButtonText}>{p.name}</Text>
-              </TouchableOpacity>
-            ))}
-        </ScrollView>
         
         <View style={styles.canvas}>
           {modelNodes.map((node, idx) => {
@@ -262,7 +219,6 @@ export default function OrchestrationScreen() {
             Data Flow: {selectedNodes.map(n => n.name.split(' ')[0]).join(' → ')}
           </Text>
         </View>
-        <TeamMetrics ids={selectedNodes.map(n => n.id)} costs={MODEL_COSTS} calcSpeed={calculateSpeedScore} calcAcc={calculateAccuracyScore} />
       </View>
     );
   };
@@ -720,56 +676,6 @@ export default function OrchestrationScreen() {
   );
 }
 
-function TeamMetrics({ ids, costs, calcSpeed, calcAcc }: { ids: string[]; costs: Record<string, number>; calcSpeed: (ids: string[]) => number; calcAcc: (ids: string[]) => number }) {
-  const filled = ids;
-  const estCost = filled.reduce((acc, id) => acc + (costs[id] ?? 0), 0);
-  const speed = calcSpeed(filled);
-  const accuracy = calcAcc(filled);
-  return (
-    <View style={metricsStyles.container}>
-      <View style={metricsStyles.item}>
-        <Text style={metricsStyles.label}>Est. Cost</Text>
-        <Text style={metricsStyles.value}>${estCost.toFixed(4)}/req</Text>
-      </View>
-      <View style={metricsStyles.item}>
-        <Text style={metricsStyles.label}>Speed</Text>
-        <Text style={metricsStyles.value}>{speed}/10</Text>
-      </View>
-      <View style={metricsStyles.item}>
-        <Text style={metricsStyles.label}>Accuracy</Text>
-        <Text style={metricsStyles.value}>{accuracy}/10</Text>
-      </View>
-    </View>
-  );
-}
-
-const metricsStyles = StyleSheet.create({
-  container: {
-    flexDirection: 'row' as const,
-    justifyContent: 'space-around' as const,
-    backgroundColor: Colors.Colors.background.card,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: Colors.Colors.border.muted,
-    padding: 12,
-    marginTop: 12,
-  },
-  item: {
-    alignItems: 'center' as const,
-    minWidth: 90,
-  },
-  label: {
-    fontSize: 12,
-    color: Colors.Colors.text.muted,
-    marginBottom: 4,
-  },
-  value: {
-    fontSize: 14,
-    fontWeight: '700' as const,
-    color: Colors.Colors.text.primary,
-  },
-});
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -880,25 +786,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.Colors.text.muted,
     marginBottom: 16,
-  },
-  presetRow: {
-    paddingVertical: 8,
-    gap: 8,
-    paddingHorizontal: 4,
-  },
-  presetButton: {
-    backgroundColor: Colors.Colors.background.secondary,
-    borderWidth: 1,
-    borderColor: Colors.Colors.border.muted,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-    marginRight: 8,
-  },
-  presetButtonText: {
-    fontSize: 12,
-    fontWeight: '600' as const,
-    color: Colors.Colors.text.primary,
   },
   canvas: {
     height: 250,
