@@ -1,74 +1,110 @@
-import type { ModelResult } from '../types';
+import { GenInput, GenResult } from '../types';
 
 const REPLICATE_API = 'https://api.replicate.com/v1';
 
-export async function runReplicate(
-  version: string,
-  prompt: string,
-  _system?: string,
-  _temperature = 0.7,
-  _maxTokens = 4096
-): Promise<ModelResult> {
-  if (!process.env.REPLICATE_API_TOKEN) throw new Error('Replicate API token not configured');
-
+export async function replicateAdapter(input: GenInput): Promise<GenResult> {
   const started = Date.now();
+  const apiKey = process.env.REPLICATE_API_TOKEN;
+  
+  if (!apiKey) {
+    return {
+      provider: 'replicate',
+      model: 'unknown',
+      kind: 'text',
+      status: 'error',
+      error: 'REPLICATE_API_TOKEN not configured',
+    };
+  }
 
   try {
+    const version = process.env.REPLICATE_VERSION || 'meta/llama-2-70b-chat';
+
     const createResponse = await fetch(`${REPLICATE_API}/predictions`, {
       method: 'POST',
       headers: {
-        'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}`,
+        'Authorization': `Token ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         version,
-        input: { prompt },
+        input: { prompt: input.prompt },
       }),
     });
 
     if (!createResponse.ok) {
-      throw new Error(`Replicate API error: ${createResponse.status}`);
+      const errorText = await createResponse.text();
+      return {
+        provider: 'replicate',
+        model: version,
+        kind: 'text',
+        status: 'error',
+        error: `Replicate create error ${createResponse.status}: ${errorText}`,
+      };
     }
 
     const prediction = await createResponse.json();
     let status = prediction.status;
     let output = '';
 
-    while (status === 'starting' || status === 'processing') {
-      await new Promise(resolve => setTimeout(resolve, 1500));
+    let attempts = 0;
+    const maxAttempts = 60;
 
+    while ((status === 'starting' || status === 'processing') && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
       const pollResponse = await fetch(`${REPLICATE_API}/predictions/${prediction.id}`, {
-        headers: { 'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}` },
+        headers: { 'Authorization': `Token ${apiKey}` },
       });
 
-      const json = await pollResponse.json();
-      status = json.status;
+      const pollData = await pollResponse.json();
+      status = pollData.status;
 
       if (status === 'succeeded') {
-        output = typeof json.output === 'string' ? json.output : JSON.stringify(json.output);
+        output = typeof pollData.output === 'string' 
+          ? pollData.output 
+          : JSON.stringify(pollData.output);
         break;
       }
 
       if (status === 'failed' || status === 'canceled') {
-        throw new Error(`Replicate job ${status}`);
+        return {
+          provider: 'replicate',
+          model: version,
+          kind: 'text',
+          status: 'error',
+          error: `Replicate job ${status}: ${pollData.error || 'Unknown error'}`,
+        };
       }
+
+      attempts++;
+    }
+
+    if (attempts >= maxAttempts) {
+      return {
+        provider: 'replicate',
+        model: version,
+        kind: 'text',
+        status: 'timeout',
+        error: 'Replicate job timeout after 90 seconds',
+      };
     }
 
     return {
+      provider: 'replicate',
       model: version,
-      output,
-      score: output ? 0.7 : 0.2,
+      kind: 'text',
+      text: output,
+      status: 'ok',
       responseTime: Date.now() - started,
-      tokensUsed: Math.ceil((prompt.length + output.length) / 4),
+      tokensUsed: Math.ceil((input.prompt.length + output.length) / 4),
     };
-  } catch (error: any) {
+  } catch (error) {
     return {
-      model: version,
-      output: '',
-      score: 0,
-      responseTime: Date.now() - started,
-      tokensUsed: 0,
-      error: error?.message || 'Replicate request failed',
+      provider: 'replicate',
+      model: 'unknown',
+      kind: 'text',
+      status: 'error',
+      error: error instanceof Error ? error.message : String(error),
     };
   }
 }

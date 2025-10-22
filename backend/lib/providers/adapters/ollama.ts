@@ -1,49 +1,57 @@
-import type { ModelResult } from '../types';
+import { GenInput, GenResult } from '../types';
 
-export async function runOllama(
-  model: string,
-  prompt: string,
-  _system?: string,
-  temperature = 0.7,
-  _maxTokens = 4096
-): Promise<ModelResult> {
+export async function ollamaAdapter(input: GenInput): Promise<GenResult> {
   const started = Date.now();
+  const baseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
 
   try {
-    const response = await fetch('http://localhost:11434/api/generate', {
+    const model = process.env.OLLAMA_MODEL || 'llama3';
+
+    const response = await fetch(`${baseUrl}/api/generate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({
         model,
-        prompt,
+        prompt: input.prompt,
         stream: false,
-        options: { temperature },
+        options: {
+          temperature: input.temperature || 0.2,
+        },
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`Ollama API error: ${response.status}`);
+      const errorText = await response.text();
+      return {
+        provider: 'ollama',
+        model,
+        kind: 'text',
+        status: 'error',
+        error: `Ollama API error ${response.status}: ${errorText}`,
+      };
     }
 
-    const json = await response.json();
-    const output = json.response ?? '';
-    const tokensUsed = Math.ceil((prompt.length + output.length) / 4);
+    const data = await response.json();
+    const output = data.response || '';
 
     return {
+      provider: 'ollama',
       model,
-      output,
-      score: output.length > 20 ? 0.6 : 0.3,
+      kind: 'text',
+      text: output,
+      status: 'ok',
       responseTime: Date.now() - started,
-      tokensUsed,
+      tokensUsed: Math.ceil((input.prompt.length + output.length) / 4),
     };
-  } catch (error: any) {
+  } catch (error) {
     return {
-      model,
-      output: '',
-      score: 0,
-      responseTime: Date.now() - started,
-      tokensUsed: 0,
-      error: error?.message || 'Ollama request failed (is server running?)',
+      provider: 'ollama',
+      model: 'llama3',
+      kind: 'text',
+      status: 'error',
+      error: error instanceof Error ? error.message : String(error),
     };
   }
 }

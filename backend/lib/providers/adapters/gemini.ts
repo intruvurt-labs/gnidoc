@@ -1,56 +1,98 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import type { ModelResult } from '../types';
+import { GenInput, GenResult } from '../types';
 
-let genAI: GoogleGenerativeAI | null = null;
-
-function getClient() {
-  if (!genAI && process.env.GOOGLE_API_KEY) {
-    genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-  }
-  return genAI;
-}
-
-export async function runGemini(
-  model: string,
-  prompt: string,
-  system?: string,
-  temperature = 0.7,
-  maxTokens = 8192
-): Promise<ModelResult> {
-  const client = getClient();
-  if (!client) throw new Error('Google API key not configured');
-
+export async function geminiAdapter(input: GenInput): Promise<GenResult> {
   const started = Date.now();
+  const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+  
+  if (!apiKey) {
+    return {
+      provider: 'gemini',
+      model: 'gemini-1.5-pro',
+      kind: 'text',
+      status: 'error',
+      error: 'GOOGLE_API_KEY or GEMINI_API_KEY not configured',
+    };
+  }
 
   try {
-    const generativeModel = client.getGenerativeModel({
-      model,
-      systemInstruction: system,
+    const model = process.env.GEMINI_MODEL || 'gemini-1.5-pro';
+
+    const parts: any[] = [{ text: input.prompt }];
+    
+    for (const img of input.images || []) {
+      const isDataUri = img.startsWith('data:');
+      if (isDataUri) {
+        const mimeType = img.substring(5, img.indexOf(';'));
+        const data = img.split(',')[1];
+        parts.push({
+          inline_data: {
+            mime_type: mimeType,
+            data,
+          },
+        });
+      }
+    }
+
+    const requestBody: any = {
+      contents: [
+        {
+          role: 'user',
+          parts,
+        },
+      ],
       generationConfig: {
-        temperature,
-        maxOutputTokens: maxTokens,
+        temperature: input.temperature || 0.2,
+        maxOutputTokens: input.maxTokens || 2000,
       },
-    });
-
-    const result = await generativeModel.generateContent(prompt);
-    const output = result.response.text() ?? '';
-    const tokensUsed = Math.ceil((prompt.length + output.length) / 4);
-
-    return {
-      model,
-      output,
-      score: output.length > 20 ? 0.75 : 0.3,
-      responseTime: Date.now() - started,
-      tokensUsed,
     };
-  } catch (error: any) {
+
+    if (input.system) {
+      requestBody.systemInstruction = {
+        parts: [{ text: input.system }],
+      };
+    }
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        provider: 'gemini',
+        model,
+        kind: 'text',
+        status: 'error',
+        error: `Gemini API error ${response.status}: ${errorText}`,
+      };
+    }
+
+    const data = await response.json();
+    const output = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
     return {
+      provider: 'gemini',
       model,
-      output: '',
-      score: 0,
+      kind: 'text',
+      text: output,
+      status: 'ok',
       responseTime: Date.now() - started,
-      tokensUsed: 0,
-      error: error?.message || 'Gemini request failed',
+      tokensUsed: Math.ceil((input.prompt.length + output.length) / 4),
+    };
+  } catch (error) {
+    return {
+      provider: 'gemini',
+      model: 'gemini-1.5-pro',
+      kind: 'text',
+      status: 'error',
+      error: error instanceof Error ? error.message : String(error),
     };
   }
 }

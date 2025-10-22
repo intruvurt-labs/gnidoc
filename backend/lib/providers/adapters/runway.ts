@@ -1,75 +1,108 @@
-import type { ModelResult } from '../types';
+import { GenInput, GenResult } from '../types';
 
-export async function runRunway(
-  model: string,
-  prompt: string,
-  _system?: string,
-  _temperature = 0.7,
-  _maxTokens = 4096
-): Promise<ModelResult> {
-  if (!process.env.RUNWAY_API_KEY) throw new Error('Runway API key not configured');
-
+export async function runwayAdapter(input: GenInput): Promise<GenResult> {
   const started = Date.now();
+  const apiKey = process.env.RUNWAY_API_KEY;
+  
+  if (!apiKey) {
+    return {
+      provider: 'runway',
+      model: 'gen-3-alpha',
+      kind: 'video',
+      status: 'error',
+      error: 'RUNWAY_API_KEY not configured',
+    };
+  }
 
   try {
-    const response = await fetch('https://api.runwayml.com/v1/animations', {
+    const model = process.env.RUNWAY_MODEL || 'gen-3-alpha';
+
+    const createResponse = await fetch('https://api.runwayml.com/v1/animations', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.RUNWAY_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         model,
-        prompt,
+        prompt: input.prompt,
         resolution: '720p',
       }),
     });
 
-    if (!response.ok) {
-      throw new Error(`Runway API error: ${response.status}`);
+    if (!createResponse.ok) {
+      const errorText = await createResponse.text();
+      return {
+        provider: 'runway',
+        model,
+        kind: 'video',
+        status: 'error',
+        error: `Runway create error ${createResponse.status}: ${errorText}`,
+      };
     }
 
-    const job = await response.json();
+    const job = await createResponse.json();
     let status = job.status;
     let outputUrl = '';
 
-    while (status === 'starting' || status === 'running' || status === 'queued') {
-      await new Promise(resolve => setTimeout(resolve, 3000));
+    let attempts = 0;
+    const maxAttempts = 100;
 
+    while ((status === 'starting' || status === 'running' || status === 'queued') && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
       const pollResponse = await fetch(`https://api.runwayml.com/v1/animations/${job.id}`, {
-        headers: { 'Authorization': `Bearer ${process.env.RUNWAY_API_KEY}` },
+        headers: { 'Authorization': `Bearer ${apiKey}` },
       });
 
-      const json = await pollResponse.json();
-      status = json.status;
+      const pollData = await pollResponse.json();
+      status = pollData.status;
 
       if (status === 'succeeded') {
-        outputUrl = json.output?.[0]?.url ?? '';
+        outputUrl = pollData.output?.[0]?.url || '';
         break;
       }
 
       if (status === 'failed') {
-        throw new Error('Runway job failed');
+        return {
+          provider: 'runway',
+          model,
+          kind: 'video',
+          status: 'error',
+          error: `Runway job failed: ${pollData.error || 'Unknown error'}`,
+        };
       }
+
+      attempts++;
     }
 
-    const output = outputUrl ? `VIDEO_URL: ${outputUrl}` : '';
+    if (attempts >= maxAttempts) {
+      return {
+        provider: 'runway',
+        model,
+        kind: 'video',
+        status: 'timeout',
+        error: 'Runway job timeout after 5 minutes',
+      };
+    }
 
     return {
+      provider: 'runway',
       model,
-      output,
-      score: outputUrl ? 0.8 : 0.2,
+      kind: 'video',
+      url: outputUrl,
+      text: `VIDEO_URL: ${outputUrl}`,
+      status: 'ok',
       responseTime: Date.now() - started,
-      tokensUsed: Math.ceil((prompt.length + output.length) / 4),
+      tokensUsed: Math.ceil(input.prompt.length / 4),
     };
-  } catch (error: any) {
+  } catch (error) {
     return {
-      model,
-      output: '',
-      score: 0,
-      responseTime: Date.now() - started,
-      tokensUsed: 0,
-      error: error?.message || 'Runway request failed',
+      provider: 'runway',
+      model: 'gen-3-alpha',
+      kind: 'video',
+      status: 'error',
+      error: error instanceof Error ? error.message : String(error),
     };
   }
 }

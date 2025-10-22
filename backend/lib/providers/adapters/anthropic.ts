@@ -1,56 +1,72 @@
-import Anthropic from '@anthropic-ai/sdk';
-import type { ModelResult } from '../types';
+import { GenInput, GenResult } from '../types';
 
-let client: Anthropic | null = null;
-
-function getClient() {
-  if (!client && process.env.ANTHROPIC_API_KEY) {
-    client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  }
-  return client;
-}
-
-export async function runAnthropic(
-  model: string,
-  prompt: string,
-  system?: string,
-  temperature = 0.7,
-  maxTokens = 4096
-): Promise<ModelResult> {
-  const c = getClient();
-  if (!c) throw new Error('Anthropic API key not configured');
-
+export async function claudeAdapter(input: GenInput): Promise<GenResult> {
   const started = Date.now();
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  
+  if (!apiKey) {
+    return {
+      provider: 'anthropic',
+      model: 'claude-3-5-sonnet-20240620',
+      kind: 'text',
+      status: 'error',
+      error: 'ANTHROPIC_API_KEY not configured',
+    };
+  }
 
   try {
-    const response = await c.messages.create({
-      model,
-      system: system || undefined,
-      max_tokens: maxTokens,
-      temperature,
-      messages: [{ role: 'user', content: prompt }],
+    const model = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20240620';
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        system: input.system || undefined,
+        max_tokens: input.maxTokens || 2000,
+        temperature: input.temperature || 0.2,
+        messages: [{ role: 'user', content: input.prompt }],
+      }),
     });
 
-    const output = response.content?.[0]?.type === 'text' ? response.content[0].text : '';
-    const tokensUsed = response.usage?.input_tokens && response.usage?.output_tokens
-      ? response.usage.input_tokens + response.usage.output_tokens
-      : Math.ceil(output.length / 4);
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        provider: 'anthropic',
+        model,
+        kind: 'text',
+        status: 'error',
+        error: `Anthropic API error ${response.status}: ${errorText}`,
+      };
+    }
+
+    const data = await response.json();
+    const output = data.content?.[0]?.type === 'text' 
+      ? data.content[0].text 
+      : String(data.content?.[0] || '');
 
     return {
+      provider: 'anthropic',
       model,
-      output,
-      score: output.length > 20 ? 0.85 : 0.3,
+      kind: 'text',
+      text: output,
+      status: 'ok',
       responseTime: Date.now() - started,
-      tokensUsed,
+      tokensUsed: data.usage?.input_tokens && data.usage?.output_tokens
+        ? data.usage.input_tokens + data.usage.output_tokens
+        : Math.ceil(output.length / 4),
     };
-  } catch (error: any) {
+  } catch (error) {
     return {
-      model,
-      output: '',
-      score: 0,
-      responseTime: Date.now() - started,
-      tokensUsed: 0,
-      error: error?.message || 'Anthropic request failed',
+      provider: 'anthropic',
+      model: 'claude-3-5-sonnet-20240620',
+      kind: 'text',
+      status: 'error',
+      error: error instanceof Error ? error.message : String(error),
     };
   }
 }

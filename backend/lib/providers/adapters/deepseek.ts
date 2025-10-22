@@ -1,57 +1,72 @@
-import type { ModelResult } from '../types';
+import { GenInput, GenResult } from '../types';
 
-export async function runDeepSeek(
-  model: string,
-  prompt: string,
-  system?: string,
-  temperature = 0.7,
-  maxTokens = 4096
-): Promise<ModelResult> {
-  if (!process.env.DEEPSEEK_API_KEY) throw new Error('DeepSeek API key not configured');
-
+export async function deepseekAdapter(input: GenInput): Promise<GenResult> {
   const started = Date.now();
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  
+  if (!apiKey) {
+    return {
+      provider: 'deepseek',
+      model: 'deepseek-chat',
+      kind: 'text',
+      status: 'error',
+      error: 'DEEPSEEK_API_KEY not configured',
+    };
+  }
 
   try {
+    const model = process.env.DEEPSEEK_MODEL || 'deepseek-chat';
+
+    const messages: any[] = [];
+    if (input.system) {
+      messages.push({ role: 'system', content: input.system });
+    }
+    messages.push({ role: 'user', content: input.prompt });
+
     const response = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         model,
-        messages: [
-          ...(system ? [{ role: 'system', content: system }] : []),
-          { role: 'user', content: prompt },
-        ],
-        temperature,
-        max_tokens: maxTokens,
+        messages,
+        temperature: input.temperature || 0.2,
+        max_tokens: input.maxTokens || 2000,
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`DeepSeek API error: ${response.status}`);
+      const errorText = await response.text();
+      return {
+        provider: 'deepseek',
+        model,
+        kind: 'text',
+        status: 'error',
+        error: `DeepSeek API error ${response.status}: ${errorText}`,
+      };
     }
 
-    const json = await response.json();
-    const output = json.choices?.[0]?.message?.content ?? '';
-    const tokensUsed = json.usage?.total_tokens ?? Math.ceil(output.length / 4);
+    const data = await response.json();
+    const output = data.choices?.[0]?.message?.content || '';
 
     return {
+      provider: 'deepseek',
       model,
-      output,
-      score: output.length > 20 ? 0.7 : 0.3,
+      kind: 'text',
+      text: output,
+      status: 'ok',
       responseTime: Date.now() - started,
-      tokensUsed,
+      tokensUsed: data.usage?.total_tokens || Math.ceil(output.length / 4),
     };
-  } catch (error: any) {
+  } catch (error) {
     return {
-      model,
-      output: '',
-      score: 0,
-      responseTime: Date.now() - started,
-      tokensUsed: 0,
-      error: error?.message || 'DeepSeek request failed',
+      provider: 'deepseek',
+      model: 'deepseek-chat',
+      kind: 'text',
+      status: 'error',
+      error: error instanceof Error ? error.message : String(error),
     };
   }
 }

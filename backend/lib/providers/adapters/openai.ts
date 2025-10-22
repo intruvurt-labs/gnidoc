@@ -1,57 +1,75 @@
-import OpenAI from 'openai';
-import type { ModelResult } from '../types';
+import { GenInput, GenResult } from '../types';
 
-let client: OpenAI | null = null;
-
-function getClient() {
-  if (!client && process.env.OPENAI_API_KEY) {
-    client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  }
-  return client;
-}
-
-export async function runOpenAI(
-  model: string,
-  prompt: string,
-  system?: string,
-  temperature = 0.7,
-  maxTokens = 4096
-): Promise<ModelResult> {
-  const c = getClient();
-  if (!c) throw new Error('OpenAI API key not configured');
-
+export async function openaiAdapter(input: GenInput): Promise<GenResult> {
   const started = Date.now();
-  if (model === 'gpt5') model = 'gpt-4o';
+  const apiKey = process.env.OPENAI_API_KEY;
+  
+  if (!apiKey) {
+    return {
+      provider: 'openai',
+      model: 'gpt-4o',
+      kind: 'text',
+      status: 'error',
+      error: 'OPENAI_API_KEY not configured',
+    };
+  }
 
   try {
-    const response = await c.chat.completions.create({
-      model,
-      messages: [
-        ...(system ? [{ role: 'system' as const, content: system }] : []),
-        { role: 'user' as const, content: prompt },
-      ],
-      temperature,
-      max_tokens: maxTokens,
+    let model = process.env.OPENAI_MODEL || 'gpt-4o';
+    if (model === 'gpt5') model = 'gpt-4o';
+
+    const messages: any[] = [];
+    
+    if (input.system) {
+      messages.push({ role: 'system', content: input.system });
+    }
+    
+    messages.push({ role: 'user', content: input.prompt });
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature: input.temperature || 0.2,
+        max_tokens: input.maxTokens || 2000,
+      }),
     });
 
-    const output = response.choices[0]?.message?.content ?? '';
-    const tokensUsed = response.usage?.total_tokens ?? Math.ceil(output.length / 4);
+    if (!response.ok) {
+      const errorText = await response.text();
+      return {
+        provider: 'openai',
+        model,
+        kind: 'text',
+        status: 'error',
+        error: `OpenAI API error ${response.status}: ${errorText}`,
+      };
+    }
+
+    const data = await response.json();
+    const output = data.choices?.[0]?.message?.content || '';
 
     return {
+      provider: 'openai',
       model,
-      output,
-      score: output.length > 20 ? 0.8 : 0.3,
+      kind: 'text',
+      text: output,
+      status: 'ok',
       responseTime: Date.now() - started,
-      tokensUsed,
+      tokensUsed: data.usage?.total_tokens || Math.ceil(output.length / 4),
     };
-  } catch (error: any) {
+  } catch (error) {
     return {
-      model,
-      output: '',
-      score: 0,
-      responseTime: Date.now() - started,
-      tokensUsed: 0,
-      error: error?.message || 'OpenAI request failed',
+      provider: 'openai',
+      model: 'gpt-4o',
+      kind: 'text',
+      status: 'error',
+      error: error instanceof Error ? error.message : String(error),
     };
   }
 }
