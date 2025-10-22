@@ -1,102 +1,85 @@
-import { createTRPCRouter } from "./create-context";
-import hiRoute from "./routes/example/hi/route";
-import loginRoute from "./routes/auth/login/route";
-import signupRoute from "./routes/auth/signup/route";
-import profileRoute from "./routes/auth/profile/route";
-import meRoute from "./routes/auth/me/route";
-import githubOAuthRoute from "./routes/auth/github-oauth/route";
-import githubUrlRoute from "./routes/auth/github-url/route";
-import conductResearchRoute from "./routes/research/conduct/route";
-import researchHistoryRoute from "./routes/research/history/route";
-import deleteResearchRoute from "./routes/research/delete/route";
-import exportResearchRoute from "./routes/research/export/route";
-import createDeploymentRoute from "./routes/deploy/create/route";
-import listDeploymentsRoute from "./routes/deploy/list/route";
-import deleteDeploymentRoute from "./routes/deploy/delete/route";
-import generateSEORoute from "./routes/deploy/seo/route";
-import { executeQueryProcedure } from "./routes/database/execute/route";
-import { testConnectionProcedure } from "./routes/database/test-connection/route";
-import { listTablesProcedure } from "./routes/database/list-tables/route";
-import { getTableSchemaProcedure } from "./routes/database/table-schema/route";
-import { orchestrateGenerationProcedure } from "./routes/orchestration/generate/route";
-import { compareModelsProcedure } from "./routes/orchestration/compare/route";
-import { getOrchestrationHistoryProcedure, deleteOrchestrationHistoryProcedure } from "./routes/orchestration/history/route";
-import { getModelStatsProcedure } from "./routes/orchestration/stats/route";
-import { createProjectProcedure } from "./routes/projects/create/route";
-import { gitInitProcedure } from "./routes/projects/git-init/route";
-import { exportZipProcedure } from "./routes/projects/export-zip/route";
-import { getFileUrlProcedure } from "./routes/files/get-url/route";
-import { checkCodeProcedure } from "./routes/policy/check-code/route";
-import { manualFlagProcedure } from "./routes/policy/manual-flag/route";
-import { awardCreditsProcedure } from "./routes/policy/award-credits/route";
-import { generateProcedure, generateStreamProcedure, getGenerationStatusProcedure } from "./routes/generation/generate/route";
-import { scanInferProcedure } from "./routes/generation/scan-infer/route";
-import { dryRunProcedure } from "./routes/generation/dry-run/route";
-import { specProcedure } from "./routes/generation/spec/route";
-import { buildProcedure } from "./routes/generation/build/route";
+import { createTRPCRouter } from './create-context';
+import hiProcedure from './routes/example/hi/route';
+import githubUrlProcedure from './routes/auth/github-url/route';
+import githubOAuthProcedure from './routes/auth/github-oauth/route';
+import loginProcedure from './routes/auth/login/route';
+import signupProcedure from './routes/auth/signup/route';
+import meProcedure from './routes/auth/me/route';
+import profileProcedure from './routes/auth/profile/route';
+import { testConnectionProcedure } from './routes/database/test-connection/route';
+import { listTablesProcedure } from './routes/database/list-tables/route';
+import { getTableSchemaProcedure } from './routes/database/table-schema/route';
+import { executeQueryProcedure } from './routes/database/execute/route';
+import createDeployProcedure from './routes/deploy/create/route';
+import listDeployProcedure from './routes/deploy/list/route';
+import deleteDeployProcedure from './routes/deploy/delete/route';
+import seoDeployProcedure from './routes/deploy/seo/route';
+import { getFileUrlProcedure } from './routes/files/get-url/route';
+import { orchestrateGenerationProcedure } from './routes/orchestration/generate/route';
+import { getOrchestrationHistoryProcedure } from './routes/orchestration/history/route';
+import orchestrationRunProcedure from './routes/orchestration/run/route';
+import orchestrationSingleProcedure from './routes/orchestration/single/route';
+import orchestrationProvidersProcedure from './routes/orchestration/providers/route';
+import { checkCodeProcedure } from './routes/policy/check-code/route';
+import { awardCreditsProcedure } from './routes/policy/award-credits/route';
+import { manualFlagProcedure } from './routes/policy/manual-flag/route';
+import { createProjectProcedure } from './routes/projects/create/route';
+import { exportZipProcedure } from './routes/projects/export-zip/route';
+import { gitInitProcedure } from './routes/projects/git-init/route';
+import { conductResearchRoute } from './routes/research/conduct/route';
+import { deleteResearchRoute } from './routes/research/delete/route';
+import { exportResearchRoute } from './routes/research/export/route';
+import { researchHistoryRoute } from './routes/research/history/route';
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
-    hi: hiRoute,
+    hi: hiProcedure,
   }),
   auth: createTRPCRouter({
-    login: loginRoute,
-    signup: signupRoute,
-    profile: profileRoute,
-    me: meRoute,
-    githubOAuth: githubOAuthRoute,
-    githubUrl: githubUrlRoute,
-  }),
-  research: createTRPCRouter({
-    conduct: conductResearchRoute,
-    history: researchHistoryRoute,
-    delete: deleteResearchRoute,
-    export: exportResearchRoute,
-  }),
-  deploy: createTRPCRouter({
-    create: createDeploymentRoute,
-    list: listDeploymentsRoute,
-    delete: deleteDeploymentRoute,
-    generateSEO: generateSEORoute,
+    githubUrl: githubUrlProcedure,
+    githubOAuth: githubOAuthProcedure,
+    login: loginProcedure,
+    signup: signupProcedure,
+    me: meProcedure,
+    profile: profileProcedure,
   }),
   database: createTRPCRouter({
-    execute: executeQueryProcedure,
     testConnection: testConnectionProcedure,
     listTables: listTablesProcedure,
-    getTableSchema: getTableSchemaProcedure,
+    tableSchema: getTableSchemaProcedure,
+    execute: executeQueryProcedure,
   }),
-  orchestration: createTRPCRouter({
-    generate: orchestrateGenerationProcedure,
-    compare: compareModelsProcedure,
-    history: getOrchestrationHistoryProcedure,
-    deleteHistory: deleteOrchestrationHistoryProcedure,
-    stats: getModelStatsProcedure,
-  }),
-  projects: createTRPCRouter({
-    create: createProjectProcedure,
-    git: createTRPCRouter({
-      init: gitInitProcedure,
-    }),
-    export: createTRPCRouter({
-      zip: exportZipProcedure,
-    }),
+  deploy: createTRPCRouter({
+    create: createDeployProcedure,
+    list: listDeployProcedure,
+    delete: deleteDeployProcedure,
+    seo: seoDeployProcedure,
   }),
   files: createTRPCRouter({
     getUrl: getFileUrlProcedure,
   }),
+  orchestration: createTRPCRouter({
+    generate: orchestrateGenerationProcedure,
+    history: getOrchestrationHistoryProcedure,
+    run: orchestrationRunProcedure,
+    single: orchestrationSingleProcedure,
+    providers: orchestrationProvidersProcedure,
+  }),
   policy: createTRPCRouter({
     checkCode: checkCodeProcedure,
-    manualFlag: manualFlagProcedure,
     awardCredits: awardCreditsProcedure,
+    manualFlag: manualFlagProcedure,
   }),
-  generation: createTRPCRouter({
-    generate: generateProcedure,
-    stream: generateStreamProcedure,
-    status: getGenerationStatusProcedure,
-    scanInfer: scanInferProcedure,
-    dryRun: dryRunProcedure,
-    spec: specProcedure,
-    build: buildProcedure,
+  projects: createTRPCRouter({
+    create: createProjectProcedure,
+    exportZip: exportZipProcedure,
+    gitInit: gitInitProcedure,
+  }),
+  research: createTRPCRouter({
+    conduct: conductResearchRoute,
+    delete: deleteResearchRoute,
+    export: exportResearchRoute,
+    history: researchHistoryRoute,
   }),
 });
 

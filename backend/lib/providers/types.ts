@@ -1,68 +1,46 @@
 import { z } from 'zod';
 
-export interface ModelResult {
-  model: string;
-  output: string;
-  score: number;
-  responseTime: number;
-  tokensUsed: number;
-  error?: string;
-}
-
-export interface GenerationRequest {
-  prompt: string;
-  context?: string;
-  models: string[];
-  systemPrompt?: string;
-  temperature?: number;
-  maxTokens?: number;
-  images?: string[];
-}
-
-export interface GenerationResult {
-  model: string;
-  provider: string;
-  output: string;
-  score: number;
-  responseTime: number;
-  tokensUsed: number;
-  cost: number;
-  error?: string;
-}
-
-export interface ArtifactFile {
-  path: string;
-  content: string;
-  language?: string;
-}
-
-export interface GeneratedApp {
-  name: string;
-  description: string;
-  framework: string;
-  files: ArtifactFile[];
-  dependencies: Record<string, string>;
-  envVars: string[];
-  setupInstructions: string;
-  meta: {
-    generatedAt: string;
-    models: string[];
-    totalTokens: number;
-    totalCost: number;
-  };
-}
-
-export const CodeBlockSchema = z.object({
-  language: z.string(),
-  filename: z.string(),
-  content: z.string(),
+export const GenInput = z.object({
+  prompt: z.string().min(1),
+  system: z.string().optional(),
+  images: z.array(z.string()).optional(),
+  temperature: z.number().min(0).max(2).optional().default(0.2),
+  maxTokens: z.number().optional(),
 });
 
-export const GeneratedCodeSchema = z.object({
-  files: z.array(CodeBlockSchema),
-  dependencies: z.record(z.string(), z.string()).optional(),
-  instructions: z.string().optional(),
+export type GenInput = z.infer<typeof GenInput>;
+
+export const GenResult = z.object({
+  provider: z.string(),
+  model: z.string(),
+  kind: z.enum(['text', 'image', 'video', 'audio']),
+  text: z.string().optional(),
+  url: z.string().optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
+  status: z.enum(['ok', 'error', 'timeout']),
+  error: z.string().optional(),
+  responseTime: z.number().optional(),
+  tokensUsed: z.number().optional(),
+  score: z.number().optional(),
 });
 
-export type CodeBlock = z.infer<typeof CodeBlockSchema>;
-export type GeneratedCode = z.infer<typeof GeneratedCodeSchema>;
+export type GenResult = z.infer<typeof GenResult>;
+
+export const ScoredResult = GenResult.extend({
+  score: z.number(),
+  confidence: z.number().optional(),
+  reasoning: z.string().optional(),
+});
+
+export type ScoredResult = z.infer<typeof ScoredResult>;
+
+export const ConsensusResult = z.object({
+  consensus: z.string(),
+  confidence: z.number(),
+  agreement: z.number(),
+  results: z.array(ScoredResult),
+  winner: ScoredResult,
+  reasoning: z.string(),
+});
+
+export type ConsensusResult = z.infer<typeof ConsensusResult>;

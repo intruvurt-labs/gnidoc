@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
 
-export type SubscriptionTier = 'free' | 'basic' | 'pro' | 'enterprise';
+export type SubscriptionTier = 'free' | 'shark-pond' | 'smb' | '    ';
 
 export interface SubscriptionFeature {
   name: string;
