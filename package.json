@@ -4,6 +4,8 @@
   "version": "1.0.0",
   "scripts": {
     "start": "bunx rork start -p fd9jhdiphhthdxbi879dt --tunnel",
+       "postinstall": "node patches/expo-router+use-patch.js",
+    "fix-router": "npx patch-package expo-router",  
     "start-web": "bunx rork start -p fd9jhdiphhthdxbi879dt --web --tunnel",
     "start-web-dev": "DEBUG=expo* bunx rork start -p fd9jhdiphhthdxbi879dt --web --tunnel",
     "lint": "expo lint"
@@ -70,9 +72,9 @@
     "openai": "^6.6.0",
     "pg": "^8.16.3",
     "prisma": "^6.17.1",
-    "react": "18.0.0",
-    "react-dom": "18.0.0",
-    "react-native": "0.79.6",
+    "react": "18.3.0",
+    "react-dom": "18.3.0",
+    "react-native": "0.74.0",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-safe-area-context": "5.4.0",
     "react-native-screens": "4.11.1",
