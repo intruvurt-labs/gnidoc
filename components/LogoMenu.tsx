@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
   Alert,
   Platform,
   ActivityIndicator,
+  Animated,
+  Easing,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
@@ -179,6 +181,8 @@ export default function LogoMenu({ onPress, onLongPress }: LogoMenuProps) {
   const [loadingMessage, setLoadingMessage] = useState<string>('');
   const router = useRouter();
   const { settings, updateSettings } = useSettings();
+  const [radialOpen, setRadialOpen] = useState<boolean>(false);
+  const anim = useRef(new Animated.Value(0)).current;
 
   const withAuth = async () => {
     const token = await AsyncStorage.getItem('auth-token');
@@ -253,9 +257,20 @@ export default function LogoMenu({ onPress, onLongPress }: LogoMenuProps) {
     }
   };
 
+  const toggleRadial = useCallback(() => {
+    const next = !radialOpen;
+    setRadialOpen(next);
+    Animated.timing(anim, {
+      toValue: next ? 1 : 0,
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [anim, radialOpen]);
+
   const handleQuickPress = () => {
     if (onPress) onPress();
-    setShowQuickMenu(true);
+    toggleRadial();
   };
 
   const handleLongPress = () => {
@@ -426,27 +441,74 @@ export default function LogoMenu({ onPress, onLongPress }: LogoMenuProps) {
     }
   };
 
+  const radialActions = useMemo(() => [
+    { key: 'new', label: 'New', icon: Plus, onPress: handleNewProject, color: Colors.Colors.cyan.primary },
+    { key: 'generate', label: 'Generate', icon: Play, onPress: handleGenerateApp, color: Colors.Colors.cyan.primary },
+    { key: 'preview', label: 'Preview', icon: Eye, onPress: handlePreview, color: Colors.Colors.success },
+    { key: 'export', label: 'Export', icon: Save, onPress: handleSaveExport, color: Colors.Colors.warning },
+    { key: 'orchestrate', label: 'Orchestrate', icon: Network, onPress: () => navigateToTab('orchestration'), color: Colors.Colors.cyan.primary },
+    { key: 'settings', label: 'Settings', icon: Settings, onPress: () => { setShowQuickMenu(false); setShowAdvancedMenu(true); }, color: Colors.Colors.text.muted },
+  ], []);
+
+  const RADIUS = 92;
+  const step = (2 * Math.PI) / radialActions.length;
+
   return (
     <>
-      <TouchableOpacity
-        onPress={handleQuickPress}
-        onLongPress={handleLongPress}
-        style={styles.logoButton}
-        activeOpacity={0.7}
-        disabled={isLoading}
-      >
-        <View style={styles.logoCircle}>
-          {isLoading ? (
-            <ActivityIndicator size="small" color={Colors.Colors.cyan.primary} />
-          ) : (
-            <Image
-              source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/3m84a7w7p2uwori7ld5pn' }}
-              style={styles.logoSymbol}
-              resizeMode="contain"
-            />
-          )}
-        </View>
-      </TouchableOpacity>
+      <View style={styles.radialRoot} pointerEvents={radialOpen ? 'auto' : 'box-none'}>
+        {radialActions.map((action, index) => {
+          const angle = -Math.PI / 2 + index * step;
+          const tx = Math.cos(angle) * RADIUS;
+          const ty = Math.sin(angle) * RADIUS;
+          const translateX = anim.interpolate({ inputRange: [0, 1], outputRange: [0, tx] });
+          const translateY = anim.interpolate({ inputRange: [0, 1], outputRange: [0, ty] });
+          const scale = anim.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] });
+          const opacity = anim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
+
+          return (
+            <Animated.View
+              key={action.key}
+              style={[styles.radialItem, { transform: [{ translateX }, { translateY }, { scale }], opacity }]}
+              pointerEvents={radialOpen ? 'auto' : 'none'}
+            >
+              <TouchableOpacity
+                testID={`radial-${action.key}`}
+                onPress={() => {
+                  toggleRadial();
+                  action.onPress();
+                }}
+                style={styles.radialButton}
+                accessibilityRole="button"
+                accessibilityLabel={action.label}
+                activeOpacity={0.8}
+              >
+                <action.icon color={action.color} size={18} />
+              </TouchableOpacity>
+            </Animated.View>
+          );
+        })}
+
+        <TouchableOpacity
+          testID="logo-menu-trigger"
+          onPress={handleQuickPress}
+          onLongPress={handleLongPress}
+          style={styles.logoButton}
+          activeOpacity={0.7}
+          disabled={isLoading}
+        >
+          <View style={styles.logoCircle}>
+            {isLoading ? (
+              <ActivityIndicator size="small" color={Colors.Colors.cyan.primary} />
+            ) : (
+              <Image
+                source={{ uri: 'https://pub-e001eb4506b145aa938b5d3badbff6a5.r2.dev/attachments/3m84a7w7p2uwori7ld5pn' }}
+                style={styles.logoSymbol}
+                resizeMode="contain"
+              />
+            )}
+          </View>
+        </TouchableOpacity>
+      </View>
 
       {/* Loading Modal */}
       <Modal
@@ -857,6 +919,10 @@ export default function LogoMenu({ onPress, onLongPress }: LogoMenuProps) {
 }
 
 const styles = StyleSheet.create({
+  radialRoot: {
+    position: 'relative',
+    alignSelf: 'center',
+  },
   logoButton: {
     padding: 2,
   },
@@ -871,6 +937,21 @@ const styles = StyleSheet.create({
   logoSymbol: {
     width: 48,
     height: 48,
+  },
+  radialItem: {
+    position: 'absolute',
+    left: 24,
+    top: 24,
+  },
+  radialButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.Colors.background.card,
+    borderWidth: 1,
+    borderColor: Colors.Colors.border.muted,
   },
   modalOverlay: {
     flex: 1,

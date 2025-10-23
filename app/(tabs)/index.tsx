@@ -14,6 +14,7 @@ import { Stack, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '@/constants/colors';
 import BrandedHeader from '@/components/BrandedHeader';
+import LogoMenu from '@/components/LogoMenu';
 import TypewriterEffect from '@/components/TypewriterEffect';
 import NeuroCanvas from '@/components/NeuroCanvas';
 import CardRow from '@/components/CardRow';
@@ -51,7 +52,7 @@ export default function HomeScreen() {
 
       <MatrixGridBackground parallax tint={Colors.Colors.background.gridGlow} />
 
-      <BrandedHeader />
+      <BrandedHeader rightAction={<LogoMenu />} />
 
       <ScrollView
         style={styles.content}
