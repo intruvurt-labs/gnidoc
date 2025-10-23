@@ -32,6 +32,7 @@ import { conductResearchRoute } from './routes/research/conduct/route';
 import { deleteResearchRoute } from './routes/research/delete/route';
 import { exportResearchRoute } from './routes/research/export/route';
 import { researchHistoryRoute } from './routes/research/history/route';
+import subscriptionCheckAccess from './routes/subscription/check-access/route';
 
 export const appRouter = createTRPCRouter({
   example: createTRPCRouter({
@@ -84,6 +85,9 @@ export const appRouter = createTRPCRouter({
     delete: deleteResearchRoute,
     export: exportResearchRoute,
     history: researchHistoryRoute,
+  }),
+  subscription: createTRPCRouter({
+    checkAccess: subscriptionCheckAccess,
   }),
 });
 
