@@ -1,7 +1,7 @@
 export const Providers = {
   openai: 'openai',
   anthropic: 'anthropic',
-  gemini: 'gemini',
+  gemini: 'gemini','vision',
   runway: 'runway',
   xai: 'xai',
   huggingface: 'huggingface',
@@ -18,7 +18,7 @@ export interface ModelCapabilities {
   json?: boolean;
   code?: boolean;
   vision?: boolean;
-  type?: 'text' | 'image' | 'video' | 'audio';
+  type?: 'deep-research' | 'cross-referenced code' | 'text' | 'image' | 'video' | 'audio';
   async?: boolean;
   local?: boolean;
   dynamicModelId?: boolean;
