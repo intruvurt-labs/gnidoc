@@ -1,0 +1,46 @@
+name: Build README to PDF
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - README.md
+      - .github/workflows/readme-to-pdf.yml
+      - docs/pdf/theme.css
+
+jobs:
+  build-pdf:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install md-to-pdf
+        run: |
+          npm i -g md-to-pdf@5.2.4
+
+      - name: Generate PDF
+        run: |
+          mkdir -p docs
+          md-to-pdf README.md \
+            --stylesheet docs/pdf/theme.css \
+            --document-title "Gnidoc Terces — Whitepaper" \
+            --out docs/gnidoc-terces-whitepaper.pdf \
+            --config '{"pdf_options":{"format":"A4","margin":{"top":"20mm","right":"18mm","bottom":"22mm","left":"18mm"},"displayHeaderFooter":true,"headerTemplate":"<div class=\"header\">Gnidoc Terces</div>","footerTemplate":"<div class=\"footer\" style=\"width:100%;display:flex;justify-content:space-between;\"><span>© 2025</span><span class=\"pageNumber\"></span></div>"}}'
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gnidoc-terces-whitepaper
+          path: docs/gnidoc-terces-whitepaper.pdf
+
+      - name: Commit PDF back to repo
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(docs): update generated whitepaper PDF"
+          file_pattern: docs/gnidoc-terces-whitepaper.pdf
