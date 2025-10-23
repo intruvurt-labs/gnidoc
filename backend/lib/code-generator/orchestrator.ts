@@ -84,7 +84,7 @@ export class EnterpriseCodeOrchestrator {
   }
 
   async generateFullStack(): Promise<GeneratedApp> {
-    console.log('[Orchestrator] Starting full-stack generation...', this.options);
+    console.log('[EnterpriseOrchestrator] Starting full-stack generation...', this.options);
 
     // Generate in parallel for speed
     const [frontendResult, backendResult, databaseResult, deploymentResult] = await Promise.all([
@@ -96,7 +96,7 @@ export class EnterpriseCodeOrchestrator {
 
     const app = this.assembleFullStackApp(frontendResult, backendResult, databaseResult, deploymentResult);
     
-    console.log('[Orchestrator] Full-stack generation complete', {
+    console.log('[EnterpriseOrchestrator] Full-stack generation complete', {
       files: app.files.length,
       endpoints: app.api?.endpoints?.length || 0,
       components: app.frontend?.components?.length || 0,
