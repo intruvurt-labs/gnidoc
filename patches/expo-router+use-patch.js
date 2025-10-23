@@ -17,9 +17,11 @@ try {
     'const server = React.useContext(serverLocationContext_1.ServerContext);'
   );
 
+  content = content.replace(/React\.use\(/g, 'React.useContext(');
+
   if (content !== before) {
     fs.writeFileSync(filePath, content);
-    console.log('✅ Patched expo-router React.use to useContext for ServerContext in useLinking.js');
+    console.log('✅ Patched expo-router React.use hooks in useLinking.js');
   } else {
     console.log('No changes applied; patch already present');
   }
