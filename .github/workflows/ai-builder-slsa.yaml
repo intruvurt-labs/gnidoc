@@ -1,0 +1,223 @@
+# .github/workflows/ai-builder-slsa.yml
+name: AI Builder - SLSA Provenance & Security
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+  release:
+    types: [created]
+  # Add AI-specific triggers
+  repository_dispatch:
+    types: [ai-generation-complete]
+
+jobs:
+  # Security scanning for AI-generated code
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: SAST Scan
+        uses: github/codeql-action/init@v2
+        with:
+          languages: javascript, typescript, python
+          
+      - name: AI Code Analysis
+        uses: step-security/harden-runner@v2
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          # Custom AI security scanner
+          npx @ai-security/scanner@latest \
+            --check-malicious-patterns \
+            --validate-dependencies \
+            --audit-api-calls \
+            --output sarif-results.sarif
+          
+      - name: Dependency Audit
+        run: |
+          npm audit --audit-level moderate
+          pip-audit || true
+          cargo audit || true
+
+  # Build and package AI-generated applications
+  build:
+    needs: security-scan
+    runs-on: ubuntu-latest
+    outputs:
+      digests: ${{ steps.hash.outputs.digests }}
+      build-info: ${{ steps.build-meta.outputs.build-info }}
+      
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup AI Build Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install Dependencies
+        run: |
+          npm ci
+          # Install AI-specific build tools
+          npm install -g @ai-builder/cli @vercel/ncc
+
+      - name: Build AI Application
+        id: build-ai
+        run: |
+          # Build process for AI-generated apps
+          AI_BUILD_MODE=production \
+          AI_PROVENANCE=true \
+          npx ai-builder build \
+            --input ./generated \
+            --output ./dist \
+            --bundle \
+            --minify \
+            --sourcemaps
+          
+          echo "build-time=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+
+      - name: Generate Build Metadata
+        id: build-meta
+        run: |
+          BUILD_INFO=$(jq -n \
+            --arg hash "${{ github.sha }}" \
+            --arg ref "${{ github.ref }}" \
+            --arg workflow "${{ github.workflow }}" \
+            --arg runner "${{ runner.os }}" \
+            --arg build_time "${{ steps.build-ai.outputs.build-time }}" \
+            '{
+              "build": {
+                "hash": $hash,
+                "ref": $ref, 
+                "workflow": $workflow,
+                "runner": $runner,
+                "timestamp": $build_time
+              }
+            }')
+          echo "build-info=$BUILD_INFO" >> $GITHUB_OUTPUT
+
+      - name: Generate provenance subjects
+        id: hash
+        run: |
+          set -euo pipefail
+          
+          # Include all build artifacts
+          files=$(find ./dist -type f -name "*.js" -o -name "*.css" -o -name "*.html" -o -name "*.json")
+          
+          # Generate comprehensive hashes
+          echo "hashes=$(sha256sum $files | base64 -w0)" >> "${GITHUB_OUTPUT}"
+          
+          # Also create individual hashes for critical files
+          for file in $files; do
+            filename=$(basename $file)
+            hash=$(sha256sum $file | cut -d' ' -f1)
+            echo "${filename}_hash=$hash" >> $GITHUB_OUTPUT
+          done
+
+  # AI-Specific Quality Gates
+  quality-gate:
+    needs: [security-scan, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download built artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ai-built-artifacts
+          
+      - name: Run AI Quality Checks
+        run: |
+          npx @ai-builder/quality-gate \
+            --artifacts ./artifacts \
+            --checks "security,performance,accessibility,best-practices" \
+            --threshold 0.95 \
+            --output quality-report.json
+            
+      - name: Validate AI Outputs
+        run: |
+          # Ensure no malicious code was generated
+          npx @ai-security/validator \
+            --code ./artifacts \
+            --rules ./security-rules.yml \
+            --fail-on critical
+
+  # Enhanced SLSA Provenance Generation
+  provenance:
+    needs: [build, quality-gate]
+    permissions:
+      actions: read
+      id-token: write
+      contents: write
+      attestations: write
+      security-events: write
+      
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v1.4.0
+    with:
+      base64-subjects: "${{ needs.build.outputs.digests }}"
+      upload-assets: true
+      attestation-name: 'ai-builder-provenance'
+      build-name: 'AI-Generated Application Build'
+      
+  # AI-Specific Attestations
+  ai-attestations:
+    needs: [provenance, build]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      attestations: write
+      
+    steps:
+      - name: Generate AI Development Attestation
+        uses: actions/attest-build@v1
+        with:
+          subject-name: 'ai-generated-app'
+          subjects: ./dist
+          push-to-registry: false
+          # AI-specific predicate
+          predicate-type: 'https://ai-builder.dev/predicate/v1'
+          
+      - name: Create AI Build Provenance
+        run: |
+          # Generate custom AI provenance
+          npx @ai-builder/provenance \
+            --build-info "${{ needs.build.outputs.build-info }}" \
+            --quality-report ./quality-report.json \
+            --security-scan ./sarif-results.sarif \
+            --output ai-provenance.json
+            
+      - name: Upload AI Provenance
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-provenance-attestation
+          path: ai-provenance.json
+          retention-days: 90
+
+  # Deployment with Provenance Verification
+  deploy:
+    needs: [provenance, ai-attestations]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Verify Provenance
+        uses: slsa-framework/slsa-verifier@v2
+        with:
+          source-uri: "github://${{ github.repository }}"
+          source-tag: ${{ github.ref_name }}
+          provenance-file: provenance.json
+          
+      - name: Verify AI Attestations
+        run: |
+          npx @ai-builder/verifier \
+            --provenance ai-provenance.json \
+            --policy ./deployment-policy.yml
+            
+      - name: Deploy with Confidence
+        if: success()
+        run: |
+          # Only deploy verified AI-generated applications
+          echo "🚀 Deploying verified AI application with full provenance"
+          ./deploy.sh
