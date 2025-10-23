@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "gnidoC terceS",
+    "name": "gnidoC-terceS",
     "slug": "gnidoc-terces",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash-icon.png",
+      "image": "./assets/images/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
@@ -18,15 +18,15 @@
       "bundleIdentifier": "app.rork.gnidoc",
       "usesIcloudStorage": true,
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos",
-        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera",
-        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone",
+        "NSPhotoLibraryUsageDescription": "Allow $(gnidoc-terces) to access your photos",
+        "NSCameraUsageDescription": "Allow $(gnidoc-terces) to access your camera",
+        "NSMicrophoneUsageDescription": "Allow $(gnidoc-terces) to access your microphone",
         "UIBackgroundModes": [
           "audio",
           "fetch",
           "background-processing"
         ],
-        "NSFaceIDUsageDescription": "Allow $(PRODUCT_NAME) to access your Face ID biometric data."
+        "NSFaceIDUsageDescription": "Allow $(gnidoc-terces) to access your Face ID biometric data."
       },
       "config": {
         "usesNonExemptEncryption": false
@@ -81,12 +81,12 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#ffffff",
-          "image": "./assets/images/splash-icon.png",
+          "backgroundColor": "#000000",
+          "image": "./assets/images/splash.png",
           "resizeMode": "contain",
           "dark": {
             "backgroundColor": "#0b0f12",
-            "image": "./assets/images/splash-icon.png",
+            "image": "./assets/images/splash.png",
             "resizeMode": "contain"
           }
         }
@@ -94,20 +94,20 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "The app accesses your photos to let you share them with your friends."
+          "photosPermission": "The app accesses your photos to save downloaded images."
         }
       ],
       [
         "expo-av",
         {
-          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone"
+          "microphonePermission": "Allow $(gnidoc-terces) to access your microphone"
         }
       ],
       [
         "expo-secure-store",
         {
           "configureAndroidBackup": true,
-          "faceIDPermission": "Allow $(PRODUCT_NAME) to access your Face ID biometric data."
+          "faceIDPermission": "Allow $(gnidoc-terces) to access your Face ID biometric data."
         }
       ],
       [
@@ -129,11 +129,11 @@
       [
         "expo-notifications",
         {
-          "icon": "./local/assets/notification_icon.png",
-          "color": "#ffffff",
+          "icon": "./assets/images/notification_icon.png",
+          "color": "#000000",
           "defaultChannel": "default",
           "sounds": [
-            "./local/assets/notification_sound.wav"
+            "./assets/sound/notification_sound.wav"
           ],
           "enableBackgroundRemoteNotifications": false
         }
