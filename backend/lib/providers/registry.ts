@@ -45,15 +45,15 @@ export const Registry: Record<ProviderName, { models: Record<string, ModelCapabi
   },
   gemini: {
     models: {
-      'gemini-1.5-pro': { cost: 3, speed: 3, json: true, code: true, vision: true },
+      'gemini-2.5-pro': { cost: 4, speed: 2, json: true, code: true, vision: true },
       'gemini-1.5-flash': { cost: 2, speed: 5, json: true, code: true, vision: true },
       'gemini-2.0-flash-exp': { cost: 2, speed: 5, json: true, code: true, vision: true },
     },
   },
   runway: {
     models: {
-      'gen-3-alpha': { type: 'video', async: true, vision: true, cost: 10, speed: 1 },
-      'gen-3.5': { type: 'video', async: true, vision: true, cost: 12, speed: 1 },
+      'gen-3-alpha': { type: 'video', async: true, vision: true, cost: 12, speed: 1 },
+      'gen-3.5': { type: 'video', async: true, vision: true, cost: 14, speed: 1 },
     },
   },
   xai: {
