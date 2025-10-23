@@ -1,3 +1,4 @@
+import "@/lib/polyfills/react-use";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -33,8 +34,7 @@ const GamificationProvider = lazy(() => import("@/contexts/GamificationContext")
 const SubscriptionProvider = lazy(() => import("@/contexts/SubscriptionContext").then(m => ({ default: m.SubscriptionProvider })));
 const PolicyProvider = lazy(() => import("@/contexts/PolicyContext").then(m => ({ default: m.PolicyProvider })));
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
+
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -251,7 +251,15 @@ function OnboardingWrapper() {
 
 export default function RootLayout() {
   useEffect(() => {
-    SplashScreen.hideAsync();
+    (async () => {
+      try {
+        await SplashScreen.preventAutoHideAsync();
+      } catch (e) {
+        console.log("splash prevent error", e);
+      } finally {
+        await SplashScreen.hideAsync();
+      }
+    })();
   }, []);
 
   return (
