@@ -2,8 +2,9 @@ import createContextHook from '@nkzw/create-context-hook';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
+import { trpcClient } from '@/lib/trpc';
 
-export type SubscriptionTier = 'free' | 'shark-pond' | 'smb' | '    ';
+export type SubscriptionTier = 'free' | 'basic' | 'pro' | 'enterprise';
 
 export interface SubscriptionFeature {
   name: string;
@@ -287,11 +288,22 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     return true;
   }, []);
 
+  const verifyAccess = useCallback(async (feature: string): Promise<{ allowed: boolean; tier: SubscriptionTier }> => {
+    try {
+      const res = await trpcClient.subscription.checkAccess.query({ feature });
+      return { allowed: !!res.allowed, tier: (res.tier as SubscriptionTier) ?? state.currentTier };
+    } catch (e) {
+      console.error('[Subscription] verifyAccess failed:', e);
+      return { allowed: canAccessFeature(feature), tier: state.currentTier };
+    }
+  }, [canAccessFeature, state.currentTier]);
+
   return useMemo(() => ({
     ...state,
     plans: subscriptionPlans,
     currentPlan: getCurrentPlan(),
     canAccessFeature,
+    verifyAccess,
     getCollaborationSeats,
     checkUsageLimit,
     incrementUsage,
@@ -302,6 +314,7 @@ export const [SubscriptionProvider, useSubscription] = createContextHook(() => {
     state,
     getCurrentPlan,
     canAccessFeature,
+    verifyAccess,
     getCollaborationSeats,
     checkUsageLimit,
     incrementUsage,

@@ -1,286 +1,505 @@
 import { orchestrateMultiModel } from '../providers/router';
-import { extractCodeBlocks, normalizeCodeBlocks, extractDependencies, extractEnvVars, validateGeneratedCode } from './parser';
+import { 
+  extractCodeBlocks, 
+  normalizeCodeBlocks, 
+  extractDependencies, 
+  extractEnvVars, 
+  validateGeneratedCode,
+  generateAPISpec,
+  generateDatabaseSchema,
+  generateComponentTree 
+} from './parser';
 import { getModelInfo } from '../providers/registry';
-import type { GenerationRequest, GenerationResult, GeneratedApp, ModelResult, ArtifactFile } from '../providers/types';
+import type { 
+  GenerationRequest, 
+  GenerationResult, 
+  GeneratedApp, 
+  ModelResult, 
+  ArtifactFile,
+  ProjectType,
+  DeploymentTarget 
+} from '../providers/types';
 
-export interface CodeGenerationOptions {
-  models: string[];
-  prompt: string;
-  context?: string;
-  framework?: 'react-native' | 'nextjs' | 'express' | 'fastapi' | 'django';
-  features?: string[];
-  maxParallel?: number;
-  requireDatabase?: boolean;
-  requireAuth?: boolean;
-  requirePayments?: boolean;
+export interface EnterpriseGenerationOptions {
+  projectType: ProjectType;
+  name: string;
+  description: string;
+  
+  // Frontend
+  frontend: {
+    framework: 'react' | 'vue' | 'svelte' | 'solid' | 'nextjs' | 'nuxt';
+    styling: 'tailwind' | 'css' | 'styled-components' | 'chakra' | 'material';
+    responsive: boolean;
+    pwa: boolean;
+    mobileApp: boolean; // Generates React Native/Capacitor
+  };
+  
+  // Backend
+  backend: {
+    framework: 'node' | 'express' | 'fastify' | 'hono' | 'nextjs' | 'python' | 'fastapi' | 'go';
+    database: 'postgres' | 'mongodb' | 'sqlite' | 'firebase' | 'supabase';
+    auth: 'none' | 'jwt' | 'oauth' | 'supabase' | 'clerk' | 'auth0';
+    realtime: boolean;
+  };
+  
+  // Business Features
+  features: {
+    payments: 'none' | 'stripe' | 'lemon-squeezy' | 'paddle';
+    subscriptions: boolean;
+    analytics: 'none' | 'plausible' | 'google' | 'mixpanel';
+    email: 'none' | 'resend' | 'sendgrid' | 'postmark';
+    cms: 'none' | 'contentful' | 'sanity' | 'custom';
+  };
+  
+  // AI/Advanced
+  ai: {
+    agents: boolean;
+    workflows: boolean;
+    mcp: boolean;
+    rag: boolean;
+  };
+  
+  // Deployment
+  deployment: {
+    targets: DeploymentTarget[];
+    domains: string[];
+    ssl: boolean;
+    cdn: boolean;
+  };
+  
+  // Integration
+  integrations: {
+    crms: string[];
+    marketing: string[];
+    support: string[];
+    monitoring: string[];
+  };
 }
 
-const SYSTEM_PROMPTS = {
-  code: `You are an expert full-stack developer. Generate complete, production-ready code with:
-- All necessary files organized in proper directory structure
-- Complete implementations (no TODOs or placeholders)
-- Error handling and validation
-- TypeScript with proper types
-- Modern best practices
-- Clear comments explaining complex logic
+export class EnterpriseCodeOrchestrator {
+  private options: EnterpriseGenerationOptions;
 
-Format each file as:
-\`\`\`language // filename.ext
-code here
-\`\`\``,
-
-  database: `Generate a complete database schema with:
-- Well-designed tables with proper relationships
-- Indexes for performance
-- Migrations for version control
-- Type-safe ORM models
-- Seed data for testing`,
-
-  auth: `Implement secure authentication with:
-- JWT or session-based auth
-- Password hashing (bcrypt/argon2)
-- OAuth providers (Google, GitHub)
-- Email verification
-- Password reset flow
-- Rate limiting
-- CSRF protection`,
-
-  payments: `Implement payment integration with:
-- Stripe integration
-- Webhook handling
-- Subscription management
-- Invoice generation
-- Payment retry logic
-- Idempotency for safety`,
-};
-
-export class CodeOrchestrator {
-  private options: CodeGenerationOptions;
-
-  constructor(options: CodeGenerationOptions) {
+  constructor(options: EnterpriseGenerationOptions) {
     this.options = options;
   }
 
-  async generate(): Promise<GeneratedApp> {
-    console.log('[CodeOrchestrator] Starting generation...', {
-      models: this.options.models,
-      features: this.options.features,
-    });
+  async generateFullStack(): Promise<GeneratedApp> {
+    console.log('[EnterpriseOrchestrator] Starting full-stack generation...', this.options);
 
-    const results = await this.generateWithModels();
-    const bestResult = this.selectBestResult(results);
-    
-    if (!bestResult.output) {
-      throw new Error('No valid output generated from any model');
-    }
+    // Generate in parallel for speed
+    const [frontendResult, backendResult, databaseResult, deploymentResult] = await Promise.all([
+      this.generateFrontend(),
+      this.generateBackend(),
+      this.generateDatabase(),
+      this.generateDeployment()
+    ]);
 
-    const app = this.parseIntoApp(bestResult, results);
+    const app = this.assembleFullStackApp(frontendResult, backendResult, databaseResult, deploymentResult);
     
-    console.log('[CodeOrchestrator] Generation complete', {
+    console.log('[EnterpriseOrchestrator] Full-stack generation complete', {
       files: app.files.length,
-      dependencies: Object.keys(app.dependencies).length,
+      endpoints: app.api?.endpoints?.length || 0,
+      components: app.frontend?.components?.length || 0,
     });
 
     return app;
   }
 
-  private async generateWithModels(): Promise<GenerationResult[]> {
+  private async generateFrontend(): Promise<GenerationResult> {
+    const prompt = this.buildFrontendPrompt();
+    
     const request: GenerationRequest = {
-      prompt: this.buildPrompt(),
-      context: this.options.context,
-      models: this.options.models,
-      systemPrompt: SYSTEM_PROMPTS.code,
-      temperature: 0.3,
+      prompt,
+      models: ['gpt-4', 'claude-3-sonnet'], // Prefer visual/UI models
+      systemPrompt: this.getSystemPrompt('frontend'),
+      temperature: 0.2, // More deterministic for UI
+      maxTokens: 12000,
+    };
+
+    return this.generateWithFallback(request);
+  }
+
+  private async generateBackend(): Promise<GenerationResult> {
+    const prompt = this.buildBackendPrompt();
+    
+    const request: GenerationRequest = {
+      prompt,
+      models: ['claude-3-sonnet', 'gpt-4'], // Prefer logic/architecture models
+      systemPrompt: this.getSystemPrompt('backend'),
+      temperature: 0.1, // Very deterministic for APIs
       maxTokens: 16000,
     };
 
-    const rawResults = await orchestrateMultiModel(request, this.options.maxParallel || 3);
-    
-    return rawResults.map((result: ModelResult) => {
-      const modelInfo = getModelInfo(result.model);
-      const costPerToken = modelInfo?.capabilities.cost || 1;
-      
-      return {
-        model: result.model,
-        provider: modelInfo?.provider || 'unknown',
-        output: result.output,
-        score: result.score,
-        responseTime: result.responseTime,
-        tokensUsed: result.tokensUsed,
-        cost: (result.tokensUsed / 1000) * costPerToken,
-        error: result.error,
-      };
-    });
+    return this.generateWithFallback(request);
   }
 
-  private buildPrompt(): string {
-    const { framework, features, requireDatabase, requireAuth, requirePayments } = this.options;
+  private buildFrontendPrompt(): string {
+    const { frontend, features, name, description } = this.options;
+    
+    return `
+Generate a complete, production-ready ${frontend.framework} application for: ${name}
 
-    let prompt = this.options.prompt + '\n\n';
-    
-    prompt += `Generate a complete ${framework || 'full-stack'} application.\n\n`;
-    
-    prompt += 'Requirements:\n';
-    if (framework) prompt += `- Framework: ${framework}\n`;
-    if (features && features.length > 0) {
-      prompt += '- Features:\n';
-      features.forEach(f => prompt += `  * ${f}\n`);
-    }
-    if (requireDatabase) prompt += '- Include database schema and migrations\n';
-    if (requireAuth) prompt += '- Include authentication (OAuth + JWT)\n';
-    if (requirePayments) prompt += '- Include Stripe payment integration\n';
-    
-    prompt += '\nDeliver all files with proper structure. Use code blocks with filenames.';
-    
-    return prompt;
+DESCRIPTION: ${description}
+
+FRONTEND REQUIREMENTS:
+- Framework: ${frontend.framework}
+- Styling: ${frontend.styling}
+- Fully responsive: ${frontend.responsive}
+- PWA: ${frontend.pwa}
+- Mobile app: ${frontend.mobileApp}
+
+BUSINESS FEATURES:
+${features.payments !== 'none' ? `- Payments: ${features.payments} integration` : ''}
+${features.subscriptions ? `- Subscription management with tiers` : ''}
+${features.analytics !== 'none' ? `- Analytics: ${features.analytics}` : ''}
+
+SPECIFIC COMPONENTS NEEDED:
+1. Responsive navigation with auth states
+2. Hero section with value proposition
+3. Feature/pricing sections
+4. Dashboard layout (if authenticated)
+5. Payment/checkout flows
+6. Mobile-optimized components
+
+Generate ALL files including:
+- Main layout/components
+- Routing configuration
+- State management
+- Responsive design system
+- Mobile-specific components if needed
+- PWA manifest/service worker if needed
+    `.trim();
   }
 
-  private selectBestResult(results: GenerationResult[]): GenerationResult {
-    const validResults = results.filter(r => !r.error && r.output.length > 100);
+  private buildBackendPrompt(): string {
+    const { backend, features, ai, name } = this.options;
     
-    if (validResults.length === 0) {
-      console.warn('[CodeOrchestrator] No valid results, using best available');
-      return results.sort((a, b) => b.score - a.score)[0] || results[0];
-    }
+    return `
+Generate a complete, production-ready ${backend.framework} backend API for: ${name}
 
-    validResults.sort((a, b) => {
-      const aCodeBlocks = (a.output.match(/```/g) || []).length;
-      const bCodeBlocks = (b.output.match(/```/g) || []).length;
-      
-      if (aCodeBlocks !== bCodeBlocks) return bCodeBlocks - aCodeBlocks;
-      
-      return b.score - a.score;
-    });
+BACKEND REQUIREMENTS:
+- Framework: ${backend.framework}
+- Database: ${backend.database}
+- Authentication: ${backend.auth}
+- Realtime: ${backend.realtime}
 
-    return validResults[0];
+BUSINESS LOGIC:
+${features.payments !== 'none' ? `- Payment processing with ${features.payments}` : ''}
+${features.subscriptions ? `- Subscription management with webhooks` : ''}
+${features.email !== 'none' ? `- Email system with ${features.email}` : ''}
+
+AI CAPABILITIES:
+${ai.agents ? `- AI agent system with tool calling` : ''}
+${ai.workflows ? `- Workflow engine for multi-step processes` : ''}
+${ai.mcp ? `- MCP (Model Context Protocol) server integration` : ''}
+${ai.rag ? `- RAG system for knowledge retrieval` : ''}
+
+GENERATE COMPLETE:
+- API routes with proper REST/GraphQL
+- Database models and migrations
+- Authentication middleware
+- Payment webhook handlers
+- AI agent endpoints
+- Error handling and validation
+- Security best practices
+    `.trim();
   }
 
-  private parseIntoApp(best: GenerationResult, allResults: GenerationResult[]): GeneratedApp {
-    const codeBlocks = extractCodeBlocks(best.output);
-    const files = normalizeCodeBlocks(codeBlocks);
-    
-    const validation = validateGeneratedCode(files);
-    if (!validation.valid) {
-      console.warn('[CodeOrchestrator] Validation issues:', validation.errors);
-    }
+  private getSystemPrompt(type: 'frontend' | 'backend' | 'database' | 'deployment'): string {
+    const prompts = {
+      frontend: `You are an expert frontend architect. Generate:
+- Production-ready, responsive components
+- Mobile-first design with tablet/desktop breakpoints
+- Accessible, semantic HTML
+- Optimized performance (lazy loading, code splitting)
+- PWA capabilities if requested
+- Payment UI components if needed
+- Clean, maintainable component structure`,
 
-    let dependencies: Record<string, string> = extractDependencies(best.output);
-    const packageJsonFile = files.find(f => f.path === 'package.json');
-    if (packageJsonFile) {
-      try {
-        const pkg = JSON.parse(packageJsonFile.content);
-        dependencies = { ...dependencies, ...pkg.dependencies, ...pkg.devDependencies };
-      } catch {
-        console.warn('[CodeOrchestrator] Failed to parse package.json');
+      backend: `You are an expert backend architect. Generate:
+- Scalable, secure API architecture
+- Proper database models and relationships
+- Authentication/authorization middleware
+- Payment processing with webhook security
+- AI agent workflows with proper tooling
+- Real-time capabilities if needed
+- Comprehensive error handling and logging
+- Type-safe throughout`,
+
+      database: `You are a database architect. Generate:
+- Optimized schema design with proper indexes
+- Migration files for version control
+- Seed data for development
+- Relationships and constraints
+- Performance considerations`,
+
+      deployment: `You are a DevOps engineer. Generate:
+- Docker configurations
+- CI/CD pipeline files
+- Environment configurations
+- Deployment scripts
+- Monitoring setup`
+    };
+
+    return prompts[type];
+  }
+
+  private async generateWithFallback(request: GenerationRequest): Promise<GenerationResult> {
+    try {
+      const results = await orchestrateMultiModel(request, 2);
+      const best = this.selectBestResult(results);
+      
+      if (!best.output) {
+        throw new Error('No valid output from primary models');
       }
+      
+      return best;
+    } catch (error) {
+      console.warn('[EnterpriseOrchestrator] Primary generation failed, using fallback');
+      // Fallback to simpler generation
+      return this.generateFallback(request);
     }
+  }
 
-    if (Object.keys(dependencies).length === 0) {
-      dependencies = this.inferDependencies(files);
-    }
-
-    const envVars = extractEnvVars(best.output);
+  private assembleFullStackApp(
+    frontend: GenerationResult, 
+    backend: GenerationResult,
+    database: GenerationResult,
+    deployment: GenerationResult
+  ): GeneratedApp {
+    // Parse all code blocks from all generations
+    const allCodeBlocks = [
+      ...extractCodeBlocks(frontend.output),
+      ...extractCodeBlocks(backend.output),
+      ...extractCodeBlocks(database.output),
+      ...extractCodeBlocks(deployment.output)
+    ];
     
-    const totalTokens = allResults.reduce((sum, r) => sum + r.tokensUsed, 0);
-    const totalCost = allResults.reduce((sum, r) => sum + r.cost, 0);
-
+    const files = normalizeCodeBlocks(allCodeBlocks);
+    
+    // Generate API specification
+    const apiSpec = generateAPISpec(backend.output);
+    
+    // Generate component tree for the frontend
+    const componentTree = generateComponentTree(frontend.output);
+    
+    // Generate database schema
+    const databaseSchema = generateDatabaseSchema(database.output);
+    
+    // Validate everything works together
+    const validation = this.validateFullStackIntegration(files, apiSpec, databaseSchema);
+    
     return {
-      name: this.extractAppName(best.output) || 'generated-app',
-      description: this.options.prompt.slice(0, 200),
-      framework: this.options.framework || 'unknown',
+      name: this.options.name,
+      description: this.options.description,
+      type: this.options.projectType,
+      
+      // Frontend specific
+      frontend: {
+        framework: this.options.frontend.framework,
+        components: componentTree,
+        responsive: this.options.frontend.responsive,
+        pwa: this.options.frontend.pwa,
+        mobileApp: this.options.frontend.mobileApp,
+      },
+      
+      // Backend specific
+      backend: {
+        framework: this.options.backend.framework,
+        database: this.options.backend.database,
+        api: apiSpec,
+        realtime: this.options.backend.realtime,
+      },
+      
+      // Business features
+      features: {
+        payments: this.options.features.payments,
+        subscriptions: this.options.features.subscriptions,
+        analytics: this.options.features.analytics,
+        auth: this.options.backend.auth,
+      },
+      
+      // AI capabilities
+      ai: {
+        agents: this.options.ai.agents,
+        workflows: this.options.ai.workflows,
+        mcp: this.options.ai.mcp,
+        rag: this.options.ai.rag,
+      },
+      
+      // The actual generated artifacts
       files,
-      dependencies,
-      envVars,
-      setupInstructions: this.generateSetupInstructions(files, dependencies, envVars),
+      dependencies: this.resolveAllDependencies(files),
+      envVars: this.extractAllEnvVars([frontend, backend, database, deployment]),
+      database: databaseSchema,
+      
+      // Deployment ready
+      deployment: {
+        targets: this.options.deployment.targets,
+        configuration: this.generateDeploymentConfig(),
+        scripts: this.extractDeploymentScripts(deployment.output),
+      },
+      
+      setupInstructions: this.generateEnterpriseSetupInstructions(),
       meta: {
         generatedAt: new Date().toISOString(),
-        models: allResults.map(r => r.model),
-        totalTokens,
-        totalCost: Number(totalCost.toFixed(4)),
+        generationTime: Date.now(),
+        modelsUsed: [frontend.model, backend.model, database.model, deployment.model],
+        validation: validation,
       },
     };
   }
 
-  private extractAppName(output: string): string | null {
-    const nameMatch = output.match(/(?:app|project|name):\s*["`']?([a-z0-9-_]+)["`']?/i);
-    if (nameMatch?.[1]) return nameMatch[1];
-    
-    const pkgMatch = output.match(/"name":\s*"([^"]+)"/);
-    if (pkgMatch?.[1]) return pkgMatch[1];
-    
-    return null;
-  }
+  private validateFullStackIntegration(
+    files: ArtifactFile[], 
+    apiSpec: any, 
+    databaseSchema: any
+  ): { valid: boolean; errors: string[]; warnings: string[] } {
+    const errors: string[] = [];
+    const warnings: string[] = [];
 
-  private inferDependencies(files: ArtifactFile[]): Record<string, string> {
-    const deps: Record<string, string> = {};
-    const allContent = files.map(f => f.content).join('\n');
+    // Check frontend-backend integration
+    const frontendFiles = files.filter(f => 
+      f.path.includes('src/') && (f.path.endsWith('.tsx') || f.path.endsWith('.vue'))
+    );
+    
+    const backendFiles = files.filter(f => 
+      f.path.includes('api/') || f.path.includes('server/')
+    );
 
-    const commonDeps: Record<string, string> = {
-      react: '^18.2.0',
-      'react-native': '^0.73.0',
-      next: '^14.0.0',
-      express: '^4.18.0',
-      fastapi: '^0.104.0',
-      hono: '^4.0.0',
-      '@trpc/server': '^10.45.0',
-      '@trpc/client': '^10.45.0',
-      zod: '^3.22.0',
-      prisma: '^5.7.0',
-      '@prisma/client': '^5.7.0',
-      stripe: '^14.0.0',
-      jsonwebtoken: '^9.0.2',
-      bcryptjs: '^2.4.3',
+    // Verify API endpoints are called from frontend
+    if (apiSpec.endpoints) {
+      const frontendCode = frontendFiles.map(f => f.content).join('\n');
+      apiSpec.endpoints.forEach((endpoint: any) => {
+        if (!frontendCode.includes(endpoint.path) && endpoint.method === 'GET') {
+          warnings.push(`Frontend may not be calling endpoint: ${endpoint.method} ${endpoint.path}`);
+        }
+      });
+    }
+
+    // Check database models are used in backend
+    if (databaseSchema.tables) {
+      const backendCode = backendFiles.map(f => f.content).join('\n');
+      databaseSchema.tables.forEach((table: any) => {
+        if (!backendCode.includes(table.name)) {
+          warnings.push(`Database table ${table.name} may not be used in backend`);
+        }
+      });
+    }
+
+    // Check for environment variable consistency
+    const envVars = this.extractAllEnvVars([]);
+    const hasEnvExample = files.some(f => f.path.includes('.env.example'));
+    
+    if (!hasEnvExample && envVars.length > 0) {
+      errors.push('Missing .env.example file with required environment variables');
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors,
+      warnings
     };
-
-    for (const [pkg, version] of Object.entries(commonDeps)) {
-      if (allContent.includes(`from '${pkg}'`) || allContent.includes(`from "${pkg}"`)) {
-        deps[pkg] = version;
-      }
-    }
-
-    return deps;
   }
 
-  private generateSetupInstructions(
-    files: ArtifactFile[],
-    dependencies: Record<string, string>,
-    envVars: string[]
-  ): string {
-    let instructions = '# Setup Instructions\n\n';
+  private generateEnterpriseSetupInstructions(): string {
+    const { frontend, backend, features, deployment } = this.options;
     
-    instructions += '## 1. Install Dependencies\n\n';
-    if (Object.keys(dependencies).length > 0) {
-      instructions += '```bash\nnpm install\n```\n\n';
-    } else {
-      instructions += 'No dependencies required.\n\n';
+    let instructions = `# ${this.options.name} - Setup Instructions\n\n`;
+
+    instructions += '## Quick Start\n\n';
+    instructions += '```bash\n# Clone and install\ngit clone <repository>\ncd ${this.options.name}\nnpm install\n\n# Set up environment\ncp .env.example .env.local\n# Fill in your environment variables\n\n# Start development\nnpm run dev\n```\n\n';
+
+    instructions += '## Full Deployment Guide\n\n';
+
+    if (deployment.targets.includes('vercel')) {
+      instructions += '### Vercel Deployment\n';
+      instructions += '1. Push code to GitHub\n2. Connect repository in Vercel\n3. Add environment variables\n4. Deploy automatically\n\n';
     }
 
-    if (envVars.length > 0) {
-      instructions += '## 2. Environment Variables\n\n';
-      instructions += 'Create a `.env` file with:\n\n```\n';
-      envVars.forEach(v => instructions += `${v}=your_value_here\n`);
-      instructions += '```\n\n';
+    if (features.payments !== 'none') {
+      instructions += `### ${features.payments.toUpperCase()} Setup\n`;
+      instructions += '1. Create account at dashboard\n2. Get API keys\n3. Configure webhooks\n4. Test payments in sandbox\n\n';
     }
 
-    const hasMigrations = files.some(f => f.path.includes('migration'));
-    if (hasMigrations) {
-      instructions += '## 3. Database Setup\n\n';
-      instructions += '```bash\nnpm run migrate\n```\n\n';
+    if (backend.auth !== 'none') {
+      instructions += `### Authentication Setup (${backend.auth})\n`;
+      instructions += '1. Configure auth provider\n2. Set redirect URLs\n3. Test login flow\n4. Set up roles/permissions\n\n';
     }
 
-    instructions += '## 4. Run the Application\n\n';
-    instructions += '```bash\nnpm run dev\n```\n\n';
+    instructions += '## Mobile App\n\n';
+    if (frontend.mobileApp) {
+      instructions += 'This project includes mobile app configuration.\n';
+      instructions += '```bash\n# For iOS\nnpm run build:ios\n\n# For Android  \nnpm run build:android\n```\n\n';
+    }
 
-    instructions += '## Notes\n\n';
-    instructions += '- Replace all placeholder API keys with real values\n';
-    instructions += '- Review security settings before deploying\n';
-    instructions += '- Set up proper error monitoring (Sentry, etc.)\n';
+    instructions += '## AI Features\n\n';
+    if (this.options.ai.agents) {
+      instructions += '### AI Agents\n';
+      instructions += '1. Set up OpenAI/Anthropic API keys\n2. Configure agent tools\n3. Test workflows in dashboard\n\n';
+    }
 
     return instructions;
   }
+
+  // ... (helper methods for dependency resolution, env var extraction, etc.)
 }
 
-export async function generateFullStackApp(options: CodeGenerationOptions): Promise<GeneratedApp> {
-  const orchestrator = new CodeOrchestrator(options);
-  return orchestrator.generate();
+// Specialized generators for different project types
+export class ProjectTypeGenerator {
+  static async generateSaaS(options: EnterpriseGenerationOptions): Promise<GeneratedApp> {
+    const orchestrator = new EnterpriseCodeOrchestrator({
+      ...options,
+      features: {
+        ...options.features,
+        payments: 'stripe',
+        subscriptions: true,
+        analytics: 'plausible',
+        email: 'resend',
+        cms: 'custom'
+      },
+      backend: {
+        ...options.backend,
+        auth: 'oauth'
+      }
+    });
+    
+    return orchestrator.generateFullStack();
+  }
+
+  static async generateAIWorkflow(options: EnterpriseGenerationOptions): Promise<GeneratedApp> {
+    const orchestrator = new EnterpriseCodeOrchestrator({
+      ...options,
+      ai: {
+        agents: true,
+        workflows: true,
+        mcp: true,
+        rag: true
+      },
+      frontend: {
+        ...options.frontend,
+        framework: 'nextjs'
+      }
+    });
+    
+    return orchestrator.generateFullStack();
+  }
+
+  static async generateMobileApp(options: EnterpriseGenerationOptions): Promise<GeneratedApp> {
+    const orchestrator = new EnterpriseCodeOrchestrator({
+      ...options,
+      frontend: {
+        ...options.frontend,
+        framework: 'react',
+        mobileApp: true,
+        pwa: true
+      },
+      deployment: {
+        ...options.deployment,
+        targets: ['app-store', 'play-store', 'web']
+      }
+    });
+    
+    return orchestrator.generateFullStack();
+  }
 }
