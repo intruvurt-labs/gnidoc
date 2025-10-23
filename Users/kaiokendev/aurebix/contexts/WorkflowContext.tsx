@@ -147,7 +147,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         AsyncStorage.getItem(EXECUTIONS_KEY),
       ]);
 
-      if (wfRaw) {
+      if (wfRaw && wfRaw.length < 2_000_000) {
         const arr = safeParseJSON<any[]>(
           wfRaw,
           z.array(WorkflowSchema),
@@ -163,7 +163,7 @@ export function WorkflowProvider({ children }: { children: React.ReactNode }) {
         console.log(`[WorkflowContext] Loaded ${parsedWorkflows.length} workflows`);
       }
 
-      if (exRaw) {
+      if (exRaw && exRaw.length < 2_000_000) {
         const arr = safeParseJSON<any[]>(
           exRaw,
           z.array(WorkflowExecutionSchema),
