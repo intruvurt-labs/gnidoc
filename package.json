@@ -4,9 +4,6 @@
   "version": "1.0.0",
   "scripts": {
     "start": "bunx rork start -p fd9jhdiphhthdxbi879dt --tunnel",
-       "postinstall": "patch/use-patch.js",
-    "fix-router": "npx patch-package expo-router"
-  }
     "start-web": "bunx rork start -p fd9jhdiphhthdxbi879dt --web --tunnel",
     "start-web-dev": "DEBUG=expo* bunx rork start -p fd9jhdiphhthdxbi879dt --web --tunnel",
     "lint": "expo lint"
