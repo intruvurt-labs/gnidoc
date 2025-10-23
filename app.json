@@ -129,11 +129,11 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/images/notifs.png",
+          "icon": "./assets/notifs.png",
           "color": "#000000",
           "defaultChannel": "default",
           "sounds": [
-            "./assets/sound/notification_sound.wav"
+            "./assets/sound/notifs.wav"
           ],
           "enableBackgroundRemoteNotifications": false
         }
