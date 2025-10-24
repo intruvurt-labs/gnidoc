@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  Easing,
 } from 'react-native';
 import { X, Send, Bot, User as UserIcon, Trash2 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
@@ -31,6 +32,12 @@ const uid = (p = "") => {
 
 const HISTORY_CAP = 400 as const;
 const SAVE_DEBOUNCE_MS = 350 as const;
+const MAX_TOPICS_PER_SESSION = 12 as const;
+
+const safeJSONParse = <T,>(raw: string | null, fallback: T): T => {
+  if (!raw) return fallback;
+  try { return JSON.parse(raw) as T; } catch { return fallback; }
+};
 
 async function enqueueEscalation(payload: { sessionId: string; lastMessage?: string; tier: string }) {
   try {
@@ -84,6 +91,7 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
   const [extendedMemory, setExtendedMemory] = useState<ExtendedMemory | null>(null);
   const [sessionCount, setSessionCount] = useState(0);
   const [bootstrappedFromMemory, setBootstrappedFromMemory] = useState(false);
+  const [sending, setSending] = useState(false);
 
   const currentSessionId = useMemo(() => `session-${Date.now()}`, []);
   const slideAnim = useRef(new Animated.Value(height)).current;
@@ -127,18 +135,15 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
   const loadConversationHistory = useCallback(async () => {
     try {
       const stored = await AsyncStorage.getItem(STORAGE_KEYS.CHAT);
-      if (stored) {
-        const history = JSON.parse(stored);
-        setMessages(history);
-        // local messages will be created in the messages effect
-      }
+      const history = safeJSONParse<any[]>(stored, []);
+      setMessages(Array.isArray(history) ? history : []);
 
       const memoryStored = await AsyncStorage.getItem(STORAGE_KEYS.MEMORY);
-      if (memoryStored) {
-        const memory: ExtendedMemory = JSON.parse(memoryStored);
-        setExtendedMemory(memory);
-        setSessionCount(memory.sessions?.length ?? 0);
-      }
+      const memory = safeJSONParse<ExtendedMemory>(memoryStored, {
+        sessions: [], userPreferences: {}, commonIssues: [], lastInteraction: new Date().toISOString()
+      });
+      setExtendedMemory(memory);
+      setSessionCount(memory.sessions?.length ?? 0);
     } catch (err) {
       console.error('[AISupportChat] Failed to load history/memory:', err);
     }
@@ -215,6 +220,9 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
 
         for (const t of extractTopics(newMessage.content)) {
           if (!current.topics.includes(t)) current.topics.push(t);
+          if (current.topics.length > MAX_TOPICS_PER_SESSION) {
+            current.topics = current.topics.slice(-MAX_TOPICS_PER_SESSION);
+          }
         }
 
         memory.lastInteraction = new Date().toISOString();
@@ -288,8 +296,8 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
     if (isOpen) return;
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.05, duration: 1200, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 1200, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.05, duration: 1200, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1200, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
       ])
     );
     loop.start();
@@ -297,10 +305,10 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
   }, [isOpen, pulseAnim]);
 
   const handleSend = useCallback(async () => {
+    if (sending) return;
     const text = inputMessage.trim();
     if (!text) return;
 
-    // Soft session limit for free tier: only count *user* messages this session
     if (!isPaidTier) {
       const userMsgCount = localMessages.filter(m => m.role === 'user').length;
       if (userMsgCount >= 5) {
@@ -318,9 +326,14 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
       }
     }
 
-    setInputMessage('');
-    await sendMessage(text);
-  }, [inputMessage, isPaidTier, localMessages, sendMessage]);
+    try {
+      setSending(true);
+      setInputMessage('');
+      await sendMessage(text);
+    } finally {
+      setSending(false);
+    }
+  }, [sending, inputMessage, isPaidTier, localMessages, sendMessage]);
 
   const handleEscalate = useCallback((auto?: boolean) => {
     if (!isPaidTier) {
@@ -504,9 +517,11 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
                 testID="ai-support-input"
               />
               <TouchableOpacity
-                style={[styles.sendButton, !inputMessage.trim() && styles.sendButtonDisabled]}
+                style={[styles.sendButton, (!inputMessage.trim() || sending) && styles.sendButtonDisabled]}
                 onPress={handleSend}
-                disabled={!inputMessage.trim()}
+                disabled={!inputMessage.trim() || sending}
+                accessibilityRole="button"
+                accessibilityLabel="Send message"
                 testID="ai-support-send"
               >
                 <Send
@@ -582,7 +597,7 @@ const styles = StyleSheet.create({
   messageRole: { fontSize: 12, fontWeight: '600', color: Colors.Colors.text.secondary },
   messageBubble: { maxWidth: '80%', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 16 },
   userBubble: { backgroundColor: Colors.Colors.cyan.primary, borderBottomRightRadius: 4 },
-  assistantBubble: { backgroundColor: Colors.Colors.background.card, borderWidth: 1, borderColor: Colors.Colors.border.muted, borderBottomLeftRadius: 4 },
+  assistantBubble: { backgroundColor: Colors.Colors.background.card, borderWidth: 1, borderColor: Colors.Colors.border.strong ?? Colors.Colors.border.muted, borderBottomLeftRadius: 4 },
   messageText: { fontSize: 14, lineHeight: 20 },
   userMessageText: { color: Colors.Colors.text.inverse },
   assistantMessageText: { color: Colors.Colors.text.primary },
