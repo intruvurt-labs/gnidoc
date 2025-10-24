@@ -33,6 +33,7 @@ const SecurityProvider = lazy(() => import("@/contexts/SecurityContext").then(m 
 const GamificationProvider = lazy(() => import("@/contexts/GamificationContext").then(m => ({ default: m.GamificationProvider })));
 const SubscriptionProvider = lazy(() => import("@/contexts/SubscriptionContext").then(m => ({ default: m.SubscriptionProvider })));
 const PolicyProvider = lazy(() => import("@/contexts/PolicyContext").then(m => ({ default: m.PolicyProvider })));
+const MCPProvider = lazy(() => import("@/contexts/MCPContext").then(m => ({ default: m.MCPProvider })));
 
 
 
@@ -287,13 +288,15 @@ export default function RootLayout() {
                                 <NoCodeBuilderProvider>
                                   <IntegrationsProvider>
                                     <ResearchProvider>
-                                    <StatusBar style="light" backgroundColor={Colors.Colors.background.primary} />
-                                    <View style={{ flex: 1, backgroundColor: Colors.Colors.background.primary }}>
-                                      <RootLayoutNav />
-                                      {/* UniversalFooter temporarily disabled to avoid LinkingContext issue */}
-                                      <FloatingAISupport />
-                                      <OnboardingWrapper />
-                                    </View>
+                                      <MCPProvider>
+                                        <StatusBar style="light" backgroundColor={Colors.Colors.background.primary} />
+                                        <View style={{ flex: 1, backgroundColor: Colors.Colors.background.primary }}>
+                                          <RootLayoutNav />
+                                          {/* UniversalFooter temporarily disabled to avoid LinkingContext issue */}
+                                          <FloatingAISupport />
+                                          <OnboardingWrapper />
+                                        </View>
+                                      </MCPProvider>
                                     </ResearchProvider>
                                   </IntegrationsProvider>
                                 </NoCodeBuilderProvider>

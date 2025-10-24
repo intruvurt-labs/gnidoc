@@ -172,6 +172,13 @@ export default function TabLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="mcp"
+        options={{
+          title: "MCP",
+          tabBarIcon: ({ color }) => <Brain color={color} size={26} />,
+        }}
+      />
     </Tabs>
   );
 }
