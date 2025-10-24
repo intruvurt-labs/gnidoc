@@ -126,6 +126,21 @@ export class MCPClient {
     }
   }
 
+  disconnect(id: string) {
+    const ws = this.sockets.get(id);
+    if (ws) {
+      try {
+        ws.close();
+      } catch {}
+      this.sockets.delete(id);
+    }
+  }
+
+  isConnected(id: string): boolean {
+    const ws = this.sockets.get(id);
+    return !!ws && ws.readyState === ws.OPEN;
+  }
+
   send<T = any>(serverId: string, message: MCPMessage): Promise<MCPMessage<T>> {
     return new Promise((resolve, reject) => {
       const ws = this.sockets.get(serverId);

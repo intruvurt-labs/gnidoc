@@ -1,17 +1,18 @@
 import { Stack } from 'expo-router';
-import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Platform } from 'react-native';
+import React, { useMemo, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Platform, TextInput, FlatList } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useMCP } from '@/contexts/MCPContext';
 import Svg, { Circle, Line, Text as SvgText } from 'react-native-svg';
-import { Play, Link as LinkIcon, RefreshCw } from 'lucide-react-native';
+import { Play, Link as LinkIcon, RefreshCw, Link2, Unplug, Radio } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
 
 export default function MCPScreen() {
   const { primary, text, card, border, background } = useTheme();
-  const { servers, connect, events, clearEvents } = useMCP();
+  const { servers, connect, disconnect, isConnected, events, clearEvents, discoverFrom } = useMCP();
   const [selected, setSelected] = useState<string | null>(null);
+  const [discoveryUrl, setDiscoveryUrl] = useState<string>('');
 
   const positions = useMemo(() => {
     const radius = Math.min(width * 0.35, 220);
@@ -27,15 +28,33 @@ export default function MCPScreen() {
     });
   }, [servers]);
 
-  const selectedEvents = useMemo(() => events.filter((e) => e.serverId === selected).slice(-8), [events, selected]);
-
   return (
     <View style={[styles.container, { backgroundColor: background }]} testID="mcp-screen">
-      <Stack.Screen options={{ title: 'MCP Canvas', headerShown: true }} />
+      <Stack.Screen options={{ title: 'MCP', headerShown: true }} />
 
       <View style={styles.header}>
-        <Text style={[styles.title, { color: text }]}>MCP Servers</Text>
+        <Text style={[styles.title, { color: text }]}>MCP</Text>
         <View style={styles.headerActions}>
+          <View style={[styles.discoverContainer, { borderColor: border, backgroundColor: card }]}>
+            <Link2 color={text} size={16} />
+            <TextInput
+              value={discoveryUrl}
+              onChangeText={setDiscoveryUrl}
+              placeholder="https://example.com/mcp/discover.json"
+              placeholderTextColor={text}
+              style={[styles.input, { color: text }]}
+              autoCapitalize="none"
+              autoCorrect={false}
+              testID="mcp-discovery-input"
+            />
+            <TouchableOpacity
+              onPress={() => discoveryUrl.trim() && discoverFrom([discoveryUrl.trim()])}
+              style={[styles.chip, { borderColor: border }]} testID="mcp-discover-btn"
+            >
+              <Radio color={text} size={16} />
+              <Text style={[styles.chipText, { color: text }]}>Discover</Text>
+            </TouchableOpacity>
+          </View>
           <TouchableOpacity style={[styles.chip, { borderColor: border }]} onPress={() => clearEvents(selected ?? undefined)}>
             <RefreshCw color={text} size={16} />
             <Text style={[styles.chipText, { color: text }]}>Clear</Text>
@@ -43,9 +62,9 @@ export default function MCPScreen() {
         </View>
       </View>
 
-      <View style={[styles.canvas, { backgroundColor: card, borderColor: border }]}>
+      <View style={[styles.canvas, { backgroundColor: card, borderColor: border }] }>
         <Svg width="100%" height="100%">
-          {positions.length > 1 && positions.map((p, i) => (
+          {positions.length > 1 && positions.map((p) => (
             <Line
               key={`ln-${p.id}`}
               x1={positions[0]?.x ?? 0}
@@ -86,7 +105,7 @@ export default function MCPScreen() {
         </View>
       </View>
 
-      <View style={[styles.panel, { backgroundColor: card, borderColor: border }]}>
+      <View style={[styles.panel, { backgroundColor: card, borderColor: border }] }>
         {selected ? (
           <ServerPanel id={selected} />
         ) : (
@@ -95,17 +114,30 @@ export default function MCPScreen() {
       </View>
 
       <View style={styles.footer}>
-        {servers.map((s) => (
-          <TouchableOpacity key={s.id} style={[styles.actionBtn, { borderColor: border }]} onPress={() => connect(s.id)} testID={`connect-${s.id}`}>
-            <LinkIcon color={primary} size={18} />
-            <Text style={[styles.actionText, { color: primary }]}>{s.name}</Text>
-          </TouchableOpacity>
-        ))}
+        {servers.map((s) => {
+          const connected = isConnected(s.id);
+          return (
+            <View key={s.id} style={styles.footerRow}>
+              <TouchableOpacity style={[styles.actionBtn, { borderColor: border }]} onPress={() => connect(s.id)} testID={`connect-${s.id}`}>
+                <LinkIcon color={primary} size={18} />
+                <Text style={[styles.actionText, { color: primary }]}>{s.name}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.actionBtn, { borderColor: border }]} onPress={() => disconnect(s.id)} testID={`disconnect-${s.id}`}>
+                <Unplug color={connected ? '#DC2626' : '#6B7280'} size={18} />
+                <Text style={[styles.actionText, { color: connected ? '#DC2626' : '#6B7280' }]}>Disconnect</Text>
+              </TouchableOpacity>
+            </View>
+          );
+        })}
         <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: primary }]} onPress={() => Platform.OS === 'web' ? console.log('exec preview') : console.log('exec')} testID="mcp-exec">
           <Play color="#0b0b0f" size={18} />
           <Text style={styles.primaryText}>Execute</Text>
         </TouchableOpacity>
       </View>
+
+      {selected && (
+        <LiveLog serverId={selected} />
+      )}
     </View>
   );
 }
@@ -115,7 +147,7 @@ function ServerPanel({ id }: { id: string }) {
   const { text, border, card } = useTheme();
   const s = servers.find((x) => x.id === id);
   if (!s) return null;
-  const evs = events.filter((e) => e.serverId === id).slice(-8).reverse();
+  const evs = events.filter((e) => e.serverId === id).slice(-20).reverse();
 
   return (
     <View style={[styles.serverPanel]}>
@@ -135,16 +167,44 @@ function ServerPanel({ id }: { id: string }) {
   );
 }
 
+function LiveLog({ serverId }: { serverId: string }) {
+  const { events } = useMCP();
+  const { text, border, card } = useTheme();
+  const listRef = useRef<FlatList<{ id: string; at: number }>>(null);
+
+  return (
+    <View style={[styles.logContainer, { backgroundColor: card, borderColor: border }]}>
+      <Text style={[styles.logTitle, { color: text }]}>Live Logs</Text>
+      <FlatList
+        ref={listRef}
+        data={events.filter((e) => e.serverId === serverId).slice(-200).reverse()}
+        keyExtractor={(it) => String(it.at)}
+        renderItem={({ item }) => (
+          <Text style={[styles.logLine, { color: text }]} numberOfLines={2}>
+            [{new Date(item.at).toLocaleTimeString()}] {item.msg.type} {item.msg.method ?? 'event'}
+          </Text>
+        )}
+        onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
+        style={styles.logList}
+        testID="mcp-live-logs"
+      />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, gap: 12 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   title: { fontSize: 20, fontWeight: '700' },
-  headerActions: { flexDirection: 'row', gap: 8 },
+  headerActions: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8 },
   chipText: { fontSize: 12, fontWeight: '600' },
+  discoverContainer: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, paddingHorizontal: 8, borderRadius: 8 },
+  input: { minWidth: 180, paddingVertical: 6 },
   canvas: { flex: 1, borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
   panel: { minHeight: 120, borderRadius: 12, borderWidth: 1, padding: 12 },
   footer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between' },
+  footerRow: { flexDirection: 'row', gap: 8 },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1 },
   actionText: { fontSize: 12, fontWeight: '700' },
   primaryBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 12 },
@@ -152,4 +212,8 @@ const styles = StyleSheet.create({
   serverPanel: { },
   serverTitle: { fontSize: 16, fontWeight: '700' },
   eventList: { borderWidth: 1, padding: 8, borderRadius: 8 },
+  logContainer: { borderWidth: 1, borderRadius: 12, padding: 12, marginTop: 8 },
+  logTitle: { fontSize: 14, fontWeight: '700', marginBottom: 8 },
+  logList: { maxHeight: 180 },
+  logLine: { fontSize: 11 },
 });

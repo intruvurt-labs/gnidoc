@@ -9,7 +9,10 @@ export interface MCPState {
   events: Array<{ serverId: string; msg: MCPMessage; at: number }>;
   addServers: (servers: MCPServerInfo[]) => void;
   removeServer: (id: string) => void;
+  discoverFrom: (urls: string[]) => Promise<void>;
   connect: (id: string) => void;
+  disconnect: (id: string) => void;
+  isConnected: (id: string) => boolean;
   send: (id: string, message: MCPMessage) => Promise<MCPMessage>;
   clearEvents: (id?: string) => void;
 }
@@ -60,6 +63,12 @@ export const [MCPProvider, useMCP] = createContextHook<MCPState>(() => {
     items.forEach((s) => clientRef.current!.registerServer(s));
   }, []);
 
+  const discoverFrom = useCallback(async (urls: string[]) => {
+    try {
+      await clientRef.current!.discoverFrom(urls);
+    } catch {}
+  }, []);
+
   const removeServer = useCallback((id: string) => {
     clientRef.current!.unregisterServer(id);
   }, []);
@@ -72,10 +81,16 @@ export const [MCPProvider, useMCP] = createContextHook<MCPState>(() => {
     setTimeout(() => setConnecting((prev) => ({ ...prev, [id]: false })), 800);
   }, [servers]);
 
+  const disconnect = useCallback((id: string) => {
+    clientRef.current!.disconnect(id);
+  }, []);
+
   const send = useCallback(async (id: string, message: MCPMessage) => {
     const res = await clientRef.current!.send(id, message);
     return res as MCPMessage;
   }, []);
+
+  const isConnected = useCallback((id: string) => clientRef.current!.isConnected(id), []);
 
   const clearEvents = useCallback((id?: string) => {
     if (!id) return setEvents([]);
@@ -88,8 +103,11 @@ export const [MCPProvider, useMCP] = createContextHook<MCPState>(() => {
     events,
     addServers,
     removeServer,
+    discoverFrom,
     connect,
+    disconnect,
+    isConnected,
     send,
     clearEvents,
-  }), [servers, connecting, events, addServers, removeServer, connect, send, clearEvents]);
+  }), [servers, connecting, events, addServers, removeServer, discoverFrom, connect, disconnect, isConnected, send, clearEvents]);
 });
