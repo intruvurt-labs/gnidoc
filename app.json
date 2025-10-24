@@ -59,7 +59,8 @@
         "RECEIVE_BOOT_COMPLETED",
         "WAKE_LOCK",
         "android.permission.RECEIVE_BOOT_COMPLETED",
-        "android.permission.SCHEDULE_EXACT_ALARM"
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.HIGH_SAMPLING_RATE_SENSORS"
       ]
     },
     "web": {
@@ -136,6 +137,14 @@
             "./assets/sound/notifs.wav"
           ],
           "enableBackgroundRemoteNotifications": false
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
+          "recordAudioAndroid": true
         }
       ]
     ],
