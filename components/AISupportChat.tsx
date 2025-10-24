@@ -32,6 +32,16 @@ const uid = (p = "") => {
 const HISTORY_CAP = 400 as const;
 const SAVE_DEBOUNCE_MS = 350 as const;
 
+async function enqueueEscalation(payload: { sessionId: string; lastMessage?: string; tier: string }) {
+  try {
+    await fetch('https://your.api/support/escalate', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch {}
+}
+
 interface Message {
   id: string;
   role: 'user' | 'assistant';
@@ -341,8 +351,12 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
       },
     ]);
 
-    // TODO: integrate your real escalation bridge here (e.g., webhook -> support queue)
-  }, [isPaidTier, escalated]);
+    void enqueueEscalation({
+      sessionId: currentSessionId,
+      lastMessage: localMessages.at(-1)?.content,
+      tier: userTier,
+    });
+  }, [isPaidTier, escalated, currentSessionId, localMessages, userTier]);
 
   const renderMessage = (message: Message) => {
     const isUser = message.role === 'user';
