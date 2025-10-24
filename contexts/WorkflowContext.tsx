@@ -87,7 +87,7 @@ export const [WorkflowProvider, useWorkflow] = createContextHook(() => {
         AsyncStorage.getItem(EXECUTIONS_KEY),
       ]);
 
-      if (wfRaw && wfRaw.length < 2_000_000) {
+      if (wfRaw) {
         const parsedWorkflows = JSON.parse(wfRaw).map((w: any) => ({
           ...w,
           createdAt: new Date(w.createdAt),
@@ -103,7 +103,7 @@ export const [WorkflowProvider, useWorkflow] = createContextHook(() => {
         console.log(`[WorkflowContext] Loaded ${parsedWorkflows.length} workflows`);
       }
 
-      if (exRaw && exRaw.length < 2_000_000) {
+      if (exRaw) {
         const parsedExecs = JSON.parse(exRaw).map((e: any) => ({
           ...e,
           startTime: new Date(e.startTime),
