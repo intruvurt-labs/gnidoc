@@ -6,7 +6,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
  
-       "postinstall": "node ./patch/use-patch.js",
+      "postinstall": "node scripts/verify-app-entry.js"
     "fix-router": "npx patch-package expo-router",  
  
     "start-web-dev": "DEBUG=expo* npx rork start -p fd9jhdiphhthdxbi879dt --web --tunnel",
