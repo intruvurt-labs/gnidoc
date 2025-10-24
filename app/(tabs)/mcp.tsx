@@ -1,16 +1,18 @@
 import { Stack } from 'expo-router';
-import React, { useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Platform, TextInput, FlatList } from 'react-native';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Platform, TextInput, FlatList, Alert } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useMCP } from '@/contexts/MCPContext';
 import Svg, { Circle, Line, Text as SvgText } from 'react-native-svg';
-import { Play, Link as LinkIcon, RefreshCw, Link2, Unplug, Radio } from 'lucide-react-native';
+import { Play, Link as LinkIcon, RefreshCw, Link2, Unplug, Radio, FolderOpenDot, Smartphone } from 'lucide-react-native';
+
+import { useMCPCommand } from '@/src/hooks/useMCP';
 
 const { width } = Dimensions.get('window');
 
 export default function MCPScreen() {
   const { primary, text, card, border, background } = useTheme();
-  const { servers, connect, disconnect, isConnected, events, clearEvents, discoverFrom } = useMCP();
+  const { servers, connect, disconnect, isConnected, events, clearEvents, discoverFrom, addServers } = useMCP();
   const [selected, setSelected] = useState<string | null>(null);
   const [discoveryUrl, setDiscoveryUrl] = useState<string>('');
 
@@ -35,6 +37,24 @@ export default function MCPScreen() {
       <View style={styles.header}>
         <Text style={[styles.title, { color: text }]}>MCP</Text>
         <View style={styles.headerActions}>
+          <TouchableOpacity
+            onPress={() => addServers([
+              { id: 'expo-file-system', name: 'Expo FileSystem', capabilities: ['file_operations'] as any, transport: 'inprocess', health: 'healthy' as const },
+            ])}
+            style={[styles.chip, { borderColor: border }]} testID="add-fs-server"
+          >
+            <FolderOpenDot color={text} size={16} />
+            <Text style={[styles.chipText, { color: text }]}>Add Local FS</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => addServers([
+              { id: 'expo-device', name: 'Expo Device', capabilities: ['automation'] as any, transport: 'inprocess', health: 'healthy' as const },
+            ])}
+            style={[styles.chip, { borderColor: border }]} testID="add-device-server"
+          >
+            <Smartphone color={text} size={16} />
+            <Text style={[styles.chipText, { color: text }]}>Add Device</Text>
+          </TouchableOpacity>
           <View style={[styles.discoverContainer, { borderColor: border, backgroundColor: card }]}>
             <Link2 color={text} size={16} />
             <TextInput
@@ -144,8 +164,37 @@ export default function MCPScreen() {
 
 function ServerPanel({ id }: { id: string }) {
   const { servers, events } = useMCP();
-  const { text, border, card } = useTheme();
+  const { text, border, card, primary } = useTheme();
   const s = servers.find((x) => x.id === id);
+  const [output, setOutput] = useState<string>('');
+  const [fsPath, setFsPath] = useState<string>('/');
+  const fsCmd = useMCPCommand('expo-file-system');
+  const devCmd = useMCPCommand('expo-device');
+
+  const onRunFsList = useCallback(async () => {
+    const res = await fsCmd.sendCommand<{ files: string[] }>('listFiles', { path: fsPath });
+    if (res.ok) setOutput(`Files at ${fsPath}:\n` + res.data!.files.join('\n'));
+    else Alert.alert('FS Error', res.error ?? 'Unknown error');
+  }, [fsCmd, fsPath]);
+
+  const onRunFsRead = useCallback(async () => {
+    const res = await fsCmd.sendCommand<{ content: string }>('readFile', { path: fsPath });
+    if (res.ok) setOutput(`Read ${fsPath}:\n` + (res.data!.content ?? ''));
+    else Alert.alert('FS Error', res.error ?? 'Unknown error');
+  }, [fsCmd, fsPath]);
+
+  const onGyro = useCallback(async () => {
+    const res = await devCmd.sendCommand<{ gyro?: { x: number; y: number; z: number }; error?: string }>('getGyroscopeSample', {});
+    if (res.ok) setOutput(`Gyro: ${JSON.stringify(res.data)}`);
+    else Alert.alert('Device Error', res.error ?? 'Unknown error');
+  }, [devCmd]);
+
+  const onCameraPerm = useCallback(async () => {
+    const res = await devCmd.sendCommand<{ canAccessCamera: boolean; platform: string }>('requestCameraPermission', {});
+    if (res.ok) setOutput(`Camera permission (${res.data!.platform}): ${res.data!.canAccessCamera}`);
+    else Alert.alert('Device Error', res.error ?? 'Unknown error');
+  }, [devCmd]);
+
   if (!s) return null;
   const evs = events.filter((e) => e.serverId === id).slice(-20).reverse();
 
@@ -153,6 +202,50 @@ function ServerPanel({ id }: { id: string }) {
     <View style={[styles.serverPanel]}>
       <Text style={[styles.serverTitle, { color: text }]}>{s.name}</Text>
       <Text style={{ color: text, opacity: 0.7, marginBottom: 8 }}>{s.capabilities.join(', ')}</Text>
+
+      <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+        {s.id === 'expo-file-system' && (
+          <>
+            <View style={[styles.discoverContainer, { borderColor: border, backgroundColor: card }]}> 
+              <TextInput
+                value={fsPath}
+                onChangeText={setFsPath}
+                placeholder="/"
+                placeholderTextColor={text}
+                style={[styles.input, { color: text }]}
+                autoCapitalize="none"
+                autoCorrect={false}
+                testID="mcp-fs-path"
+              />
+              <TouchableOpacity onPress={onRunFsList} style={[styles.chip, { borderColor: border }]} testID="mcp-fs-list">
+                <Text style={[styles.chipText, { color: primary }]}>List</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={onRunFsRead} style={[styles.chip, { borderColor: border }]} testID="mcp-fs-read">
+                <Text style={[styles.chipText, { color: primary }]}>Read</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+        {s.id === 'expo-device' && (
+          <>
+            <TouchableOpacity onPress={onGyro} style={[styles.chip, { borderColor: border }]} testID="mcp-gyro">
+              <Text style={[styles.chipText, { color: primary }]}>Gyroscope</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={onCameraPerm} style={[styles.chip, { borderColor: border }]} testID="mcp-camera">
+              <Text style={[styles.chipText, { color: primary }]}>Camera Permission</Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
+
+      {output.length > 0 && (
+        <View style={[styles.eventList, { borderColor: border, backgroundColor: card }]}> 
+          <Text style={{ color: text, fontSize: 12 }} selectable>
+            {output}
+          </Text>
+        </View>
+      )}
+
       <View style={[styles.eventList, { borderColor: border, backgroundColor: card }]}>
         {evs.map((e) => (
           <Text key={e.at} style={{ color: text, fontSize: 12, marginVertical: 2 }} numberOfLines={2}>

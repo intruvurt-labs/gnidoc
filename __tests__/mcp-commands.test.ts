@@ -1,4 +1,4 @@
-import { listSupportedCommands } from '../lib/mcp/commands';
+import { listSupportedCommands, executeMCPCommand } from '../lib/mcp/commands';
 
 interface TestResult {
   name: string;
@@ -47,6 +47,16 @@ async function runMCPCommandsTests(): Promise<TestSuite> {
     const map = listSupportedCommands();
     if (!map['ai-code-mcp']) throw new Error('ai-code-mcp missing');
     if (!map['ai-code-mcp'].includes('generateCode')) throw new Error('Missing generateCode');
+  }));
+
+  tests.push(await runTest('executeMCPCommand errors on unknown server', async () => {
+    const res = await executeMCPCommand('unknown-server', 'noop', {});
+    if ((res as any).ok) throw new Error('Expected error for unknown server');
+  }));
+
+  tests.push(await runTest('executeMCPCommand errors on unknown command (expo-file-system)', async () => {
+    const res = await executeMCPCommand('expo-file-system', 'unknown', {});
+    if ((res as any).ok) throw new Error('Expected error for unknown command');
   }));
 
   const passed = tests.filter(t => t.passed).length;
