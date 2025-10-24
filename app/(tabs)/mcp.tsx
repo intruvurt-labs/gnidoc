@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Platform, TextInp
 import { useTheme } from '@/contexts/ThemeContext';
 import { useMCP } from '@/contexts/MCPContext';
 import Svg, { Circle, Line, Text as SvgText } from 'react-native-svg';
+import MobileFileTree, { FileEntry } from '@/components/MobileFileTree';
 import { Play, Link as LinkIcon, RefreshCw, Link2, Unplug, Radio, FolderOpenDot, Smartphone, Mic } from 'lucide-react-native';
 
 import { useMCPCommand } from '@/src/hooks/useMCP';
@@ -171,18 +172,26 @@ function ServerPanel({ id }: { id: string }) {
   const s = servers.find((x) => x.id === id);
   const [output, setOutput] = useState<string>('');
   const [fsPath, setFsPath] = useState<string>('/');
+  const [fsFiles, setFsFiles] = useState<FileEntry[]>([]);
   const fsCmd = useMCPCommand('expo-file-system');
   const devCmd = useMCPCommand('expo-device');
 
   const onRunFsList = useCallback(async () => {
     const res = await fsCmd.sendCommand<{ files: string[] }>('listFiles', { path: fsPath });
-    if (res.ok) setOutput(`Files at ${fsPath}:\n` + res.data!.files.join('\n'));
-    else Alert.alert('FS Error', res.error ?? 'Unknown error');
+    if (res.ok) {
+      const files = (res.data?.files ?? []).map((name) => ({
+        path: fsPath.endsWith('/') ? fsPath + name : fsPath + '/' + name,
+        name,
+        isDir: name.endsWith('/'),
+      }));
+      setFsFiles(files);
+      setOutput(`Files at ${fsPath}:\n` + (res.data?.files ?? []).join('\n'));
+    } else Alert.alert('FS Error', res.error ?? 'Unknown error');
   }, [fsCmd, fsPath]);
 
   const onRunFsRead = useCallback(async () => {
     const res = await fsCmd.sendCommand<{ content: string }>('readFile', { path: fsPath });
-    if (res.ok) setOutput(`Read ${fsPath}:\n` + (res.data!.content ?? ''));
+    if (res.ok) setOutput(`Read ${fsPath}:\n` + (res.data?.content ?? ''));
     else Alert.alert('FS Error', res.error ?? 'Unknown error');
   }, [fsCmd, fsPath]);
 
@@ -240,6 +249,18 @@ function ServerPanel({ id }: { id: string }) {
           </>
         )}
       </View>
+
+      {s.id === 'expo-file-system' && (
+        <View style={{ height: 180 }}>
+          <MobileFileTree
+            files={fsFiles}
+            onPressFile={(file) => {
+              setFsPath(file.path);
+              onRunFsRead();
+            }}
+          />
+        </View>
+      )}
 
       {output.length > 0 && (
         <View style={[styles.eventList, { borderColor: border, backgroundColor: card }]}> 
