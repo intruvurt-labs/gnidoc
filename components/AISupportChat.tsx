@@ -5,7 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
-  ScrollView,
+  FlatList,
   Animated,
   Dimensions,
   KeyboardAvoidingView,
@@ -17,7 +17,20 @@ import Colors from '@/constants/colors';
 import { useRorkAgent } from '@rork/toolkit-sdk';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const { height } = Dimensions.get('window');
+const { height } = Dimensions.get("window");
+
+const uid = (p = "") => {
+  try {
+    // @ts-ignore
+    if (globalThis?.crypto?.randomUUID) return p + globalThis.crypto.randomUUID();
+  } catch {}
+  const t = Date.now().toString(36);
+  const r = Math.random().toString(36).slice(2, 10);
+  return `${p}${t}-${r}`;
+};
+
+const HISTORY_CAP = 400 as const;
+const SAVE_DEBOUNCE_MS = 350 as const;
 
 interface Message {
   id: string;
@@ -66,7 +79,6 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
   const slideAnim = useRef(new Animated.Value(height)).current;
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const scrollViewRef = useRef<ScrollView>(null);
 
   const { messages, sendMessage, error, setMessages } = useRorkAgent({ tools: {} });
 
@@ -142,13 +154,19 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
     void maybeBootstrap();
   }, [extendedMemory, bootstrappedFromMemory, buildContextFromMemory, sendMessage]);
 
+  const debouncedSave = useRef<NodeJS.Timeout | null>(null);
   const saveConversationHistory = useCallback(async (msgs: any[]) => {
     try {
-      await AsyncStorage.setItem(STORAGE_KEYS.CHAT, JSON.stringify(msgs));
+      if (debouncedSave.current) clearTimeout(debouncedSave.current);
+      const trimmed = msgs.slice(-HISTORY_CAP);
+      debouncedSave.current = setTimeout(() => {
+        AsyncStorage.setItem(STORAGE_KEYS.CHAT, JSON.stringify(trimmed)).catch(() => {});
+      }, SAVE_DEBOUNCE_MS);
     } catch (err) {
       console.error('[AISupportChat] Persist chat failed:', err);
     }
   }, []);
+  useEffect(() => () => { if (debouncedSave.current) clearTimeout(debouncedSave.current); }, []);
 
   const clearConversationHistory = useCallback(async () => {
     try {
@@ -232,7 +250,6 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
       if (latest.role === 'assistant') {
         setAssistantReplies(prev => {
           const next = prev + 1;
-          // Auto-escalate after the *first* uncertain assistant reply for paid tiers
           if (!escalated && isPaidTier && prev === 0 && isUnsolvable(latest.content)) {
             handleEscalate(true);
           }
@@ -280,7 +297,7 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
         setLocalMessages(prev => [
           ...prev,
           {
-            id: Date.now().toString(),
+            id: uid('msg_'),
             role: 'assistant',
             content:
               '⚠️ Free tier users are limited to 5 messages per session. Upgrade to Professional or Premium to get unlimited AI support and escalate to live human help!',
@@ -300,7 +317,7 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
       setLocalMessages(prev => [
         ...prev,
         {
-          id: Date.now().toString(),
+          id: uid('msg_'),
           role: 'assistant',
           content:
             '🔒 Live human support is only available for Professional and Premium tier members. Upgrade your plan to get 24/7 priority support from our expert team!',
@@ -315,7 +332,7 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
     setLocalMessages(prev => [
       ...prev,
       {
-        id: Date.now().toString(),
+        id: uid('msg_'),
         role: 'assistant',
         content: auto
           ? '🤖 Couldn’t confidently resolve this after the first attempt. Escalating you to a human expert now...'
@@ -412,15 +429,15 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
             </View>
 
             {/* Messages */}
-            <ScrollView
-              ref={scrollViewRef}
+            <FlatList
+              data={[...localMessages].reverse()}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => renderMessage(item)}
+              inverted
               style={styles.messagesContainer}
               contentContainerStyle={styles.messagesContent}
               showsVerticalScrollIndicator={false}
-              onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
-              testID="ai-support-messages"
-            >
-              {localMessages.length === 0 && (
+              ListEmptyComponent={
                 <View style={styles.welcomeContainer}>
                   <Bot color={Colors.Colors.cyan.primary} size={48} />
                   <Text style={styles.welcomeTitle}>Hi! I&apos;m your AI Support Assistant</Text>
@@ -442,14 +459,14 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
                     </Text>
                   )}
                 </View>
-              )}
-              {localMessages.map(renderMessage)}
-              {error && (
+              }
+              ListFooterComponent={error ? (
                 <View style={styles.errorContainer}>
                   <Text style={styles.errorText}>⚠️ Connection error. Please try again.</Text>
                 </View>
-              )}
-            </ScrollView>
+              ) : null}
+              testID="ai-support-messages"
+            />
 
             {/* Actions */}
             {isPaidTier && (
