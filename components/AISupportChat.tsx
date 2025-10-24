@@ -33,6 +33,7 @@ const uid = (p = "") => {
 const HISTORY_CAP = 400 as const;
 const SAVE_DEBOUNCE_MS = 350 as const;
 const MAX_TOPICS_PER_SESSION = 12 as const;
+const MAX_MESSAGES = HISTORY_CAP as const;
 
 const safeJSONParse = <T,>(raw: string | null, fallback: T): T => {
   if (!raw) return fallback;
@@ -133,21 +134,32 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
   };
 
   const loadConversationHistory = useCallback(async () => {
+    let mounted = true;
     try {
-      const stored = await AsyncStorage.getItem(STORAGE_KEYS.CHAT);
-      const history = safeJSONParse<any[]>(stored, []);
-      setMessages(Array.isArray(history) ? history : []);
+      const [stored, memoryStored] = await Promise.all([
+        AsyncStorage.getItem(STORAGE_KEYS.CHAT),
+        AsyncStorage.getItem(STORAGE_KEYS.MEMORY),
+      ]);
 
-      const memoryStored = await AsyncStorage.getItem(STORAGE_KEYS.MEMORY);
+      const history = safeJSONParse<any[]>(stored, []);
+      const normalized = Array.isArray(history) ? history.slice(-MAX_MESSAGES) : [];
+
       const memory = safeJSONParse<ExtendedMemory>(memoryStored, {
-        sessions: [], userPreferences: {}, commonIssues: [], lastInteraction: new Date().toISOString()
+        sessions: [],
+        userPreferences: {},
+        commonIssues: [],
+        lastInteraction: new Date().toISOString(),
       });
+
+      if (!mounted) return;
+      setMessages(normalized);
       setExtendedMemory(memory);
       setSessionCount(memory.sessions?.length ?? 0);
     } catch (err) {
       console.error('[AISupportChat] Failed to load history/memory:', err);
     }
-  }, [setMessages]);
+    return () => { mounted = false; };
+  }, []);
 
   useEffect(() => {
     loadConversationHistory();
@@ -220,9 +232,9 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
 
         for (const t of extractTopics(newMessage.content)) {
           if (!current.topics.includes(t)) current.topics.push(t);
-          if (current.topics.length > MAX_TOPICS_PER_SESSION) {
-            current.topics = current.topics.slice(-MAX_TOPICS_PER_SESSION);
-          }
+        }
+        if (current.topics.length > MAX_TOPICS_PER_SESSION) {
+          current.topics = current.topics.slice(-MAX_TOPICS_PER_SESSION);
         }
 
         memory.lastInteraction = new Date().toISOString();
@@ -292,17 +304,36 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
     }
   }, [isOpen, slideAnim, scaleAnim]);
 
-  useEffect(() => {
-    if (isOpen) return;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.05, duration: 1200, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1, duration: 1200, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [isOpen, pulseAnim]);
+  const pulseRef = useRef<Animated.CompositeAnimation | null>(null);
+const startPulse = () => {
+  try { pulseRef.current?.stop(); } catch {}
+  pulseRef.current = Animated.timing(pulseAnim, {
+    toValue: 1.05,
+    duration: 1200,
+    easing: Easing.inOut(Easing.quad),
+    useNativeDriver: true,
+  });
+  pulseRef.current.start(({ finished }) => {
+    if (finished) {
+      pulseAnim.setValue(1);
+    }
+  });
+};
+useEffect(() => {
+  if (isOpen) return;
+  const loop = Animated.loop(
+    Animated.sequence([
+      Animated.timing(pulseAnim, { toValue: 1.05, duration: 1200, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+      Animated.timing(pulseAnim, { toValue: 1, duration: 1200, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+    ])
+  );
+  loop.start();
+  return () => {
+    try { loop.stop(); } catch {}
+    try { pulseRef.current?.stop(); } catch {}
+    pulseAnim.setValue(1);
+  };
+}, [isOpen, pulseAnim]);
 
   const handleSend = useCallback(async () => {
     if (sending) return;
@@ -329,6 +360,7 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
     try {
       setSending(true);
       setInputMessage('');
+      startPulse();
       await sendMessage(text);
     } finally {
       setSending(false);
