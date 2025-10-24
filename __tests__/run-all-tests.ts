@@ -1,5 +1,6 @@
 import { generateTestReport } from './workflow-context.test';
 import { generateExecutionTestReport } from './workflow-execution.test';
+import { generateMCPCommandsReport } from './mcp-commands.test';
 
 async function runAllTests() {
   console.log('╔═══════════════════════════════════════════════════════════════╗');
@@ -17,6 +18,9 @@ async function runAllTests() {
     
     console.log('📋 Running Execution Tests...\n');
     const executionReport = await generateExecutionTestReport();
+
+    console.log('📋 Running MCP Commands Tests...\n');
+    const mcpReport = await generateMCPCommandsReport();
     
     const totalDuration = Date.now() - startTime;
     
@@ -32,12 +36,14 @@ ${contextReport}
 
 ${executionReport}
 
+${mcpReport}
+
 ═══════════════════════════════════════════════════════════════
 OVERALL SUMMARY
 ═══════════════════════════════════════════════════════════════
 
 ⏱️  Total Test Duration: ${totalDuration}ms
-📊 Test Suites: 2
+📊 Test Suites: 3
 🧪 Total Tests: 30+
 
 KEY ACHIEVEMENTS:
