@@ -1,12 +1,13 @@
 import { Stack } from 'expo-router';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Platform, TextInput, FlatList, Alert } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Platform, TextInput, FlatList, Alert, ActivityIndicator } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useMCP } from '@/contexts/MCPContext';
 import Svg, { Circle, Line, Text as SvgText } from 'react-native-svg';
-import { Play, Link as LinkIcon, RefreshCw, Link2, Unplug, Radio, FolderOpenDot, Smartphone } from 'lucide-react-native';
+import { Play, Link as LinkIcon, RefreshCw, Link2, Unplug, Radio, FolderOpenDot, Smartphone, Mic } from 'lucide-react-native';
 
 import { useMCPCommand } from '@/src/hooks/useMCP';
+import { useVoiceCoding } from '@/src/hooks/useVoiceCoding';
 
 const { width } = Dimensions.get('window');
 
@@ -132,6 +133,8 @@ export default function MCPScreen() {
           <Text style={{ color: text, opacity: 0.7 }}>Select a server node to inspect</Text>
         )}
       </View>
+
+      <VoiceCodingPanel />
 
       <View style={styles.footer}>
         {servers.map((s) => {
@@ -285,6 +288,53 @@ function LiveLog({ serverId }: { serverId: string }) {
   );
 }
 
+function VoiceCodingPanel() {
+  const { text, border, card, primary } = useTheme();
+  const { handleVoiceCommand } = useVoiceCoding();
+  const [prompt, setPrompt] = useState<string>('Create a strongly-typed Button component in React Native');
+  const [loading, setLoading] = useState<boolean>(false);
+  const [lastCode, setLastCode] = useState<string>('');
+  const onRun = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await handleVoiceCommand(prompt);
+      setLastCode(res.code ?? '');
+    } catch (e: any) {
+      Alert.alert('Voice Coding', e?.message ?? 'Failed to generate');
+    } finally {
+      setLoading(false);
+    }
+  }, [handleVoiceCommand, prompt]);
+  return (
+    <View style={[styles.vcContainer, { borderColor: border, backgroundColor: card }]} testID="voice-coding-panel">
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Mic color={primary} size={16} />
+        <Text style={[styles.vcTitle, { color: text }]}>Voice Coding</Text>
+      </View>
+      <View style={styles.vcRow}>
+        <TextInput
+          value={prompt}
+          onChangeText={setPrompt}
+          placeholder="Describe the code you want..."
+          placeholderTextColor={text}
+          style={[styles.vcInput, { color: text }]}
+          autoCapitalize="none"
+          autoCorrect={false}
+          testID="vc-input"
+        />
+        <TouchableOpacity onPress={onRun} style={[styles.vcBtn, { borderColor: border }]} disabled={loading} testID="vc-run">
+          {loading ? <ActivityIndicator color={primary} /> : <Text style={[styles.vcBtnText, { color: primary }]}>Generate</Text>}
+        </TouchableOpacity>
+      </View>
+      {lastCode.length > 0 && (
+        <View style={[styles.vcOutput, { borderColor: border }]}> 
+          <Text selectable style={{ color: text, fontSize: 12 }}>{lastCode}</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, gap: 12 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -297,6 +347,13 @@ const styles = StyleSheet.create({
   canvas: { flex: 1, borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
   panel: { minHeight: 120, borderRadius: 12, borderWidth: 1, padding: 12 },
   footer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between' },
+  vcContainer: { borderWidth: 1, borderRadius: 12, padding: 12, gap: 8 },
+  vcTitle: { fontSize: 14, fontWeight: '700' as const },
+  vcRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  vcInput: { flex: 1, paddingVertical: 8 },
+  vcBtn: { paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1 },
+  vcBtnText: { fontWeight: '700' as const },
+  vcOutput: { marginTop: 8, borderWidth: 1, borderRadius: 8, padding: 8 },
   footerRow: { flexDirection: 'row', gap: 8 },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1 },
   actionText: { fontSize: 12, fontWeight: '700' },
