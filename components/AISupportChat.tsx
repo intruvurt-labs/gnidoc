@@ -522,6 +522,8 @@ export default function AISupportChat({ userTier = 'free' }: AISupportChatProps)
                 disabled={!inputMessage.trim() || sending}
                 accessibilityRole="button"
                 accessibilityLabel="Send message"
+                accessibilityState={{ disabled: !inputMessage.trim() || sending }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 testID="ai-support-send"
               >
                 <Send
