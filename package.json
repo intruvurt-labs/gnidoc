@@ -4,8 +4,8 @@
   "private": true,
   "workspaces": [
     "apps/*",
-    "packages/*"
-  ],
+    "packages/*"],
+  
   "scripts": {
   // 🚀 Universal App Control
   "start": "expo start --clear",
