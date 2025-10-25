@@ -12,7 +12,7 @@ export interface User {
   avatar?: string;
   provider?: 'github' | 'google' | 'email';
   createdAt: string;
-  subscription?: 'free' | 'basic' | 'pro' | 'enterprise';
+  subscription?: 'free' | 'basic' | 'pro' | 'elite';
   credits: number;
 }
 
