@@ -32,9 +32,7 @@
 
   // 🧠 Security + Dependency Check
   "audit": "npm audit --production",
-  "update": "npm update && npm dedupe && npm prune"
-}
-
+  "update": "npm update && npm dedupe && npm prune",
     "postinstall": "cd apps/mobile && npx patch-package && cd ../.. && prisma generate"
   },
   "dependencies": {
