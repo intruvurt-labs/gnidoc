@@ -8,6 +8,7 @@
     "scheme": "gnidoc",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "jsEngine": "hermes",
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "contain",
@@ -17,29 +18,34 @@
       "supportsTablet": true,
       "bundleIdentifier": "app.rork.gnidoc",
       "usesIcloudStorage": true,
+      "associatedDomains": ["applinks:gnidoc.xyz", "applinks:*.gnidoc.xyz"],
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos for document scanning and image uploads.",
         "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera for document scanning.",
         "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone for voice features.",
         "NSFaceIDUsageDescription": "Allow $(PRODUCT_NAME) to use Face ID for secure access.",
-        "UIBackgroundModes": [
-          "audio",
-          "fetch",
-          "processing"
-        ]
+        "UIBackgroundModes": ["audio", "fetch", "processing"]
       },
       "config": {
         "usesNonExemptEncryption": false
       },
       "entitlements": {
-        "com.apple.security.application-groups": [
-          "group.app.rork.gnidoc"
-        ],
-        "com.apple.developer.icloud-services": [
-          "CloudDocuments"
-        ],
-        "com.apple.developer.icloud-container-identifiers": [
-          "iCloud.app.rork.gnidoc"
+        "com.apple.security.application-groups": ["group.app.rork.gnidoc"],
+        "com.apple.developer.icloud-services": ["CloudDocuments"],
+        "com.apple.developer.icloud-container-identifiers": ["iCloud.app.rork.gnidoc"]
+      },
+      "privacyManifests": {
+        "NSPrivacyTracking": false,
+        "NSPrivacyTrackingDomains": [],
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryFileTimestamp",
+            "NSPrivacyAccessedAPITypeReasons": ["C617.1"]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+          }
         ]
       }
     },
@@ -61,17 +67,35 @@
         "android.permission.READ_MEDIA_VIDEO",
         "android.permission.READ_MEDIA_AUDIO",
         "android.permission.HIGH_SAMPLING_RATE_SENSORS"
-      ]
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "gnidoc.xyz",
+              "pathPrefix": "/"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ],
+      "enableProguardInReleaseBuilds": true,
+      "enableShrinkResourcesInReleaseBuilds": true
     },
     "web": {
       "favicon": "./assets/images/favicon.png",
-      "bundler": "metro"
+      "bundler": "metro",
+      "output": "single"
     },
     "plugins": [
       [
         "expo-router",
         {
-          "origin": "https://gnidoc.xyz"
+          "origin": "https://gnidoc.xyz",
+          "asyncRoutes": "production"
         }
       ],
       [
@@ -125,45 +149,6 @@
           "enableFTS": true,
           "useSQLCipher": true,
           "ios": {
-            "customBuildFlags": [
-              "-DSQLITE_ENABLE_DBSTAT_VTAB=1",
-              "-DSQLITE_ENABLE_SNAPSHOT=1"
-            ]
+            "customBuildFlags": ["-DSQLITE_ENABLE_DBSTAT_VTAB=1", "-DSQLITE_ENABLE_SNAPSHOT=1"]
           },
           "android": {
-            "enableFTS": true,
-            "useSQLCipher": true
-          }
-        }
-      ],
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/images/notifs.png",
-          "color": "#000000",
-          "defaultChannel": "default"
-        }
-      ]
-    ],
-    "experiments": {
-      "typedRoutes": true
-    },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
-    "runtimeVersion": {
-      "policy": "sdkVersion"
-    },
-    "updates": {
-      "enabled": true,
-      "checkAutomatically": "ON_LOAD",
-      "fallbackToCacheTimeout": 0,
-      "url": "https://u.expo.dev/[your-project-id]"
-    },
-    "extra": {
-      "eas": {
-        "projectId": "[your-eas-project-id]"
-      }
-    }
-  }
-}
