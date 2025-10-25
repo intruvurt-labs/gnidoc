@@ -18,15 +18,14 @@
       "bundleIdentifier": "app.rork.gnidoc",
       "usesIcloudStorage": true,
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos.",
-        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera.",
-        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone.",
+        "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos for document scanning and image uploads.",
+        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera for document scanning.",
+        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone for voice features.",
         "NSFaceIDUsageDescription": "Allow $(PRODUCT_NAME) to use Face ID for secure access.",
         "UIBackgroundModes": [
           "audio",
           "fetch",
-          "processing",
-          "background-processing"
+          "processing"
         ]
       },
       "config": {
@@ -41,16 +40,7 @@
         ],
         "com.apple.developer.icloud-container-identifiers": [
           "iCloud.app.rork.gnidoc"
-        ],
-        "com": {
-          "apple": {
-            "security": {
-              "application-groups": [
-                "group.com.myapp"
-              ]
-            }
-          }
-        }
+        ]
       }
     },
     "android": {
@@ -70,15 +60,12 @@
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VIDEO",
         "android.permission.READ_MEDIA_AUDIO",
-        "android.permission.VIBRATE",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.HIGH_SAMPLING_RATE_SENSORS"
       ]
     },
     "web": {
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "bundler": "metro"
     },
     "plugins": [
       [
@@ -109,20 +96,27 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "The app accesses your photos to save downloaded images."
+          "photosPermission": "The app accesses your photos to save downloaded images and scan documents."
         }
       ],
       [
         "expo-av",
         {
-          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone."
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone for voice recording."
         }
       ],
       [
         "expo-secure-store",
         {
-          "configureAndroidBackup": true,
           "faceIDPermission": "Allow $(PRODUCT_NAME) to use Face ID for secure access."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera for document scanning.",
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone.",
+          "recordAudioAndroid": true
         }
       ],
       [
@@ -130,35 +124,24 @@
         {
           "enableFTS": true,
           "useSQLCipher": true,
-          "android": {
-            "enableFTS": false,
-            "useSQLCipher": false
-          },
           "ios": {
             "customBuildFlags": [
-              "-DSQLITE_ENABLE_DBSTAT_VTAB=1 -DSQLITE_ENABLE_SNAPSHOT=1"
+              "-DSQLITE_ENABLE_DBSTAT_VTAB=1",
+              "-DSQLITE_ENABLE_SNAPSHOT=1"
             ]
+          },
+          "android": {
+            "enableFTS": true,
+            "useSQLCipher": true
           }
         }
       ],
       [
         "expo-notifications",
         {
-          "icon": "./assets/notifs.png",
+          "icon": "./assets/images/notifs.png",
           "color": "#000000",
-          "defaultChannel": "default",
-          "sounds": [
-            "./assets/sound/notifs.wav"
-          ],
-          "enableBackgroundRemoteNotifications": false
-        }
-      ],
-      [
-        "expo-camera",
-        {
-          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera.",
-          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone.",
-          "recordAudioAndroid": true
+          "defaultChannel": "default"
         }
       ]
     ],
@@ -172,8 +155,15 @@
       "policy": "sdkVersion"
     },
     "updates": {
+      "enabled": true,
       "checkAutomatically": "ON_LOAD",
-      "fallbackToCacheTimeout": 0
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/[your-project-id]"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "[your-eas-project-id]"
+      }
     }
   }
 }
