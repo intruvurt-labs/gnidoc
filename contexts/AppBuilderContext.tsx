@@ -3,6 +3,7 @@ import createContextHook from '@nkzw/create-context-hook';
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { orchestrateModels, pickBest } from '@/lib/multi-model';
+import Orchestrator from './Orchestrator';
 
 /** ───────────────────────── Types ───────────────────────── **/
 
