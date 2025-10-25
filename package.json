@@ -7,23 +7,34 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently \"npm run dev:expo\" \"npm run dev:next\" \"npm run dev:server\"",
-    "dev:expo": "cd apps/mobile && expo start --clear",
-    "dev:next": "cd apps/web && next dev --turbo",
-    "dev:server": "cd apps/server && bun run --hot src/index.ts",
-    "android": "cd apps/mobile && expo start --android",
-    "ios": "cd apps/mobile && expo start --ios",
-    "web": "cd apps/web && npm run dev",
-    "build": "turbo run build",
-    "build:mobile": "cd apps/mobile && eas build --platform all",
-    "build:web": "cd apps/web && next build",
-    "build:server": "cd apps/server && bun build src/index.ts --outdir dist --target bun",
-    "start": "npm run start:web",
-    "start:web": "cd apps/web && next start",
-    "start:server": "cd apps/server && node dist/index.js",
-    "lint": "turbo run lint",
-    "typecheck": "turbo run typecheck",
-    "clean": "turbo run clean && rm -rf node_modules",
+  // 🚀 Universal App Control
+  "start": "expo start --clear",
+  "android": "expo run:android",
+  "ios": "expo run:ios",
+  "web": "expo start --web",
+
+  // 🧩 Developer Tools
+  "lint": "expo lint",
+  "clean": "rm -rf node_modules .expo .expo-shared && npm install",
+  "doctor": "expo doctor",
+
+  // ⚡ Hotfixes / Router Patches
+  "fix-router": "npx patch-package expo-router",
+  "postinstall": "node patches/expo-router+use-patch.js",
+
+  // 🌐 Web Dev Tunnel (via Rork Agent)
+  "start-web-dev": "DEBUG=expo* npx rork start -p fd9jhdiphhthdxbi879dt --web --tunnel",
+
+  // 🧱 Production Build Targets
+  "build:web": "expo export:web",
+  "build:android": "eas build --platform android",
+  "build:ios": "eas build --platform ios",
+
+  // 🧠 Security + Dependency Check
+  "audit": "npm audit --production",
+  "update": "npm update && npm dedupe && npm prune"
+}
+
     "postinstall": "cd apps/mobile && npx patch-package && cd ../.. && prisma generate"
   },
   "dependencies": {
