@@ -63,7 +63,7 @@ export default function ConnectionsScreen() {
       setShowAddModal(false);
       resetForm();
       Alert.alert('Success', 'Connection added successfully');
-    } catch {
+    } catch (error) {
       Alert.alert('Error', 'Failed to add connection');
     }
   };
@@ -90,7 +90,7 @@ export default function ConnectionsScreen() {
       setShowAddModal(false);
       resetForm();
       Alert.alert('Success', 'Connection updated successfully');
-    } catch {
+    } catch (error) {
       Alert.alert('Error', 'Failed to update connection');
     }
   };
@@ -108,7 +108,7 @@ export default function ConnectionsScreen() {
             try {
               await deleteConnection(id);
               Alert.alert('Success', 'Connection deleted');
-            } catch {
+            } catch (error) {
               Alert.alert('Error', 'Failed to delete connection');
             }
           },
@@ -166,7 +166,7 @@ export default function ConnectionsScreen() {
                 resetForm();
               }}
             >
-              <X color={Colors.Colors.text.primary} size={24} />
+              <X color={Colors.text.primary} size={24} />
             </TouchableOpacity>
           </View>
 
@@ -177,7 +177,7 @@ export default function ConnectionsScreen() {
               value={formData.name}
               onChangeText={(text) => setFormData({ ...formData, name: text })}
               placeholder="My Database"
-              placeholderTextColor={Colors.Colors.text.muted}
+              placeholderTextColor={Colors.text.muted}
             />
 
             <Text style={styles.inputLabel}>Host *</Text>
@@ -186,7 +186,7 @@ export default function ConnectionsScreen() {
               value={formData.host}
               onChangeText={(text) => setFormData({ ...formData, host: text })}
               placeholder="localhost or db.example.com"
-              placeholderTextColor={Colors.Colors.text.muted}
+              placeholderTextColor={Colors.text.muted}
               autoCapitalize="none"
             />
 
@@ -196,7 +196,7 @@ export default function ConnectionsScreen() {
               value={formData.port}
               onChangeText={(text) => setFormData({ ...formData, port: text })}
               placeholder="5432"
-              placeholderTextColor={Colors.Colors.text.muted}
+              placeholderTextColor={Colors.text.muted}
               keyboardType="numeric"
             />
 
@@ -206,7 +206,7 @@ export default function ConnectionsScreen() {
               value={formData.database}
               onChangeText={(text) => setFormData({ ...formData, database: text })}
               placeholder="postgres"
-              placeholderTextColor={Colors.Colors.text.muted}
+              placeholderTextColor={Colors.text.muted}
               autoCapitalize="none"
             />
 
@@ -216,7 +216,7 @@ export default function ConnectionsScreen() {
               value={formData.username}
               onChangeText={(text) => setFormData({ ...formData, username: text })}
               placeholder="postgres"
-              placeholderTextColor={Colors.Colors.text.muted}
+              placeholderTextColor={Colors.text.muted}
               autoCapitalize="none"
             />
 
@@ -226,7 +226,7 @@ export default function ConnectionsScreen() {
               value={formData.password}
               onChangeText={(text) => setFormData({ ...formData, password: text })}
               placeholder="••••••••"
-              placeholderTextColor={Colors.Colors.text.muted}
+              placeholderTextColor={Colors.text.muted}
               secureTextEntry
               autoCapitalize="none"
             />
@@ -237,10 +237,10 @@ export default function ConnectionsScreen() {
                 value={formData.ssl}
                 onValueChange={(value) => setFormData({ ...formData, ssl: value })}
                 trackColor={{
-                  false: Colors.Colors.border.muted,
-                  true: Colors.Colors.cyan.primary,
+                  false: Colors.border.muted,
+                  true: Colors.cyan.primary,
                 }}
-                thumbColor={Colors.Colors.text.secondary}
+                thumbColor={Colors.text.secondary}
               />
             </View>
 
@@ -264,9 +264,9 @@ export default function ConnectionsScreen() {
         options={{
           title: 'Database Connections',
           headerStyle: {
-            backgroundColor: Colors.Colors.background.primary,
+            backgroundColor: Colors.background.primary,
           },
-          headerTintColor: Colors.Colors.text.primary,
+          headerTintColor: Colors.text.primary,
         }}
       />
 
@@ -280,7 +280,7 @@ export default function ConnectionsScreen() {
 
         {connections.length === 0 && (
           <View style={styles.emptyState}>
-            <Database color={Colors.Colors.text.muted} size={64} />
+            <Database color={Colors.text.muted} size={64} />
             <Text style={styles.emptyTitle}>No Connections</Text>
             <Text style={styles.emptyText}>
               Add your first database connection to get started
@@ -301,7 +301,7 @@ export default function ConnectionsScreen() {
             <View key={conn.id} style={styles.connectionCard}>
               <View style={styles.connectionHeader}>
                 <View style={styles.connectionIcon}>
-                  <Database color={Colors.Colors.cyan.primary} size={24} />
+                  <Database color={Colors.cyan.primary} size={24} />
                 </View>
                 <View style={styles.connectionInfo}>
                   <Text style={styles.connectionName}>{conn.name}</Text>
@@ -327,7 +327,7 @@ export default function ConnectionsScreen() {
                   style={styles.actionButton}
                   onPress={() => handleEditConnection(conn)}
                 >
-                  <Edit color={Colors.Colors.cyan.primary} size={18} />
+                  <Edit color={Colors.cyan.primary} size={18} />
                   <Text style={styles.actionButtonText}>Edit</Text>
                 </TouchableOpacity>
 
@@ -335,7 +335,7 @@ export default function ConnectionsScreen() {
                   style={[styles.actionButton, styles.deleteButton]}
                   onPress={() => handleDeleteConnection(conn.id, conn.name)}
                 >
-                  <Trash2 color={Colors.Colors.error} size={18} />
+                  <Trash2 color={Colors.error} size={18} />
                   <Text style={[styles.actionButtonText, styles.deleteButtonText]}>
                     Delete
                   </Text>
@@ -349,7 +349,7 @@ export default function ConnectionsScreen() {
           style={styles.fab}
           onPress={() => setShowAddModal(true)}
         >
-          <Plus color={Colors.Colors.text.inverse} size={28} />
+          <Plus color={Colors.text.inverse} size={28} />
         </TouchableOpacity>
 
         {renderConnectionModal()}
@@ -361,42 +361,42 @@ export default function ConnectionsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.Colors.background.primary,
+    backgroundColor: Colors.background.primary,
   },
   header: {
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.Colors.border.muted,
+    borderBottomColor: Colors.border.muted,
   },
   headerTitle: {
     fontSize: 24,
-    fontWeight: '700' as const,
-    color: Colors.Colors.text.primary,
+    fontWeight: '700',
+    color: Colors.text.primary,
     marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: Colors.Colors.text.muted,
+    color: Colors.text.muted,
   },
   emptyState: {
     flex: 1,
-    justifyContent: 'center' as const,
-    alignItems: 'center' as const,
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: 40,
     gap: 16,
   },
   emptyTitle: {
     fontSize: 20,
-    fontWeight: '700' as const,
-    color: Colors.Colors.text.primary,
+    fontWeight: '700',
+    color: Colors.text.primary,
   },
   emptyText: {
     fontSize: 14,
-    color: Colors.Colors.text.muted,
-    textAlign: 'center' as const,
+    color: Colors.text.muted,
+    textAlign: 'center',
   },
   quickAddButton: {
-    backgroundColor: Colors.Colors.cyan.primary,
+    backgroundColor: Colors.cyan.primary,
     paddingHorizontal: 20,
     paddingVertical: 12,
     borderRadius: 8,
@@ -404,24 +404,24 @@ const styles = StyleSheet.create({
   },
   quickAddButtonText: {
     fontSize: 14,
-    fontWeight: '600' as const,
-    color: Colors.Colors.text.inverse,
+    fontWeight: '600',
+    color: Colors.text.inverse,
   },
   connectionsList: {
     flex: 1,
     padding: 16,
   },
   connectionCard: {
-    backgroundColor: Colors.Colors.background.card,
+    backgroundColor: Colors.background.card,
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: Colors.Colors.border.muted,
+    borderColor: Colors.border.muted,
   },
   connectionHeader: {
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
     marginBottom: 12,
   },
@@ -429,83 +429,83 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: Colors.Colors.cyan.primary + '20',
-    justifyContent: 'center' as const,
-    alignItems: 'center' as const,
+    backgroundColor: Colors.cyan.primary + '20',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   connectionInfo: {
     flex: 1,
   },
   connectionName: {
     fontSize: 18,
-    fontWeight: '700' as const,
-    color: Colors.Colors.text.primary,
+    fontWeight: '700',
+    color: Colors.text.primary,
     marginBottom: 4,
   },
   connectionDetails: {
     fontSize: 12,
-    color: Colors.Colors.text.muted,
+    color: Colors.text.muted,
     fontFamily: 'monospace',
   },
   connectionMeta: {
-    flexDirection: 'row' as const,
+    flexDirection: 'row',
     gap: 8,
     marginBottom: 12,
   },
   badge: {
-    backgroundColor: Colors.Colors.background.secondary,
+    backgroundColor: Colors.background.secondary,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: Colors.Colors.border.muted,
+    borderColor: Colors.border.muted,
   },
   activeBadge: {
-    backgroundColor: Colors.Colors.cyan.primary + '20',
-    borderColor: Colors.Colors.cyan.primary,
+    backgroundColor: Colors.cyan.primary + '20',
+    borderColor: Colors.cyan.primary,
   },
   badgeText: {
     fontSize: 10,
-    fontWeight: '600' as const,
-    color: Colors.Colors.text.secondary,
+    fontWeight: '600',
+    color: Colors.text.secondary,
   },
   connectionActions: {
-    flexDirection: 'row' as const,
+    flexDirection: 'row',
     gap: 12,
   },
   actionButton: {
     flex: 1,
-    flexDirection: 'row' as const,
-    alignItems: 'center' as const,
-    justifyContent: 'center' as const,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
     paddingVertical: 10,
     borderRadius: 8,
-    backgroundColor: Colors.Colors.background.secondary,
+    backgroundColor: Colors.background.secondary,
     borderWidth: 1,
-    borderColor: Colors.Colors.border.muted,
+    borderColor: Colors.border.muted,
   },
   deleteButton: {
-    borderColor: Colors.Colors.error + '40',
+    borderColor: Colors.error + '40',
   },
   actionButtonText: {
     fontSize: 14,
-    fontWeight: '600' as const,
-    color: Colors.Colors.text.primary,
+    fontWeight: '600',
+    color: Colors.text.primary,
   },
   deleteButtonText: {
-    color: Colors.Colors.error,
+    color: Colors.error,
   },
   fab: {
-    position: 'absolute' as const,
+    position: 'absolute',
     right: 20,
     bottom: 20,
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: Colors.Colors.cyan.primary,
-    justifyContent: 'center' as const,
-    alignItems: 'center' as const,
+    backgroundColor: Colors.cyan.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -514,69 +514,69 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: Colors.Colors.background.overlay,
-    justifyContent: 'center' as const,
-    alignItems: 'center' as const,
+    backgroundColor: Colors.background.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
   },
   modalContent: {
-    backgroundColor: Colors.Colors.background.card,
+    backgroundColor: Colors.background.card,
     borderRadius: 12,
     width: '100%',
     maxWidth: 500,
     maxHeight: '90%',
     borderWidth: 1,
-    borderColor: Colors.Colors.border.primary,
+    borderColor: Colors.border.primary,
   },
   modalHeader: {
-    flexDirection: 'row' as const,
-    justifyContent: 'space-between' as const,
-    alignItems: 'center' as const,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.Colors.border.muted,
+    borderBottomColor: Colors.border.muted,
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: '700' as const,
-    color: Colors.Colors.text.primary,
+    fontWeight: '700',
+    color: Colors.text.primary,
   },
   modalBody: {
     padding: 16,
   },
   inputLabel: {
     fontSize: 14,
-    fontWeight: '600' as const,
-    color: Colors.Colors.text.primary,
+    fontWeight: '600',
+    color: Colors.text.primary,
     marginBottom: 8,
     marginTop: 8,
   },
   input: {
-    backgroundColor: Colors.Colors.background.secondary,
+    backgroundColor: Colors.background.secondary,
     borderWidth: 1,
-    borderColor: Colors.Colors.border.muted,
+    borderColor: Colors.border.muted,
     borderRadius: 8,
     padding: 12,
     fontSize: 14,
-    color: Colors.Colors.text.secondary,
+    color: Colors.text.secondary,
     marginBottom: 8,
   },
   switchContainer: {
-    flexDirection: 'row' as const,
-    justifyContent: 'space-between' as const,
-    alignItems: 'center' as const,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginVertical: 12,
   },
   saveButton: {
-    backgroundColor: Colors.Colors.cyan.primary,
+    backgroundColor: Colors.cyan.primary,
     borderRadius: 8,
     padding: 16,
-    alignItems: 'center' as const,
+    alignItems: 'center',
     marginTop: 16,
   },
   saveButtonText: {
     fontSize: 16,
-    fontWeight: '700' as const,
-    color: Colors.Colors.text.inverse,
+    fontWeight: '700',
+    color: Colors.text.inverse,
   },
 });
