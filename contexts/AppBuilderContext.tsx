@@ -1,339 +1,420 @@
-// contexts/AppBuilderContext.tsx
+import { Hono } from 'hono';
+import { stream } from 'hono/streaming';
+import jwt from 'jsonwebtoken';
+import { prisma } from '../db';
+import { aiOrchestrator } from '../services/ai-orchestrator';
+import archiver from 'archiver';
+import { Readable } from 'stream';
 
-import createContextHook from '@nkzw/create-context-hook';
-import { useState, useCallback, useMemo, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { orchestrateModels, pickBest } from '@/lib/multi-model';
-import Orchestrator from './Orchestrator'; // Ensure file exists: contexts/Orchestrator.tsx
+const appGen = new Hono();
 
-// ───────────────────────── Types ─────────────────────────
-export interface GeneratedApp { /* ... unchanged ... */ }
-export interface GeneratedFile { /* ... unchanged ... */ }
-export interface BuildLog { /* ... unchanged ... */ }
-export interface CompilationError { /* ... unchanged ... */ }
-export interface ModelConsensus { /* ... unchanged ... */ }
-export interface ConsensusAnalysis { /* ... unchanged ... */ }
-export interface ConflictItem { /* ... unchanged ... */ }
-export interface CachedGeneration { /* ... unchanged ... */ }
-export interface SmartModelRecommendation { /* ... unchanged ... */ }
-export interface AppGenerationConfig { /* ... unchanged ... */ }
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
-// ───────────────────────── Constants ─────────────────────────
-const STORAGE_KEY = 'gnidoc-generated-apps';
-const CACHE_KEY = 'gnidoc-generation-cache';
-const RECOMMENDATIONS_KEY = 'gnidoc-model-recommendations';
-const CURRENT_APP_KEY = 'gnidoc-current-app-id';
+// Auth middleware - FIXED: This was misplaced at the bottom
+const authMiddleware = async (c: any, next: any) => {
+  const authHeader = c.req.header('authorization');
+  
+  if (!authHeader?.startsWith('Bearer ')) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
 
-// ───────────────────────── Utils ─────────────────────────
-const logger = { /* unchanged */ };
-
-function debounceSaver(delayMs = 250) {
-  let t: ReturnType<typeof setTimeout> | null = null;
-  return async (key: string, valueFactory: () => any) => {
-    if (t) clearTimeout(t);
-    return new Promise<void>((resolve) => {
-      t = setTimeout(async () => {
-        try {
-          const val = valueFactory();
-          await AsyncStorage.setItem(key, JSON.stringify(val));
-        } catch (e) {
-          logger.error('[AppBuilder] Persist failed:', key, e);
-        } finally {
-          resolve();
-        }
-      }, delayMs);
+  try {
+    const token = authHeader.substring(7);
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+    
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
     });
-  };
-}
-const debouncedSet = debounceSaver();
 
-function iso<T extends Record<string, any>>(obj: T) {
-  return JSON.parse(JSON.stringify(obj, (_k, v) => v instanceof Date ? v.toISOString() : v));
-}
-
-function stripFences(s: string): string { /* unchanged */ }
-function extractJSON(s: string): any | null { /* unchanged */ }
-function uuid(prefix = ''): string { return `${prefix}${Date.now()}-${Math.random().toString(36).slice(2, 8)}`; }
-
-// ───────────────────────── Context ─────────────────────────
-export const [AppBuilderProvider, useAppBuilder] = createContextHook(() => {
-  const [generatedApps, setGeneratedApps] = useState<GeneratedApp[]>([]);
-  const [currentApp, setCurrentApp] = useState<GeneratedApp | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generationProgress, setGenerationProgress] = useState(0);
-  const [cachedGenerations, setCachedGenerations] = useState<CachedGeneration[]>([]);
-  const [currentConsensus, setCurrentConsensus] = useState<ModelConsensus[] | null>(null);
-  const [currentAnalysis, setCurrentAnalysis] = useState<ConsensusAnalysis | null>(null);
-  const [modelRecommendations, setModelRecommendations] = useState<Map<string, SmartModelRecommendation>>(new Map());
-
-  const loadGeneratedApps = useCallback(async () => {
-    try {
-      const [stored, cachedData, recsData, lastAppId] = await Promise.all([
-        AsyncStorage.getItem(STORAGE_KEY),
-        AsyncStorage.getItem(CACHE_KEY),
-        AsyncStorage.getItem(RECOMMENDATIONS_KEY),
-        AsyncStorage.getItem(CURRENT_APP_KEY),
-      ]);
-
-      if (stored) {
-        const raw = JSON.parse(stored);
-        const parsedApps = (Array.isArray(raw) ? raw : []).map((app: any) => ({
-          ...app,
-          createdAt: new Date(app.createdAt),
-          updatedAt: new Date(app.updatedAt),
-          buildLogs: (app.buildLogs || []).map((log: any) => ({ ...log, timestamp: new Date(log.timestamp) })),
-          files: (app.files || []).map((f: any) => ({ ...f })),
-          errors: (app.errors || []).map((e: any) => ({ ...e })),
-        }));
-        setGeneratedApps(parsedApps);
-        if (parsedApps.length) {
-          const found = lastAppId ? parsedApps.find(a => a.id === lastAppId) : null;
-          setCurrentApp(found || parsedApps[parsedApps.length - 1]);
-        }
-        logger.info(`[AppBuilder] Loaded ${parsedApps.length} apps`);
-      }
-
-      if (cachedData) {
-        const rawCache = JSON.parse(cachedData);
-        const parsedCache: CachedGeneration[] = (Array.isArray(rawCache) ? rawCache : []).map((item: any) => ({
-          ...item,
-          timestamp: new Date(item.timestamp),
-          result: {
-            ...item.result,
-            createdAt: new Date(item.result.createdAt),
-            updatedAt: new Date(item.result.updatedAt),
-          },
-        }));
-        setCachedGenerations(parsedCache);
-        logger.info(`[AppBuilder] Loaded ${parsedCache.length} cached items`);
-      }
-
-      if (recsData) {
-        const parsed = JSON.parse(recsData);
-        setModelRecommendations(new Map(Object.entries(parsed)));
-        logger.info(`[AppBuilder] Loaded ${Object.keys(parsed).length} recommendations`);
-      }
-    } catch (e) {
-      logger.error('[AppBuilder] Failed to load data:', e);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadGeneratedApps();
-  }, [loadGeneratedApps]);
-
-  const saveGeneratedApps = useCallback(async (apps: GeneratedApp[]) => {
-    try {
-      setGeneratedApps(apps);
-      await debouncedSet(STORAGE_KEY, () => iso(apps));
-      logger.info(`[AppBuilder] Saved ${apps.length} apps`);
-    } catch (e) {
-      logger.error('[AppBuilder] Persist failed:', e);
-    }
-  }, []);
-
-  const persistCurrentAppId = useCallback(async (id: string | null) => {
-    try {
-      if (id) await AsyncStorage.setItem(CURRENT_APP_KEY, id);
-      else await AsyncStorage.removeItem(CURRENT_APP_KEY);
-    } catch (e) {
-      logger.error('[AppBuilder] Persist currentAppId failed:', e);
-    }
-  }, []);
-
-  const generateApp = useCallback(async (prompt: string, config: AppGenerationConfig): Promise<GeneratedApp> => {
-    const wc = prompt.trim().split(/\s+/).filter(Boolean).length;
-    if (wc < 3) {
-      throw new Error('Enter at least 3 meaningful words.');
+    if (!user) {
+      return c.json({ error: 'User not found' }, 404);
     }
 
-    setIsGenerating(true);
-    setGenerationProgress(0);
+    c.set('user', user);
+    await next();
+  } catch (error) {
+    return c.json({ error: 'Invalid token' }, 401);
+  }
+};
 
-    const appId = `app-${Date.now()}`;
-    let app: GeneratedApp = {
-      id: appId,
-      name: extractAppName(prompt),
-      description: prompt,
-      prompt,
-      platform: 'all',
-      status: 'generating',
-      progress: 0,
-      files: [],
-      dependencies: [],
-      buildLogs: [],
-      errors: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+// POST /api/app-generator/generate - Generate complete app - FIXED: This was incomplete
+appGen.post('/generate', authMiddleware, async (c) => {
+  const user = c.get('user');
+  const { description, template } = await c.req.json();
 
-    await saveGeneratedApps([...generatedApps, app]);
-    setCurrentApp(app);
-    await persistCurrentAppId(app.id);
+  if (!description?.trim()) {
+    return c.json({ error: 'Description is required' }, 400);
+  }
 
-    const pushLog = (level: BuildLog['level'], message: string, phase: BuildLog['phase']) => {
-      const log: BuildLog = { id: uuid('log-'), timestamp: new Date(), level, message, phase };
-      app = { ...app, buildLogs: [...app.buildLogs, log], updatedAt: new Date() };
-      setGeneratedApps(prev => prev.map(a => (a.id === app.id ? app : a)));
-    };
+  try {
+    console.log(`[AppGen] Generating app for user ${user.id}`);
 
-    try {
-      logger.info(`[AppBuilder] Generating: ${app.name}`);
-      pushLog('info', 'Starting generation...', 'generation');
-      setGenerationProgress(10);
+    // Generate app with AI orchestrator
+    const result = await aiOrchestrator.generateApp(description, template);
 
-      const systemPrompt = `...`;  // trimmed for brevity
+    // Save generated app to database
+    const app = await prisma.generatedApp.create({
+      data: {
+        userId: user.id,
+        name: description.substring(0, 100),
+        description,
+        template: template || 'custom',
+        planning: result.planning.content,
+        design: result.design.content,
+        backend: result.backend.content,
+        database: result.database.content,
+        deployment: result.deployment.content,
+        status: 'generated',
+      },
+    });
 
-      pushLog('info', `AI mode: ${config.aiModel}`, 'generation');
-      setGenerationProgress(20);
-
-      const modelPlan = (() => {
-        switch (config.aiModel) {
-          case 'dual-claude-gemini': return ['claude-3-5-sonnet-20240620','gemini-pro'];
-          case 'tri-model': return ['gpt-4o-mini','claude-3-5-sonnet-20240620','llama3-70b-8192'];
-          case 'quad-model': return ['gpt-4o-mini','gpt-4o','claude-3-5-sonnet-20240620','llama3-70b-8192'];
-          case 'orchestrated':
-          default: return ['gpt-4o-mini','claude-3-5-sonnet-20240620','llama3-70b-8192'];
-        }
-      })();
-
-      pushLog('info', `Running ${modelPlan.length} models…`, 'generation');
-      setGenerationProgress(30);
-
-      const ranked = await orchestrateModels({
-        models: modelPlan,
-        prompt: `PROJECT: gnidoc terces\n${prompt}\n\nOutput ONLY the JSON object described.`,
-        system: systemPrompt,
-        maxParallel: 2,
-        timeout: 45000,
-        perModelTimeoutMs: { 'llama3-70b-8192':30000 },
-      });
-
-      const best = pickBest(ranked);
-      if (!best || !best.output) throw new Error('All models failed or returned no output');
-
-      pushLog('info', `Best model: ${best.model}`, 'generation');
-      setGenerationProgress(50);
-
-      pushLog('info','Parsing JSON…','generation');
-      setGenerationProgress(60);
-
-      let parsed = extractJSON(best.output);
-      if (!parsed) {
-        const cleaned = stripFences(best.output);
-        parsed = extractJSON(cleaned);
-      }
-      if (!parsed) throw new Error('AI did not return valid JSON');
-
-      if (!Array.isArray(parsed.files) || parsed.files.length === 0) {
-        logger.warn('[AppBuilder] AI returned no files', JSON.stringify(parsed).slice(0,500));
-        throw new Error('Missing required "files" array');
-      }
-
-      pushLog('info', `Files generated: ${parsed.files.length}`, 'generation');
-      setGenerationProgress(70);
-
-      const files: GeneratedFile[] = parsed.files.map((file: any, i: number) => ({
-        id: uuid('file-'),
-        path: String(file.path),
-        name: String(file.path).split('/').pop() || `file-${i}`,
-        content: String(file.content || ''),
-        language: String(file.language || (config.useTypeScript ? 'typescript' : 'javascript')),
-        size: String(file.content || '').length,
-      }));
-
-      app = { ...app, files, dependencies: Array.isArray(parsed.dependencies) ? parsed.dependencies.map(String) : [], status: 'compiling', progress: 90, updatedAt: new Date() };
-      setGeneratedApps(prev => prev.map(a => (a.id === app.id ? app : a)));
-      setGenerationProgress(90);
-      pushLog('info','Compiling…','compilation');
-
-      const compilationResult = await compileApp(app);
-      app = { ...app, errors: compilationResult.errors, status: compilationResult.success ? 'ready' : 'error', progress: 100, updatedAt: new Date() };
-
-      pushLog(compilationResult.success ? 'success' : 'error', compilationResult.success ? `✓ Success with ${app.files.length} files` : `Failed with ${compilationResult.errors.length} issues`, 'compilation');
-      setGenerationProgress(100);
-
-      await saveGeneratedApps(prevMerge(generatedApps, app));
-      logger.info(`[AppBuilder] Generation complete: ${app.name}`);
-      return app;
-
-    } catch (err) {
-      logger.error('[AppBuilder] Generation failed:', err);
-      app = { ...app, status: 'error', updatedAt: new Date(), buildLogs: [...app.buildLogs, { id: uuid('log-'), timestamp: new Date(), level:'error', message:`Generation failed: ${err instanceof Error? err.message : 'Unknown error'}`, phase:'generation' }] };
-      await saveGeneratedApps(prevMerge(generatedApps, app));
-      throw err;
-    } finally {
-      setIsGenerating(false);
-      setGenerationProgress(0);
-      setCurrentApp(app);
-      await persistCurrentAppId(app.id);
-    }
-  }, [generatedApps, saveGeneratedApps, persistCurrentAppId]);
-
-  const deleteApp = useCallback(async (appId: string) => {
-    const updated = generatedApps.filter(a => a.id !== appId);
-    await saveGeneratedApps(updated);
-    if (currentApp?.id === appId) {
-      const newCurrent = updated[updated.length-1] || null;
-      setCurrentApp(newCurrent);
-      await persistCurrentAppId(newCurrent?.id || null);
-    }
-    logger.info(`[AppBuilder] Deleted app: ${appId}`);
-  }, [generatedApps, currentApp, saveGeneratedApps, persistCurrentAppId]);
-
-  const updateApp = useCallback(async (appId: string, updates: Partial<GeneratedApp>) => {
-    const updated = generatedApps.map(a => a.id === appId ? { ...a, ...updates, updatedAt: new Date() } : a);
-    await saveGeneratedApps(updated);
-    if (currentApp?.id === appId) {
-      const newApp = updated.find(a => a.id === appId) || null;
-      setCurrentApp(newApp);
-      await persistCurrentAppId(newApp?.id || null);
-    }
-    logger.info(`[AppBuilder] Updated app: ${appId}`);
-  }, [generatedApps, currentApp, saveGeneratedApps, persistCurrentAppId]);
-
-  // ... (rest of your consensus and cache logic unchanged) ...
-
-  return useMemo(() => ({
-    generatedApps,
-    currentApp,
-    isGenerating,
-    generationProgress,
-    cachedGenerations,
-    currentConsensus,
-    currentAnalysis,
-    loadGeneratedApps,
-    generateApp,
-    deleteApp,
-    updateApp,
-    setCurrentApp: async (app: GeneratedApp | null) => { setCurrentApp(app); await persistCurrentAppId(app?.id || null); },
-    runConsensusMode,
-    getSmartModelRecommendation,
-    getCachedGeneration,
-    replayGeneration,
-  }), [
-    generatedApps,
-    currentApp,
-    isGenerating,
-    generationProgress,
-    cachedGenerations,
-    currentConsensus,
-    currentAnalysis,
-    loadGeneratedApps,
-    generateApp,
-    deleteApp,
-    updateApp,
-    runConsensusMode,
-    getSmartModelRecommendation,
-    getCachedGeneration,
-    replayGeneration,
-    persistCurrentAppId
-  ]);
+    return c.json({
+      appId: app.id,
+      planning: result.planning,
+      design: result.design,
+      backend: result.backend,
+      database: result.database,
+      deployment: result.deployment,
+    });
+  } catch (error) {
+    console.error('[AppGen] Error:', error);
+    return c.json({ error: 'Failed to generate app' }, 500);
+  }
 });
 
-// ───────────────────────── Helpers ─────────────────────────
-function extractAppName(prompt: string): string { /* unchanged */ }
-function calculateConfidence(response: string): number { /* unchanged */ }
-function detectTaskType(description: string): SmartModelRecommendation['taskType'] { /* unchanged */ }
-function prevMerge(list: GeneratedApp[], updated: GeneratedApp): GeneratedApp[] { /* unchanged */ }
-async function compileApp(app: GeneratedApp): Promise<{ success: boolean; errors: CompilationError[] }> { /* unchanged */ }
+// POST /api/app-generator/stream - Stream generation progress
+appGen.post('/stream', authMiddleware, (c) => {
+  const user = c.get('user');
+
+  return stream(c, async (stream) => {
+    try {
+      const { description, template } = await c.req.json();
+
+      // Step 1: Planning
+      await stream.write(JSON.stringify({ 
+        step: 'planning', 
+        status: 'in_progress',
+        message: '🎯 Planning architecture...' 
+      }) + '\n');
+
+      const planning = await aiOrchestrator.executeTask({
+        type: 'planning',
+        prompt: `Create technical specification for: ${description}`,
+      });
+
+      await stream.write(JSON.stringify({ 
+        step: 'planning', 
+        status: 'completed',
+        data: planning.content 
+      }) + '\n');
+
+      // Step 2: Design
+      await stream.write(JSON.stringify({ 
+        step: 'design', 
+        status: 'in_progress',
+        message: '🎨 Designing UI components...' 
+      }) + '\n');
+
+      const design = await aiOrchestrator.executeTask({
+        type: 'design',
+        prompt: 'Design UI based on architecture',
+        context: planning.content,
+      });
+
+      await stream.write(JSON.stringify({ 
+        step: 'design', 
+        status: 'completed',
+        data: design.content 
+      }) + '\n');
+
+      // Step 3: Backend
+      await stream.write(JSON.stringify({ 
+        step: 'backend', 
+        status: 'in_progress',
+        message: '⚙️ Building backend API...' 
+      }) + '\n');
+
+      const backend = await aiOrchestrator.executeTask({
+        type: 'backend',
+        prompt: 'Create backend implementation',
+        context: planning.content,
+      });
+
+      await stream.write(JSON.stringify({ 
+        step: 'backend', 
+        status: 'completed',
+        data: backend.content 
+      }) + '\n');
+
+      // Step 4: Database
+      await stream.write(JSON.stringify({ 
+        step: 'database', 
+        status: 'in_progress',
+        message: '🗄️ Setting up database...' 
+      }) + '\n');
+
+      const database = await aiOrchestrator.executeTask({
+        type: 'database',
+        prompt: 'Design database schema',
+        context: planning.content,
+      });
+
+      await stream.write(JSON.stringify({ 
+        step: 'database', 
+        status: 'completed',
+        data: database.content 
+      }) + '\n');
+
+      // Step 5: Deployment
+      await stream.write(JSON.stringify({ 
+        step: 'deployment', 
+        status: 'in_progress',
+        message: '🚀 Creating deployment configs...' 
+      }) + '\n');
+
+      const deployment = await aiOrchestrator.executeTask({
+        type: 'deployment',
+        prompt: 'Create deployment configuration',
+        context: planning.content,
+      });
+
+      await stream.write(JSON.stringify({ 
+        step: 'deployment', 
+        status: 'completed',
+        data: deployment.content 
+      }) + '\n');
+
+      // Save to database
+      const app = await prisma.generatedApp.create({
+        data: {
+          userId: user.id,
+          name: description.substring(0, 100),
+          description,
+          template: template || 'custom',
+          planning: planning.content,
+          design: design.content,
+          backend: backend.content,
+          database: database.content,
+          deployment: deployment.content,
+          status: 'generated',
+        },
+      });
+
+      await stream.write(JSON.stringify({ 
+        step: 'complete', 
+        status: 'completed',
+        appId: app.id,
+        message: '✅ App generated successfully!' 
+      }) + '\n');
+
+    } catch (error) {
+      console.error('[AppGen] Streaming error:', error);
+      await stream.write(JSON.stringify({ 
+        step: 'error', 
+        status: 'failed',
+        error: 'Generation failed' 
+      }) + '\n');
+    }
+  });
+});
+
+// GET /api/app-generator/apps - List user's generated apps
+appGen.get('/apps', authMiddleware, async (c) => {
+  const user = c.get('user');
+
+  try {
+    const apps = await prisma.generatedApp.findMany({
+      where: { userId: user.id },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+
+    return c.json({ apps });
+  } catch (error) {
+    console.error('[AppGen] Error fetching apps:', error);
+    return c.json({ error: 'Failed to fetch apps' }, 500);
+  }
+});
+
+// GET /api/app-generator/apps/:appId - Get specific app
+appGen.get('/apps/:appId', authMiddleware, async (c) => {
+  const user = c.get('user');
+  const appId = c.req.param('appId');
+
+  try {
+    const app = await prisma.generatedApp.findUnique({
+      where: { id: appId, userId: user.id },
+    });
+
+    if (!app) {
+      return c.json({ error: 'App not found' }, 404);
+    }
+
+    return c.json({ app });
+  } catch (error) {
+    console.error('[AppGen] Error fetching app:', error);
+    return c.json({ error: 'Failed to fetch app' }, 500);
+  }
+});
+
+// POST /api/app-generator/code - Generate specific code
+appGen.post('/code', authMiddleware, async (c) => {
+  const user = c.get('user');
+  const { prompt, language } = await c.req.json();
+
+  if (!prompt?.trim()) {
+    return c.json({ error: 'Prompt is required' }, 400);
+  }
+
+  try {
+    const result = await aiOrchestrator.generateCode(prompt, language || 'typescript');
+
+    return c.json({
+      code: result.content,
+      model: result.model,
+      tokens: result.tokens,
+    });
+  } catch (error) {
+    console.error('[AppGen] Code generation error:', error);
+    return c.json({ error: 'Failed to generate code' }, 500);
+  }
+});
+
+// POST /api/app-generator/review - Review code
+appGen.post('/review', authMiddleware, async (c) => {
+  const user = c.get('user');
+  const { code, context } = await c.req.json();
+
+  if (!code?.trim()) {
+    return c.json({ error: 'Code is required' }, 400);
+  }
+
+  try {
+    const result = await aiOrchestrator.reviewCode(code, context);
+
+    return c.json({
+      review: result.content,
+      model: result.model,
+      tokens: result.tokens,
+    });
+  } catch (error) {
+    console.error('[AppGen] Code review error:', error);
+    return c.json({ error: 'Failed to review code' }, 500);
+  }
+});
+
+// POST /api/app-generator/deploy - Deploy generated app
+appGen.post('/deploy', authMiddleware, async (c) => {
+  const user = c.get('user');
+  const { appId, platform } = await c.req.json();
+
+  if (!appId) {
+    return c.json({ error: 'App ID is required' }, 400);
+  }
+
+  try {
+    const app = await prisma.generatedApp.findUnique({
+      where: { id: appId, userId: user.id },
+    });
+
+    if (!app) {
+      return c.json({ error: 'App not found' }, 404);
+    }
+
+    // Update status to deploying
+    await prisma.generatedApp.update({
+      where: { id: appId },
+      data: { status: 'deploying' },
+    });
+
+    // In production, trigger actual deployment (Railway, Vercel, etc.)
+    // For now, simulate deployment
+    const deploymentUrl = `https://${appId}.gnidoc.xyz`;
+
+    // Update with deployment info
+    await prisma.generatedApp.update({
+      where: { id: appId },
+      data: { 
+        status: 'deployed',
+        deploymentUrl,
+        deployedAt: new Date(),
+      },
+    });
+
+    return c.json({
+      success: true,
+      deploymentUrl,
+      platform: platform || 'vercel',
+    });
+  } catch (error) {
+    console.error('[AppGen] Deployment error:', error);
+    
+    // Update status to failed
+    await prisma.generatedApp.update({
+      where: { id: appId },
+      data: { status: 'failed' },
+    });
+
+    return c.json({ error: 'Deployment failed' }, 500);
+  }
+});
+
+// GET /api/app-generator/download/:appId - Download app as ZIP
+appGen.get('/download/:appId', authMiddleware, async (c) => {
+  const user = c.get('user');
+  const appId = c.req.param('appId');
+
+  try {
+    const app = await prisma.generatedApp.findUnique({
+      where: { id: appId, userId: user.id },
+    });
+
+    if (!app) {
+      return c.json({ error: 'App not found' }, 404);
+    }
+
+    // Create ZIP archive
+    const archive = archiver('zip', { zlib: { level: 9 } });
+    
+    // Add files to archive
+    archive.append(app.backend, { name: 'server/index.ts' });
+    archive.append(app.database, { name: 'prisma/schema.prisma' });
+    archive.append(app.design, { name: 'app/index.tsx' });
+    archive.append(app.deployment, { name: 'Dockerfile' });
+    archive.append(
+      JSON.stringify({ name: app.name, description: app.description }, null, 2),
+      { name: 'package.json' }
+    );
+
+    archive.finalize();
+
+    // Set headers for download
+    c.header('Content-Type', 'application/zip');
+    c.header('Content-Disposition', `attachment; filename="${app.name.replace(/\s/g, '-')}.zip"`);
+
+    // Return the archive as a stream
+    return c.body(Readable.from(archive as any));
+  } catch (error) {
+    console.error('[AppGen] Download error:', error);
+    return c.json({ error: 'Failed to create download' }, 500);
+  }
+});
+
+// DELETE /api/app-generator/apps/:appId - Delete app
+appGen.delete('/apps/:appId', authMiddleware, async (c) => {
+  const user = c.get('user');
+  const appId = c.req.param('appId');
+
+  try {
+    await prisma.generatedApp.delete({
+      where: { id: appId, userId: user.id },
+    });
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('[AppGen] Delete error:', error);
+    return c.json({ error: 'Failed to delete app' }, 500);
+  }
+});
+
+export default appGen;
