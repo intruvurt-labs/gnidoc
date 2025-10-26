@@ -9,6 +9,12 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "jsEngine": "hermes",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/your-project-id"
+    },
     "splash": {
       "image": "./assets/images/splash.png",
       "resizeMode": "contain",
@@ -152,3 +158,15 @@
             "customBuildFlags": ["-DSQLITE_ENABLE_DBSTAT_VTAB=1", "-DSQLITE_ENABLE_SNAPSHOT=1"]
           },
           "android": {
+            "enableSQLCipher": true
+          }
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "your-eas-project-id"
+      }
+    }
+  }
+}
