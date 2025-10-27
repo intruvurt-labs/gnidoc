@@ -1,13 +1,17 @@
 {
-  "name": "gnidoC-terceS",
+"name": "gnidoc-terces",
   "version": "1.0.0",
+  "private": true,
   "type": "module",
-  "main": "expo-router/entry",
-   "scripts": {
-    "start": "bunx rork start -p tkbswc3qgya6y3c8dvnam --tunnel",
-    "start-web": "bunx rork start -p tkbswc3qgya6y3c8dvnam --web --tunnel",
-    "start-web-dev": "DEBUG=expo* bunx rork start -p tkbswc3qgya6y3c8dvnam --web --tunnel",
-    "lint": "expo lint"
+  "engines": {
+    "bun": ">=1.1.0"
+  },
+  "scripts": {
+    "dev": "bunx expo start",
+    "build": "bunx expo export",
+    "start": "bunx expo start --no-dev",
+    "lint": "bunx eslint . --ext .ts,.tsx",
+    "format": "bunx prettier --write ."
   },
   "dependencies": {
     "@ai-sdk/react": "^2.0.76",
