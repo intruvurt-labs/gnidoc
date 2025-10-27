@@ -24,21 +24,44 @@
       "supportsTablet": true,
       "bundleIdentifier": "app.rork.gnidoc",
       "usesIcloudStorage": true,
-      "associatedDomains": ["applinks:gnidoc.xyz", "applinks:*.gnidoc.xyz"],
+      "associatedDomains": [
+        "applinks:gnidoc.xyz",
+        "applinks:*.gnidoc.xyz"
+      ],
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos for document scanning and image uploads.",
         "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera for document scanning.",
         "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone for voice features.",
         "NSFaceIDUsageDescription": "Allow $(PRODUCT_NAME) to use Face ID for secure access.",
-        "UIBackgroundModes": ["audio", "fetch", "processing"]
+        "UIBackgroundModes": [
+          "audio",
+          "fetch",
+          "processing",
+          "background-processing"
+        ]
       },
       "config": {
         "usesNonExemptEncryption": false
       },
       "entitlements": {
-        "com.apple.security.application-groups": ["group.app.rork.gnidoc"],
-        "com.apple.developer.icloud-services": ["CloudDocuments"],
-        "com.apple.developer.icloud-container-identifiers": ["iCloud.app.rork.gnidoc"]
+        "com.apple.security.application-groups": [
+          "group.app.rork.gnidoc"
+        ],
+        "com.apple.developer.icloud-services": [
+          "CloudDocuments"
+        ],
+        "com.apple.developer.icloud-container-identifiers": [
+          "iCloud.app.rork.gnidoc"
+        ],
+        "com": {
+          "apple": {
+            "security": {
+              "application-groups": [
+                "group.com.myapp"
+              ]
+            }
+          }
+        }
       },
       "privacyManifests": {
         "NSPrivacyTracking": false,
@@ -46,11 +69,15 @@
         "NSPrivacyAccessedAPITypes": [
           {
             "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryFileTimestamp",
-            "NSPrivacyAccessedAPITypeReasons": ["C617.1"]
+            "NSPrivacyAccessedAPITypeReasons": [
+              "C617.1"
+            ]
           },
           {
             "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
-            "NSPrivacyAccessedAPITypeReasons": ["CA92.1"]
+            "NSPrivacyAccessedAPITypeReasons": [
+              "CA92.1"
+            ]
           }
         ]
       }
@@ -72,7 +99,11 @@
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VIDEO",
         "android.permission.READ_MEDIA_AUDIO",
-        "android.permission.HIGH_SAMPLING_RATE_SENSORS"
+        "android.permission.HIGH_SAMPLING_RATE_SENSORS",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "android.permission.VIBRATE",
+        "android.permission.RECEIVE_BOOT_COMPLETED"
       ],
       "intentFilters": [
         {
@@ -85,7 +116,10 @@
               "pathPrefix": "/"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
       "enableProguardInReleaseBuilds": true,
@@ -138,6 +172,7 @@
       [
         "expo-secure-store",
         {
+          "configureAndroidBackup": true,
           "faceIDPermission": "Allow $(PRODUCT_NAME) to use Face ID for secure access."
         }
       ],
@@ -154,12 +189,27 @@
         {
           "enableFTS": true,
           "useSQLCipher": true,
-          "ios": {
-            "customBuildFlags": ["-DSQLITE_ENABLE_DBSTAT_VTAB=1", "-DSQLITE_ENABLE_SNAPSHOT=1"]
-          },
           "android": {
             "enableSQLCipher": true
+          },
+          "ios": {
+            "customBuildFlags": [
+              "-DSQLITE_ENABLE_DBSTAT_VTAB=1",
+              "-DSQLITE_ENABLE_SNAPSHOT=1"
+            ]
           }
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./local/assets/notification_icon.png",
+          "color": "#ffffff",
+          "defaultChannel": "default",
+          "sounds": [
+            "./local/assets/notification_sound.wav"
+          ],
+          "enableBackgroundRemoteNotifications": false
         }
       ]
     ],
