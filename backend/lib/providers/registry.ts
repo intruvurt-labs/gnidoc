@@ -1,7 +1,7 @@
 export const Providers = {
   openai: 'openai',
   anthropic: 'anthropic',
-  gemini: 'gemini','vision',
+  gemini: 'gemini',
   runway: 'runway',
   xai: 'xai',
   huggingface: 'huggingface',
