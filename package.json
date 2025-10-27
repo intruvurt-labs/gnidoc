@@ -35,6 +35,7 @@
     "drizzle-kit": "^0.31.5",
     "drizzle-orm": "^0.44.6",
     "expo": "^53.0.4",
+    "expo-auth-session": "~6.2.1",
     "expo-av": "~15.1.7",
     "expo-blur": "~14.1.4",
     "expo-camera": "~16.1.11",
