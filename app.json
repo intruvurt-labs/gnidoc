@@ -100,7 +100,7 @@
       [
         "expo-router",
         {
-          "origin": "https://gnidoc.xyz",
+          "origin": "https://rork.com",
           "asyncRoutes": "production"
         }
       ],
