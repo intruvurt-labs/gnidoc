@@ -1,37 +1,47 @@
-// backend/lib/trpc.ts
-import { initTRPC, TRPCError } from '@trpc/server';
-import type { createContext } from './context';
-// server/trpc.ts
-import { initTRPC } from '@trpc/server';
-import { createContext } from './context';
+import { createTRPCReact } from '@trpc/react-query';
+import { createTRPCClient, httpBatchLink } from '@trpc/client';
+import superjson from 'superjson';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { AppRouter } from '../backend/trpc/app-router';
 
-const t = initTRPC.context<typeof createContext>().create();
-export const router = t.router;
-export const publicProcedure = t.procedure;
-export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
-  if (!ctx.user) throw new Error('Unauthorized');
-  return next({ ctx: { user: ctx.user } });
-});
-
-const t = initTRPC.context<Awaited<ReturnType<typeof createContext>>>().create();
-
-// Main exports
-export const router = t.router;
-export const publicProcedure = t.procedure;
-
-// Middleware for authenticated access
-const isAuthed = t.middleware(({ ctx, next }) => {
-  if (!ctx.user) {
-    throw new TRPCError({ code: 'UNAUTHORIZED' });
+const getBaseUrl = () => {
+  const backendUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
+  if (backendUrl) return backendUrl;
+  
+  if (process.env.NODE_ENV === 'development') {
+    return 'http://localhost:3000';
   }
+  
+  return 'https://api.production.com';
+};
 
-  return next({
-    ctx: {
-      ...ctx,
-      user: ctx.user, // narrow type
-    },
-  });
+export const trpc = createTRPCReact<AppRouter>();
+
+export const trpcClient = createTRPCClient<AppRouter>({
+  links: [
+    httpBatchLink({
+      url: `${getBaseUrl()}/api/trpc`,
+      transformer: superjson,
+      async headers() {
+        const token = await AsyncStorage.getItem('auth_token');
+        return {
+          authorization: token ? `Bearer ${token}` : '',
+        };
+      },
+    }),
+  ],
 });
 
-// Usage: for routes that require authentication
-export const protectedProcedure = t.procedure.use(isAuthed);
+export function createAuthenticatedTRPCClient(token: string) {
+  return createTRPCClient<AppRouter>({
+    links: [
+      httpBatchLink({
+        url: `${getBaseUrl()}/api/trpc`,
+        transformer: superjson,
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+      }),
+    ],
+  });
+}
