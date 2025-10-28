@@ -8,7 +8,7 @@ import {
   Share,
   Alert,
 } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
+import { setStringAsync } from 'expo-clipboard';
 import { Stack } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -22,29 +22,28 @@ import {
   TrendingUp,
 } from 'lucide-react-native';
 import Colors from '@/constants/colors';
-import { limeWithOutline } from '@/constants/textStyles';
+import { cyanWithOutline } from '@/constants/textStyles';
 import { useGamification } from '@/contexts/GamificationContext';
-import { useAuth } from '@/contexts/AuthContext';
 import BrandedHeader from '@/components/BrandedHeader';
 import ScreenBackground from '@/components/ScreenBackground';
 
 export default function ReferralsScreen() {
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
-  const { referralCode, referrals, addCredits } = useGamification();
+
+  const { referralCode, referrals } = useGamification();
   const [copied, setCopied] = useState<boolean>(false);
 
   const referralLink = `https://gnidoc-terces.app/ref/${referralCode}`;
 
-  const handleCopyCode = () => {
-    Clipboard.setString(referralCode);
+  const handleCopyCode = async () => {
+    await setStringAsync(referralCode);
     setCopied(true);
     Alert.alert('Copied!', 'Referral code copied to clipboard');
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleCopyLink = () => {
-    Clipboard.setString(referralLink);
+  const handleCopyLink = async () => {
+    await setStringAsync(referralLink);
     Alert.alert('Copied!', 'Referral link copied to clipboard');
   };
 
@@ -346,7 +345,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold' as const,
-    ...limeWithOutline,
+    ...cyanWithOutline,
   },
   referralCodeCard: {
     flexDirection: 'row',
@@ -383,7 +382,7 @@ const styles = StyleSheet.create({
   },
   referralLink: {
     fontSize: 14,
-    ...limeWithOutline,
+    ...cyanWithOutline,
     marginBottom: 16,
   },
   referralActions: {
@@ -409,7 +408,7 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: 14,
     fontWeight: '600' as const,
-    ...limeWithOutline,
+    ...cyanWithOutline,
   },
   actionButtonTextPrimary: {
     color: Colors.Colors.text.inverse,
@@ -447,7 +446,7 @@ const styles = StyleSheet.create({
   stepTitle: {
     fontSize: 16,
     fontWeight: '600' as const,
-    ...limeWithOutline,
+    ...cyanWithOutline,
     marginBottom: 4,
   },
   stepDescription: {
@@ -497,7 +496,7 @@ const styles = StyleSheet.create({
   rewardTitle: {
     fontSize: 14,
     fontWeight: '600' as const,
-    ...limeWithOutline,
+    ...cyanWithOutline,
     marginBottom: 4,
   },
   rewardDescription: {
@@ -561,7 +560,7 @@ const styles = StyleSheet.create({
   referralName: {
     fontSize: 14,
     fontWeight: '600' as const,
-    ...limeWithOutline,
+    ...cyanWithOutline,
     marginBottom: 2,
   },
   referralEmail: {

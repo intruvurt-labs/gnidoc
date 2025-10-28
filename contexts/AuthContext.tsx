@@ -1,8 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as AuthSession from 'expo-auth-session';
+import { AuthRequest, makeRedirectUri, CodeChallengeMethod } from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
-import { Platform } from 'react-native';
 import * as Crypto from 'expo-crypto';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -40,8 +39,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001';
 
 // OAuth Configuration
-const useProxy = Platform.select({ web: false, default: true });
-const redirectUri = AuthSession.makeRedirectUri({ useProxy });
+const redirectUri = makeRedirectUri({});
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -166,16 +164,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         authorizationEndpoint: authEndpoint,
       };
 
-      const request = new AuthSession.AuthRequest({
+      const request = new AuthRequest({
         clientId,
         redirectUri,
         scopes: provider === 'github' ? ['user:email'] : ['openid', 'email', 'profile'],
         usePKCE: true,
         codeChallenge,
-        codeChallengeMethod: AuthSession.CodeChallengeMethod.S256,
+        codeChallengeMethod: CodeChallengeMethod.S256,
       });
 
-      const result = await request.promptAsync(discovery, { useProxy });
+      const result = await request.promptAsync(discovery);
 
       if (result.type === 'success') {
         // Exchange code for token on backend
@@ -294,7 +292,8 @@ export function useAuth() {
 // PKCE Helpers
 async function generateCodeVerifier(): Promise<string> {
   const randomBytes = await Crypto.getRandomBytesAsync(32);
-  return base64URLEncode(randomBytes);
+  const buffer = Buffer.from(randomBytes);
+  return base64URLEncode(buffer);
 }
 
 async function generateCodeChallenge(verifier: string): Promise<string> {
@@ -302,14 +301,11 @@ async function generateCodeChallenge(verifier: string): Promise<string> {
     Crypto.CryptoDigestAlgorithm.SHA256,
     verifier
   );
-  return base64URLEncode(hashed);
+  return hashed.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
 }
 
-function base64URLEncode(str: string | ArrayBuffer): string {
-  const base64 = typeof str === 'string' 
-    ? Buffer.from(str).toString('base64')
-    : Buffer.from(str).toString('base64');
-  
+function base64URLEncode(buffer: Buffer): string {
+  const base64 = buffer.toString('base64');
   return base64
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
