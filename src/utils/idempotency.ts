@@ -1,14 +1,11 @@
-import { sha256 } from 'js-sha256';
+import * as Crypto from 'expo-crypto';
 
-export function generateIdempotencyKey(
-  op: string,
-  targetType: string,
-  targetId: string,
-  baseVersion: number,
-  payload: any
-): string {
-  const data = JSON.stringify({ op, targetType, targetId, baseVersion, payload });
-  return sha256(data);
+export async function sha256Hex(input: string) {
+  return Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    input,
+    { encoding: Crypto.CryptoEncoding.HEX }
+  );
 }
 
 export function generateId(): string {
