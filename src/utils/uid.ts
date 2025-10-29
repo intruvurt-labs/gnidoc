@@ -1,13 +1,17 @@
-export const uid = (p: string = ""): string => {
-  try {
-    const g: typeof globalThis | undefined = globalThis as unknown as typeof globalThis;
-    const uuid = (g as any)?.crypto?.randomUUID?.();
-    if (typeof uuid === "string" && uuid.length > 0) return p + uuid;
-  } catch {}
-  const t = Date.now().toString(36);
-  const r = Math.random().toString(36).slice(2, 10);
-  return `${p}${t}-${r}`;
-};
+import * as Crypto from 'expo-crypto';
 
-export const HISTORY_CAP = 400 as const;
-export const SAVE_DEBOUNCE_MS = 350 as const;
+export async function sha256Hex(input: string) {
+  return Crypto.digestStringAsync(
+    Crypto.CryptoDigestAlgorithm.SHA256,
+    input,
+    { encoding: Crypto.CryptoEncoding.HEX }
+  );
+}
+
+export async function generateId(): Promise<string> {
+  // 8 random bytes → 16 hex chars
+  const randomBytes = await Crypto.getRandomBytesAsync(8);
+  const randomHex = Array.from(randomBytes, b => b.toString(16).padStart(2, '0')).join('');
+  const timestamp = Date.now().toString(36);
+  return `${timestamp}-${randomHex}`;
+}
