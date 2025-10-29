@@ -245,11 +245,12 @@ export default function LogoMenu({ onPress, onLongPress }: LogoMenuProps) {
     }
 
     try {
-      const fs = FileSystem as any;
-      const cacheDir = fs.cacheDirectory || fs.documentDirectory || '';
-      const target = cacheDir + filename;
-      const { uri, status } = await fs.downloadAsync(url, target);
-      if (status !== 200) throw new Error('Download failed');
+      const tempDir = (FileSystem as any).documentDirectory || (FileSystem as any).cacheDirectory || '';
+      const target = `${tempDir}${filename}`;
+      const downloadResult = await FileSystem.downloadAsync(url, target);
+      if (!downloadResult || downloadResult.status !== 200) throw new Error('Download failed');
+      const { uri } = downloadResult;
+
 
       try {
         const Sharing = await import('expo-sharing');
