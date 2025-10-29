@@ -212,7 +212,7 @@ export default function LogoMenu({ onPress, onLongPress }: LogoMenuProps) {
   const initGitRepo = async (projectId: string) => {
     await withAuth();
     const trpc = await getTrpc();
-    const res = await trpc.projects.git.init.mutate({ projectId });
+    const res = await trpc.projects.gitInit.mutate({ projectId });
     if (!res?.initialized) throw new Error(res?.message || 'Git init failed');
     return true;
   };
@@ -220,7 +220,7 @@ export default function LogoMenu({ onPress, onLongPress }: LogoMenuProps) {
   const requestZipExport = async (projectId: string) => {
     await withAuth();
     const trpc = await getTrpc();
-    const res = await trpc.projects.export.zip.mutate({ projectId });
+    const res = await trpc.projects.exportZip.mutate({ projectId });
     if (!res?.url && !res?.fileId) throw new Error('No export artifact returned');
     return res;
   };
@@ -244,20 +244,26 @@ export default function LogoMenu({ onPress, onLongPress }: LogoMenuProps) {
       return;
     }
 
-    const target = FileSystem.cacheDirectory + filename;
-    const { uri, status } = await FileSystem.downloadAsync(url, target);
-    if (status !== 200) throw new Error('Download failed');
-
     try {
-      const Sharing = await import('expo-sharing');
-      const canShare = await Sharing.isAvailableAsync();
-      if (canShare) {
-        await Sharing.shareAsync(uri, { mimeType: 'application/zip', dialogTitle: filename });
-      } else {
+      const fs = FileSystem as any;
+      const cacheDir = fs.cacheDirectory || fs.documentDirectory || '';
+      const target = cacheDir + filename;
+      const { uri, status } = await fs.downloadAsync(url, target);
+      if (status !== 200) throw new Error('Download failed');
+
+      try {
+        const Sharing = await import('expo-sharing');
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          await Sharing.shareAsync(uri, { mimeType: 'application/zip', dialogTitle: filename });
+        } else {
+          Alert.alert('Downloaded', `Saved to: ${uri}`);
+        }
+      } catch {
         Alert.alert('Downloaded', `Saved to: ${uri}`);
       }
-    } catch (error) {
-      Alert.alert('Downloaded', `Saved to: ${uri}`);
+    } catch (error: any) {
+      Alert.alert('Error', error?.message || 'Failed to download file');
     }
   };
 
