@@ -17,7 +17,6 @@ import {
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
 import * as WebBrowser from 'expo-web-browser';
 import {
   X,
@@ -249,10 +248,15 @@ export default function LogoMenu({ onPress, onLongPress }: LogoMenuProps) {
     const { uri, status } = await FileSystem.downloadAsync(url, target);
     if (status !== 200) throw new Error('Download failed');
 
-    const canShare = await Sharing.isAvailableAsync();
-    if (canShare) {
-      await Sharing.shareAsync(uri, { mimeType: 'application/zip', dialogTitle: filename });
-    } else {
+    try {
+      const Sharing = await import('expo-sharing');
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(uri, { mimeType: 'application/zip', dialogTitle: filename });
+      } else {
+        Alert.alert('Downloaded', `Saved to: ${uri}`);
+      }
+    } catch (error) {
       Alert.alert('Downloaded', `Saved to: ${uri}`);
     }
   };
