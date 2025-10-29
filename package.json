@@ -52,6 +52,7 @@
     "expo-notifications": "~0.32.12",
     "expo-router": "~6.0.13",
     "expo-secure-store": "~15.0.7",
+    "expo-sharing": "~14.0.7",
     "expo-splash-screen": "~31.0.10",
     "expo-sqlite": "~16.0.8",
     "expo-status-bar": "~3.0.8",
@@ -82,7 +83,7 @@
     "@expo/ngrok": "^4.1.0",
     "@types/react": "~19.1.10",
     "eslint": "9.31.0",
-    "eslint-config-expo": "~10.0.0",
+    "eslint-config-expo": "9.2.0",
     "typescript": "~5.9.2"
   },
   "private": true
