@@ -1,14 +1,25 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
+    "baseUrl": ".",                    // <— REQUIRED for "paths" to work
     "strict": true,
+    "moduleResolution": "Bundler",     // plays nice with Expo/Metro
     "paths": {
-      "@/*": [
-        "./*"
-      ]
-    }
+      "@/*": ["*"]                     // "@/foo" -> "./foo"
+    },
+    "types": ["expo-router", "react", "react-native", "node"],
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "noEmit": true
   },
   "include": [
+    "app",
+    "components",
+    "contexts",
+    "constants",
+    "lib",
+    "patches",
+    "scripts",
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
