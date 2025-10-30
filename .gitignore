@@ -67,6 +67,6 @@ coverage/
 .nyc_output/
 
 # Debug
-bun.lock
+bun.lockb
 yarn.lock
 package-lock.json
