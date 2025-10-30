@@ -42,7 +42,7 @@ const subscriptionPlans: SubscriptionPlan[] = [
     color: '#6B7280',
     features: [
       { name: '100 Bix credits/month', included: true },
-      { name: '1 collaboration seat', included: true },
+      { name: '1 collaboration seat', included: false },
       { name: 'Basic AI models', included: true },
       { name: 'Community support', included: true },
       { name: 'Advanced models', included: false },
@@ -52,7 +52,7 @@ const subscriptionPlans: SubscriptionPlan[] = [
   },
   {
     id: 'basic',
-    name: 'Basic',
+    name: 'Creator',
     price: 19,
     billingPeriod: 'month',
     credits: 500,
@@ -70,7 +70,7 @@ const subscriptionPlans: SubscriptionPlan[] = [
   {
     id: 'pro',
     name: 'Pro',
-    price: 49,
+    price: 60,
     billingPeriod: 'month',
     credits: 2000,
     color: '#8B5CF6',
@@ -88,7 +88,7 @@ const subscriptionPlans: SubscriptionPlan[] = [
   {
     id: 'enterprise',
     name: 'Enterprise',
-    price: 199,
+    price: 899,
     billingPeriod: 'month',
     credits: 10000,
     color: '#F59E0B',
@@ -97,6 +97,7 @@ const subscriptionPlans: SubscriptionPlan[] = [
       { name: 'Unlimited seats', included: true },
       { name: 'All AI models + Custom', included: true },
       { name: 'Dedicated support', included: true },
+       { name: 'Compliance', included: true },
       { name: 'Advanced analytics', included: true },
       { name: 'Custom integrations', included: true },
       { name: 'White-label options', included: true },
