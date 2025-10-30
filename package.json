@@ -6,9 +6,10 @@
     "bun": ">=1.1.0"
   },
  "scripts": {
-  "dev": "bunx expo start",
-  "build": "bunx expo build",
-  "lint": "bunx eslint . --ext .ts,.tsx",
+   "dev": "bunx expo start -c",
+  "rn": "bunx react-native start",
+  "android": "bunx react-native run-android",
+  "ios": "bunx react-native run-ios",
    "format": "bunx prettier --write ."
   },
   "dependencies": {
