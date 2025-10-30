@@ -1,9 +1,7 @@
-# OSX
-#
+# macOS
 .DS_Store
 
-# Xcode
-#
+# Xcode / iOS
 build/
 *.pbxuser
 !default.pbxuser
@@ -13,10 +11,10 @@ build/
 !default.mode2v3
 *.perspectivev3
 !default.perspectivev3
-xcuserdata
+xcuserdata/
 *.xccheckout
 *.moved-aside
-DerivedData
+DerivedData/
 *.hmap
 *.ipa
 *.xcuserstate
@@ -24,11 +22,10 @@ project.xcworkspace
 *.dSYM.zip
 *.dSYM
 
-# Android/IntelliJ
-#
+# Android / IntelliJ
 build/
-.idea
-.gradle
+.idea/
+.gradle/
 local.properties
 *.iml
 *.hprof
@@ -36,29 +33,26 @@ local.properties
 *.keystore
 !debug.keystore
 
-# node.js
-#
+# Node
 node_modules/
-npm-debug.log
-yarn-error.log
+npm-debug.log*
+yarn-error.log*
 
-# Bundle artifacts
+# Bundles / Outputs
 *.jsbundle
 
-# CocoaPods
-/ios/Pods/
+# CocoaPods (Expo managed won’t have Pods; bare may)
+ios/Pods/
 
 # Expo
 .expo/
 dist/
 web-build/
 
-# Environment variables
+# Env files
 .env
 .env.local
 .env.*.local
-
-# CRITICAL: Never commit actual API keys or secrets
 backend/.env
 .env.production.local
 
@@ -66,7 +60,8 @@ backend/.env
 coverage/
 .nyc_output/
 
-# Debug
-bun.lockb
+# Lockfiles — keep ONLY Bun's lockfile
+# DO NOT ignore bun.lockb if you want reproducible builds
+# bun.lockb                <-- REMOVE this line if it exists
 yarn.lock
 package-lock.json
