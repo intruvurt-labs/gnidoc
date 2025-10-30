@@ -21,10 +21,10 @@
       "usesIcloudStorage": true,
       "associatedDomains": ["applinks:gnidoc.xyz", "applinks:*.gnidoc.xyz"],
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos for document scanning and image uploads.",
-        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera for document scanning.",
-        "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone for voice features.",
-        "NSFaceIDUsageDescription": "Allow $(PRODUCT_NAME) to use Face ID for secure access.",
+        "NSPhotoLibraryUsageDescription": "Allow $(process.ENV.PRODUCT_NAME) to access your photos for document scanning and image uploads.",
+        "NSCameraUsageDescription": "Allow $(process.ENV.PRODUCT_NAME) to access your camera for document scanning.",
+        "NSMicrophoneUsageDescription": "Allow $(process.ENV.PRODUCT_NAME) to access your microphone for voice features.",
+        "NSFaceIDUsageDescription": "Allow $(process.ENV.PRODUCT_NAME) to use Face ID for secure access.",
         "UIBackgroundModes": ["audio", "fetch", "processing"]
       },
       "config": {
@@ -92,7 +92,7 @@
       [
         "expo-secure-store",
         {
-          "faceIDPermission": "Allow $(PRODUCT_NAME) to use Face ID for secure access."
+          "faceIDPermission": "Allow $(process.ENV.PRODUCT_NAME) to use Face ID for secure access."
         }
       ]
     ]
