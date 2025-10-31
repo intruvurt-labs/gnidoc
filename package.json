@@ -94,5 +94,6 @@
   "@react-native-community/cli": "latest"
 
   },
-  "private": { true
+  "private": {  
+  true
 }
