@@ -93,6 +93,6 @@
   "@types/react-native": "0.81.0",
   "@react-native-community/cli": "latest"
 
-  }
-  "private": true
-};
+  },
+  "private": { true
+}
