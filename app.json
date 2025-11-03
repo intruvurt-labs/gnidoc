@@ -1,6 +1,6 @@
-
 {
   "expo": {
+    "sdkVersion": "54.0.0",
     "name": "gnidoC-terceS",
     "slug": "gnidoc-terces",
     "version": "1.0.0",
@@ -17,22 +17,29 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.rork.gnidoc",
+      "bundleIdentifier": "app.rork.rork-ai-toolkit-url",
       "usesIcloudStorage": true,
-      "associatedDomains": ["applinks:gnidoc.xyz", "applinks:*.gnidoc.xyz"],
+      "associatedDomains": [
+        "applinks:gnidoc.xyz",
+        "applinks:*.gnidoc.xyz"
+      ],
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "Allow $(process.ENV.PRODUCT_NAME) to access your photos for document scanning and image uploads.",
-        "NSCameraUsageDescription": "Allow $(process.ENV.PRODUCT_NAME) to access your camera for document scanning.",
-        "NSMicrophoneUsageDescription": "Allow $(process.ENV.PRODUCT_NAME) to access your microphone for voice features.",
-        "NSFaceIDUsageDescription": "Allow $(process.ENV.PRODUCT_NAME) to use Face ID for secure access.",
-        "UIBackgroundModes": ["audio", "fetch", "processing"]
+        "NSPhotoLibraryUsageDescription": "Allow $(process.env.PRODUCT_NAME) to access your photos for document scanning and image uploads.",
+        "NSCameraUsageDescription": "Allow $(process.env.PRODUCT_NAME) to access your camera for document scanning.",
+        "NSMicrophoneUsageDescription": "Allow $(process.env.PRODUCT_NAME) to access your microphone for voice features.",
+        "NSFaceIDUsageDescription": "Allow $(process.env.PRODUCT_NAME) to use Face ID for secure access.",
+        "UIBackgroundModes": [
+          "audio",
+          "fetch",
+          "processing"
+        ]
       },
       "config": {
         "usesNonExemptEncryption": false
       }
     },
     "android": {
-      "package": "app.rork.gnidoc",
+      "package": "app.rork.rork-ai-toolkit-urlc",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -60,7 +67,10 @@
               "pathPrefix": "/"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -80,7 +90,8 @@
             "backgroundColor": "#0b0f12",
             "image": "./assets/images/splash.png",
             "resizeMode": "contain"
-          }
+          },
+          "origin": "https://rork.com/"
         }
       ],
       [
@@ -92,9 +103,14 @@
       [
         "expo-secure-store",
         {
-          "faceIDPermission": "Allow $(process.ENV.PRODUCT_NAME) to use Face ID for secure access."
+          "faceIDPermission": "Allow $(process.env.PRODUCT_NAME) to use Face ID for secure access."
         }
-      ]
-    ]
+      ],
+      "expo-font",
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
   }
 }
