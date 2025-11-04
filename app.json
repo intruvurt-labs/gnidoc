@@ -49,6 +49,7 @@
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
         "android.permission.VIBRATE",
+<<<<<<< HEAD
         "android.permission.WAKE_LOCK",
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.SCHEDULE_EXACT_ALARM",
@@ -72,6 +73,17 @@
             "DEFAULT"
           ]
         }
+=======
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.INTERNET",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.WAKE_LOCK",
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+>>>>>>> backup/wip-before-resync
       ]
     },
     "web": {
@@ -111,6 +123,29 @@
     ],
     "experiments": {
       "typedRoutes": true
+<<<<<<< HEAD
     }
+=======
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "runtimeVersion": {
+      "policy": "sdkVersion"
+    },
+    "updates": {
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
+    "extra": {
+      "router": {
+        "origin": "https://gnidoc.xyz"
+      },
+      "eas": {
+        "projectId": "216eed2d-189a-49b8-aed1-564cdae3067e"
+      }
+    },
+    "owner": "renomase"
+>>>>>>> backup/wip-before-resync
   }
 }
