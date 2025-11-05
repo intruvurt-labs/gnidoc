@@ -8,7 +8,7 @@
     "start": "expo start -p fd9jhdiphhthdxbi879dt --tunnel",
     "start-web": "expo start -p fd9jhdiphhthdxbi879dt --web --tunnel",
     "start-web-dev": "DEBUG=expo* expo start -p fd9jhdiphhthdxbi879dt --web --tunnel",
-    "lint": "expo lint"
+    "lint": "expo lint",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "eas:build": "eas build --platform all"
