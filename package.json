@@ -2,7 +2,8 @@
   "name": "gnidoc-terces",
   "version": "1.0.0",
   "private": true,
-    "main": "expo-router/entry",
+   "type": "module",
+  "main": "expo-router/entry",
   "scripts": {
     "start": "expo start -p fd9jhdiphhthdxbi879dt --tunnel",
     "start-web": "expo start -p fd9jhdiphhthdxbi879dt --web --tunnel",
@@ -72,7 +73,7 @@
     "nativewind": "^4.1.23",
     "pg": "^8.16.3",
     "prisma": "^6.17.1",
-    "react": "18.2.0",
+    "react": "19.2.0",
     "react-native": "0.81.0",
     "react-native-google-auth": "^2.0.2",
     "react-native-gesture-handler": "~2.10.0",
