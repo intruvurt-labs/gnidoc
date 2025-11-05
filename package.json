@@ -4,9 +4,9 @@
   "private": true,
     "main": "expo-router/entry",
   "scripts": {
-    "start": "bunx rork start -p fd9jhdiphhthdxbi879dt --tunnel",
-    "start-web": "bunx rork start -p fd9jhdiphhthdxbi879dt --web --tunnel",
-    "start-web-dev": "DEBUG=expo* bunx rork start -p fd9jhdiphhthdxbi879dt --web --tunnel",
+    "start": "expo start -p fd9jhdiphhthdxbi879dt --tunnel",
+    "start-web": "expo start -p fd9jhdiphhthdxbi879dt --web --tunnel",
+    "start-web-dev": "DEBUG=expo* expo start -p fd9jhdiphhthdxbi879dt --web --tunnel",
     "lint": "expo lint"
     "android": "expo run:android",
     "ios": "expo run:ios",
@@ -40,7 +40,7 @@
     "archiver": "^7.0.1",
     "axios": "^1.12.2",
     "bcryptjs": "^3.0.2",
-    "expo": "^53.0.0",
+    "expo": "^54.0.0",
     "expo-auth-session": "~6.2.1",
     "expo-av": "~15.1.7",
     "expo-background-fetch": "~13.1.6",
