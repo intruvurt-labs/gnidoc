@@ -6,7 +6,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "gnidoc",
+    "scheme": "rork-app",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
     "jsEngine": "hermes",
@@ -17,7 +17,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.rork.rork-ai-toolkit-url",
+      "bundleIdentifier": "app.rork-ai-toolkit-url",
       "usesIcloudStorage": true,
       "associatedDomains": [
         "applinks:gnidoc.xyz",
@@ -39,7 +39,7 @@
       }
     },
     "android": {
-      "package": "app.rork.rork-ai-toolkit-urlc",
+      "package": "app.rork.rork-ai-toolkit-url",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -49,7 +49,6 @@
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
         "android.permission.VIBRATE",
-<<<<<<< HEAD
         "android.permission.WAKE_LOCK",
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.SCHEDULE_EXACT_ALARM",
@@ -72,8 +71,8 @@
             "BROWSABLE",
             "DEFAULT"
           ]
-        }
-=======
+        },
+
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.INTERNET",
@@ -83,7 +82,6 @@
         "android.permission.WAKE_LOCK",
         "android.permission.SCHEDULE_EXACT_ALARM",
         "android.permission.MODIFY_AUDIO_SETTINGS"
->>>>>>> backup/wip-before-resync
       ]
     },
     "web": {
@@ -123,9 +121,9 @@
     ],
     "experiments": {
       "typedRoutes": true
-<<<<<<< HEAD
+
     }
-=======
+
     },
     "assetBundlePatterns": [
       "**/*"
@@ -145,7 +143,7 @@
         "projectId": "216eed2d-189a-49b8-aed1-564cdae3067e"
       }
     },
-    "owner": "renomase"
->>>>>>> backup/wip-before-resync
+    "owner": "dobleduche"
+
   }
-}
+};
