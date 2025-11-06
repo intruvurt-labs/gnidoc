@@ -1,149 +1,47 @@
 {
   "expo": {
-    "sdkVersion": "54.0.0",
     "name": "gnidoC-terceS",
     "slug": "gnidoc-terces",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "rork-app",
+    "scheme": "myapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
-    "jsEngine": "hermes",
+    "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/splash.png",
+      "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#000000"
+      "backgroundColor": "#ffffff"
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.rork-ai-toolkit-url",
-      "usesIcloudStorage": true,
-      "associatedDomains": [
-        "applinks:gnidoc.xyz",
-        "applinks:*.gnidoc.xyz"
-      ],
-      "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "Allow $(process.env.PRODUCT_NAME) to access your photos for document scanning and image uploads.",
-        "NSCameraUsageDescription": "Allow $(process.env.PRODUCT_NAME) to access your camera for document scanning.",
-        "NSMicrophoneUsageDescription": "Allow $(process.env.PRODUCT_NAME) to access your microphone for voice features.",
-        "NSFaceIDUsageDescription": "Allow $(process.env.PRODUCT_NAME) to use Face ID for secure access.",
-        "UIBackgroundModes": [
-          "audio",
-          "fetch",
-          "processing"
-        ]
-      },
-      "config": {
-        "usesNonExemptEncryption": false
-      }
+      "bundleIdentifier": "app.rork.ai-multi-orchestration"
     },
     "android": {
-      "package": "app.rork.rork-ai-toolkit-url",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "package": "app.rork.ai-multi-orchestration",
       "permissions": [
-        "android.permission.INTERNET",
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.VIBRATE",
-        "android.permission.WAKE_LOCK",
-        "android.permission.RECEIVE_BOOT_COMPLETED",
-        "android.permission.SCHEDULE_EXACT_ALARM",
-        "android.permission.READ_MEDIA_IMAGES",
-        "android.permission.READ_MEDIA_VIDEO",
-        "android.permission.READ_MEDIA_AUDIO"
-      ],
-      "intentFilters": [
-        {
-          "action": "VIEW",
-          "autoVerify": true,
-          "data": [
-            {
-              "scheme": "https",
-              "host": "gnidoc.xyz",
-              "pathPrefix": "/"
-            }
-          ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
-        },
-
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.INTERNET",
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.RECEIVE_BOOT_COMPLETED",
-        "android.permission.WAKE_LOCK",
-        "android.permission.SCHEDULE_EXACT_ALARM",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "INTERNET"
       ]
     },
     "web": {
-      "favicon": "./assets/images/favicon.png",
-      "bundler": "metro"
+      "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router",
       [
-        "expo-splash-screen",
+        "expo-router",
         {
-          "backgroundColor": "#000000",
-          "image": "./assets/images/splash.png",
-          "resizeMode": "contain",
-          "dark": {
-            "backgroundColor": "#0b0f12",
-            "image": "./assets/images/splash.png",
-            "resizeMode": "contain"
-          },
           "origin": "https://rork.com/"
         }
-      ],
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "The app accesses your photos to save downloaded images and scan documents."
-        }
-      ],
-      [
-        "expo-secure-store",
-        {
-          "faceIDPermission": "Allow $(process.env.PRODUCT_NAME) to use Face ID for secure access."
-        }
-      ],
-      "expo-font",
-      "expo-web-browser"
+      ]
     ],
     "experiments": {
       "typedRoutes": true
-
     }
-
-    },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
-    "runtimeVersion": {
-      "policy": "sdkVersion"
-    },
-    "updates": {
-      "checkAutomatically": "ON_LOAD",
-      "fallbackToCacheTimeout": 0
-    },
-    "extra": {
-      "router": {
-        "origin": "https://gnidoc.xyz"
-      },
-      "eas": {
-        "projectId": "216eed2d-189a-49b8-aed1-564cdae3067e"
-      }
-    },
-    "owner": "dobleduche"
-
   }
-};
+}
