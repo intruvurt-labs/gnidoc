@@ -3,10 +3,10 @@ $paths = "node_modules",".expo",".turbo",".next","android\build","ios\build","bu
 foreach ($p in $paths) { Remove-Item $p -Recurse -Force -ErrorAction SilentlyContinue }
 
 if (Get-Command bun -ErrorAction SilentlyContinue) {
-  Write-Host "🔥 Bun detected — clearing Bun cache & reinstalling"
-  bun pm cache clean
-  bun install
-  bunx expo start -c
+  Write-Host "🔥 Npx Expo detected — clearing Bun cache & reinstalling"
+  npx expo pm cache clean
+  npx expo install
+  npx expo start -c
 } else {
   Write-Warning "⚠️ Bun not found — using npm fallback"
   npm cache verify
